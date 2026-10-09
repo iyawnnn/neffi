@@ -75,6 +75,20 @@ describe("parseServerEnv", () => {
     expect(env.authBaseUrl).toBe("https://preview.example.dev");
   });
 
+  test("a blank BETTER_AUTH_URL in preview falls back to the branch URL", () => {
+    const env = parseServerEnv({
+      ...base,
+      BETTER_AUTH_URL: "",
+      VERCEL_ENV: "preview",
+      VERCEL_BRANCH_URL: "tapcard-git-x.vercel.app",
+    });
+    expect(env.authBaseUrl).toBe("https://tapcard-git-x.vercel.app");
+  });
+
+  test("a blank optional Sentry DSN is treated as absent", () => {
+    expect(parseServerEnv({ ...base, NEXT_PUBLIC_SENTRY_DSN: "" }).sentryDsn).toBeUndefined();
+  });
+
   test("preview without any auth URL fails clearly", () => {
     const message = errorMessage(() => parseServerEnv({ ...base, BETTER_AUTH_URL: undefined, VERCEL_ENV: "preview" }));
     expect(message).toMatch(/BETTER_AUTH_URL/);

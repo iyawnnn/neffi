@@ -50,7 +50,28 @@ describe("assertDatabaseIsolation", () => {
   });
 
   test("a malformed URL fails without echoing it", () => {
-    expect(() => assertDatabaseIsolation("development", "not-a-url-secret", PROD)).toThrow(/DATABASE_URL/);
-    expect(() => assertDatabaseIsolation("development", "not-a-url-secret", PROD)).not.toThrow(/not-a-url-secret/);
+    let message = "";
+    try {
+      assertDatabaseIsolation("development", "not-a-url-secret", PROD);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(/DATABASE_URL/);
+    expect(message).not.toContain("not-a-url-secret");
+  });
+
+  test("a trailing-dot hostname still counts as the production host", () => {
+    expect(() => assertDatabaseIsolation("preview", url(`${PROD[0]}.`), PROD)).toThrow(/production database/);
+  });
+
+  test("hosts that could hide the real target are rejected", () => {
+    expect(() => assertDatabaseIsolation("preview", url("ep%2Dprod-123.ap-southeast-1.aws.neon.tech"), PROD)).toThrow();
+    expect(() => assertDatabaseIsolation("preview", url(`ep-dev-9.aws.neon.tech,${PROD[0]}`), PROD)).toThrow();
+  });
+
+  test("query parameters may not override the connection host", () => {
+    const dev = "postgresql://u:p@ep-dev-9.aws.neon.tech/db";
+    expect(() => assertDatabaseIsolation("preview", `${dev}?host=${PROD[0]}`, PROD)).toThrow(/host/);
+    expect(() => assertDatabaseIsolation("preview", `${dev}?sslmode=require&hostaddr=10.0.0.1`, PROD)).toThrow(/host/);
   });
 });

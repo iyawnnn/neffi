@@ -15,20 +15,21 @@ export type ServerEnv = {
 const blankAsMissing = <T extends z.ZodType>(schema: T) => z.preprocess((value) => (value === "" ? undefined : value), schema);
 
 // Custom messages only: validation errors must never echo secret values.
-const url = (name: string) => blankAsMissing(z.url({ error: `${name} must be a valid URL` }));
+const url = (name: string) => z.url({ error: `${name} must be a valid URL` });
 
 const serverSchema = z.object({
-  DATABASE_URL: url("DATABASE_URL"),
+  DATABASE_URL: blankAsMissing(url("DATABASE_URL")),
   BETTER_AUTH_SECRET: blankAsMissing(
     z.string({ error: "BETTER_AUTH_SECRET is required" }).min(32, { error: "BETTER_AUTH_SECRET must be at least 32 characters" }),
   ),
-  BETTER_AUTH_URL: url("BETTER_AUTH_URL").optional(),
+  // .optional() must sit inside the preprocess so "" becomes undefined before it is checked.
+  BETTER_AUTH_URL: blankAsMissing(url("BETTER_AUTH_URL").optional()),
   VERCEL_BRANCH_URL: blankAsMissing(z.string().optional()),
-  NEXT_PUBLIC_SENTRY_DSN: url("NEXT_PUBLIC_SENTRY_DSN").optional(),
+  NEXT_PUBLIC_SENTRY_DSN: blankAsMissing(url("NEXT_PUBLIC_SENTRY_DSN").optional()),
 });
 
 const migrationSchema = z.object({
-  DATABASE_URL_UNPOOLED: url("DATABASE_URL_UNPOOLED"),
+  DATABASE_URL_UNPOOLED: blankAsMissing(url("DATABASE_URL_UNPOOLED")),
 });
 
 function parse<T extends z.ZodType>(schema: T, raw: RawEnv): z.infer<T> {
