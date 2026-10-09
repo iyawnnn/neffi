@@ -39,6 +39,14 @@ describe("scrubEvent", () => {
     expect(scrubEvent(event()).message).toBe("boom");
   });
 
+  test("strips the query from the Next.js request path context", () => {
+    const scrubbed = scrubEvent({
+      ...event(),
+      contexts: { nextjs: { request_path: "/activate?code=ABC", router_kind: "App Router" } },
+    });
+    expect(scrubbed.contexts?.nextjs).toEqual({ request_path: "/activate", router_kind: "App Router" });
+  });
+
   test("handles events without request or user", () => {
     expect(scrubEvent({ type: undefined, message: "plain" })).toEqual({ type: undefined, message: "plain" });
   });
@@ -67,7 +75,7 @@ describe("sentryOptions", () => {
   });
 
   test("turns off every personal-data collection category", () => {
-    expect(sentryOptions(undefined, "development").dataCollection).toMatchObject({
+    expect(sentryOptions(undefined, "development").dataCollection).toEqual({
       userInfo: false,
       cookies: false,
       httpHeaders: false,
@@ -75,6 +83,9 @@ describe("sentryOptions", () => {
       urlQueryParams: false,
       databaseQueryData: false,
       stackFrameVariables: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      queues: false,
     });
   });
 

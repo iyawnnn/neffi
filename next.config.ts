@@ -19,4 +19,5 @@ export default withSentryConfig(nextConfig, {
   telemetry: false,
   // Source-map upload needs SENTRY_AUTH_TOKEN; deferred to Security & Performance Hardening (Milestone 10).
   sourcemaps: { disable: true },
+  release: { create: false },
 });

@@ -21,6 +21,11 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
     }
     event.request = request;
   }
+  // onRequestError copies the raw request path (including its query) into this context.
+  const nextjs = event.contexts?.nextjs;
+  if (nextjs && "request_path" in nextjs) {
+    event.contexts = { ...event.contexts, nextjs: { ...nextjs, request_path: stripQuery(nextjs.request_path) } };
+  }
   if (event.user) {
     event.user = event.user.id === undefined ? {} : { id: event.user.id };
   }
