@@ -30,21 +30,25 @@ describe("Better Auth foundation shell", () => {
 
   test("offers no email/password sign-up", async () => {
     const response = await post("/sign-up/email", { email: "a@example.test", password: "p".repeat(12), name: "A" });
-    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "EMAIL_PASSWORD_SIGN_UP_DISABLED" });
   });
 
   test("offers no social sign-in provider", async () => {
     const response = await post("/sign-in/social", { provider: "google" });
-    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: "PROVIDER_NOT_FOUND" });
   });
 
   test("rejects cookie-bearing requests from untrusted origins", async () => {
     const response = await post("/sign-out", {}, { origin: "https://evil.example", cookie: "x=1" });
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "INVALID_ORIGIN" });
   });
 
   test("rejects callback URLs outside the trusted origins", async () => {
     const response = await post("/sign-in/social", { provider: "google", callbackURL: "https://evil.example/cb" });
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "INVALID_CALLBACK_URL" });
   });
 });

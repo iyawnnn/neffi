@@ -12,9 +12,9 @@ The product and architecture specification lives in the locked TapCard Notion pa
 
 ## Setup
 
-1. Install: `pnpm install --frozen-lockfile`
+1. Clone and install: `git clone <repo-url> tapcard && cd tapcard && pnpm install --frozen-lockfile`
 2. Create the development database: in the Neon console, create project `tapcard-dev` (AWS Asia Pacific, Singapore). Do not enable Neon Auth.
-3. Configure: `cp .env.example .env.local`, then fill in:
+3. Configure: `cp .env.example .env.local` (`copy` in cmd.exe), then fill in:
    - `DATABASE_URL`: the pooled connection string (Connect → connection pooling **on**; host contains `-pooler`)
    - `DATABASE_URL_UNPOOLED`: the direct connection string (connection pooling **off**)
    - `BETTER_AUTH_SECRET`: output of `openssl rand -base64 32`

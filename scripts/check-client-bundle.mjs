@@ -18,6 +18,9 @@ for (const name of SECRET_VARS) {
   const value = process.env[name];
   if (!value) continue;
   needles.push({ name, value });
+  // Values embedded in JSON/RSC payloads appear escaped when they contain quotes or backslashes.
+  const escaped = JSON.stringify(value).slice(1, -1);
+  if (escaped !== value) needles.push({ name: `${name} (JSON-escaped)`, value: escaped });
   // A bundle could embed just the password of a connection string.
   try {
     const password = decodeURIComponent(new URL(value).password);
