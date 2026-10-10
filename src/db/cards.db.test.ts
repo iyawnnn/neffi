@@ -34,10 +34,11 @@ describe("DBC public token", () => {
 
   test("is required once a DBC is provisioned", () =>
     rollback(db, async (tx) => {
-      const { card } = await insertReadyDbc(tx);
+      // Inserted rather than updated: clearing an issued token is already rejected by cards_guard.
+      const { stock, product } = await insertReadyDbc(tx);
       await expectPgError(
         tx,
-        (s) => s.update(cards).set({ publicToken: null }).where(eq(cards.id, card.id)),
+        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready" }),
         "23514",
         "cards_dbc_token_when_provisioned",
       );
