@@ -27,3 +27,23 @@ export const profileLinkType = pgEnum("profile_link_type", [
   "menu",
   "custom",
 ]);
+export const expenseCategory = pgEnum("expense_category", [
+  "inventory_production",
+  "shipping_delivery",
+  "packaging_printing",
+  "software_operations",
+  "marketing",
+  "other",
+]);
+export const supportCaseType = pgEnum("support_case_type", [
+  "activation_issue",
+  "account_recovery",
+  "ownership_correction",
+  "defective_card",
+  "shipping_issue",
+  "replacement",
+  "other",
+]);
+export const supportCaseStatus = pgEnum("support_case_status", ["open", "waiting_on_customer", "resolved"]);
+// `replacement` marks a free/support replacement card; it stays linked to the case instead of becoming a sale.
+export const supportCaseCardRole = pgEnum("support_case_card_role", ["affected", "replacement"]);

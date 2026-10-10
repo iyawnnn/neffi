@@ -29,6 +29,13 @@
       "when": 1791602388635,
       "tag": "0003_inventory_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791602611841,
+      "tag": "0004_operations",
+      "breakpoints": true
     }
   ]
 }

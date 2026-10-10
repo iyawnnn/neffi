@@ -15,6 +15,7 @@ import {
 import { accounts } from "./auth";
 import { createdAt, timestamps } from "./columns";
 import { deliveryMethod, orderStatus, paymentMethod, productKind, shipmentStatus } from "./enums";
+import { supportCases } from "./operations";
 
 // Money is integer centavos (PHP). Totals, amounts paid, balances and payment state are derived, never stored.
 
@@ -151,6 +152,8 @@ export const refunds = pgTable(
     method: paymentMethod().notNull(),
     refundedOn: date({ mode: "string" }).notNull(),
     reason: text(),
+    // Set when the refund came out of a Support Case.
+    supportCaseId: uuid().references(() => supportCases.id),
     recordedByAccountId: uuid()
       .notNull()
       .references(() => accounts.id),
@@ -167,6 +170,8 @@ export const shipments = pgTable(
     orderId: uuid()
       .notNull()
       .references(() => orders.id),
+    // Set for a replacement shipment sent from a Support Case.
+    supportCaseId: uuid().references(() => supportCases.id),
     courier: text(),
     trackingNumber: text(),
     recipientName: text(),
