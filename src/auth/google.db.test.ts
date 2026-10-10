@@ -53,7 +53,7 @@ describe("Google sign-in", () => {
     const client = t.client();
     const { callback } = await googleFlow(client, p);
     expect(location(callback).pathname).toBe("/sign-in");
-    expect(location(callback).searchParams.get("error")).toBeTruthy();
+    expect(location(callback).searchParams.get("error")).toBe("unable_to_create_user");
     expect(client.hasSession()).toBe(false);
     expect(await accountsWithEmail(p.email)).toHaveLength(0);
     expect(await identitiesFor(p.sub)).toHaveLength(0);
@@ -125,7 +125,7 @@ describe("Connect Google (deliberate linking)", () => {
     const { p, client } = await signedInWithEmail();
     const { callback } = await link(client, { ...p, email: `other-${p.email}` });
     expect(location(callback).pathname).toBe("/app");
-    expect(location(callback).searchParams.get("error")).toBeTruthy();
+    expect(location(callback).searchParams.get("error")).toBe("email_does_not_match");
     expect(await identitiesFor(p.sub)).toHaveLength(0);
   });
 
@@ -134,11 +134,27 @@ describe("Connect Google (deliberate linking)", () => {
     await googleFlow(t.client(), owner);
     const { p: other, client } = await signedInWithEmail();
     const { callback } = await link(client, { ...owner, email: other.email });
-    expect(location(callback).searchParams.get("error")).toBeTruthy();
+    expect(location(callback).searchParams.get("error")).toBe("account_already_linked_to_different_user");
     const [ownerAccount] = await accountsWithEmail(owner.email);
     const identities = await identitiesFor(owner.sub);
     expect(identities).toHaveLength(1);
     expect(identities[0].userId).toBe(ownerAccount.id);
+  });
+
+  test("connecting Google again still stores no provider tokens", async () => {
+    const { p, client } = await signedInWithEmail();
+    await link(client, p);
+    await link(client, p);
+    const identities = await identitiesFor(p.sub);
+    expect(identities).toHaveLength(1);
+    expect([identities[0].accessToken, identities[0].refreshToken, identities[0].idToken]).toEqual([null, null, null]);
+  });
+
+  test("an unverified Google email cannot be connected even when it matches", async () => {
+    const { p, client } = await signedInWithEmail();
+    const { callback } = await link(client, { ...p, email_verified: false });
+    expect(location(callback).searchParams.get("error")).toBeTruthy();
+    expect(await identitiesFor(p.sub)).toHaveLength(0);
   });
 
   test("linking requires a session", async () => {

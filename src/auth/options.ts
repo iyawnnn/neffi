@@ -57,6 +57,13 @@ const DISABLED_PATHS = [
   "/forget-password/email-otp",
 ];
 
+const withoutProviderTokens = <T extends object>(identity: T) => ({
+  ...identity,
+  accessToken: null,
+  refreshToken: null,
+  idToken: null,
+});
+
 const GENERIC_RATE_LIMIT_MESSAGE = "Too many requests. Please try again later.";
 
 // Shared by the server instance and the database tests, so tests exercise the real persistence and security wiring.
@@ -141,11 +148,9 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
         },
       },
       account: {
-        create: {
-          before: async (identity) => ({
-            data: { ...identity, accessToken: null, refreshToken: null, idToken: null },
-          }),
-        },
+        create: { before: async (identity) => ({ data: withoutProviderTokens(identity) }) },
+        // Connecting Google a second time updates the stored identity instead of creating one.
+        update: { before: async (identity) => ({ data: withoutProviderTokens(identity) }) },
       },
     },
     plugins: [
@@ -161,6 +166,9 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
       nextCookies(),
     ],
     advanced: {
+      // The client IP keys every rate limit. Vercel overwrites both headers, so a caller cannot spoof them; without
+      // a trustworthy single-value header Better Auth falls back to one shared bucket for everybody.
+      ipAddress: { ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"] },
       // Better Auth silently skips origin checks when it detects a test runner; pin production behavior.
       disableOriginCheck: false,
       // Postgres generates UUID primary keys, like every other Neffi table.

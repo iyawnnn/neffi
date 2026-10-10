@@ -104,9 +104,12 @@ describe("email OTP abuse limits", () => {
   test("known and unknown emails get identical send responses", async () => {
     const known = freshEmail();
     await test_.db.insert(accounts).values({ name: "Known", email: known, emailVerified: true });
+    const before = test_.sent.length;
     const a = await send(client(), known);
     const b = await send(client(), freshEmail());
     expect([a.status, await a.text()]).toEqual([b.status, await b.text()]);
+    // Both really mailed a code: an unknown address is not silently skipped, which would reveal who has an account.
+    expect(test_.sent.length - before).toBe(2);
   });
 
   test("only sign-in codes can be requested, and nothing is mailed otherwise", async () => {
@@ -128,6 +131,8 @@ describe("email OTP abuse limits", () => {
     const blocked = await send(client(), email);
     expect(blocked.status).toBe(429);
     expect(test_.sent.length - before).toBe(3);
+    // The refusal says nothing about the address or whether it has an Account.
+    expect(JSON.stringify(await blocked.json())).not.toContain(email);
   });
 
   test("Better Auth pruning its rate-limit table does not reset the per-email quota", async () => {
@@ -145,6 +150,29 @@ describe("email OTP abuse limits", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(Date.now() + 11 * 60_000);
     expect((await send(client(), email)).status).toBe(200);
+  });
+
+  test("a burst of parallel requests cannot slip past the per-email quota", async () => {
+    const email = freshEmail();
+    const before = test_.sent.length;
+    const responses = await Promise.all(Array.from({ length: 6 }, () => send(client(), email)));
+    expect(responses.filter((r) => r.status === 200)).toHaveLength(3);
+    expect(responses.filter((r) => r.status === 429)).toHaveLength(3);
+    expect(test_.sent.length - before).toBe(3);
+  });
+
+  test("the client IP comes from the platform header, so rotating x-forwarded-for does not dodge the limit", async () => {
+    const c = client();
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const response = await c.post("/email-otp/send-verification-otp", {
+        body: { email: freshEmail(), type: "sign-in" },
+        headers: { "x-vercel-forwarded-for": "198.51.100.77", "x-forwarded-for": "203.0.113." + (i + 1) },
+      });
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 10).every((status) => status === 200)).toBe(true);
+    expect(statuses[10]).toBe(429);
   });
 
   test("one IP is limited to ten code requests a minute", async () => {
