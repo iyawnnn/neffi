@@ -61,7 +61,7 @@
 1. Minimal stock intake: received date, quantity (1–500), and optional supplier, reference, notes and intended product kind. It creates one `stock_purchases` row plus N blank `cards` and logs `stock_received`.
 2. DBC provisioning: Blank, then token plus initial credential (one-time code reveal), then a recorded NFC check (exact URI read back, real phone tap opened the exact URI, tag left writable), then a package match, then Ready.
    - **`package_matched_at` means:** the OWNER verified that the private activation credential physically packaged with this DBC matches this Card. They re-enter the code from the physical package on that Card's page, and the server compares its HMAC with the Card's current usable credential.
-   - The common `/activate` QR and the working activation route remain **M5**. M4 neither implements `/activate` nor prints or validates a QR, and the package match doesn't depend on either.
+   - M4 physical packing uses a common activation insert containing the static `/activate` QR plus a unique printed activation-code label matched to the exact Card, inside the sealed package. The QR is common, not Card-specific, and never contains the code. No QR-generation feature is needed in M4; the working `/activate` validation/claim experience remains **M5**, and the package match does not depend on a working activation route.
 3. Pre-release credential replacement for an unclaimed DBC (Blank-with-token or Ready): revoke the expected usable credential, issue a new one, demote Ready to Blank, require a re-match, and log an Activity Event. It never restores anything.
 4. GRC: reserve a Blank GRC (or an uncommitted card) against an existing eligible GRC Order Item, then record the encode/test check against the item's current `review_url`.
 5. Narrow retire for Blank, Ready or Reserved-GRC cards. It revokes any usable credential, keeps `order_item_id` as history, and frees item capacity.
@@ -69,7 +69,7 @@
 7. Activity Events, a migration, docs/ERD, the automated suite, the loopback concurrency check, the live dev-Neon gate, and the physical hardware gate.
 
 **Out (explicit deferrals):**
-- **M5:** `/activate`, code validation, challenge, auth handoff, atomic claim and consumption, resumability, activation rate limits, and the package QR content (common `/activate` QR).
+- **M5:** the working `/activate` experience, code validation, challenge, auth handoff, atomic claim and consumption, resumability, and activation rate limits. The common physical activation insert/QR is used during M4 packing.
 - **M6:** Profiles, Card→Profile routing, disable/re-enable.
 - **M7:** the `/c/{token}` resolver and every public state. **No stub route in M4**: no locked source requires one, and the tap test only verifies that the phone attempts the exact URI.
 - **M8:**
@@ -292,7 +292,7 @@ cardStateCounts(db); listCards(db, { before?: { createdAt; id }, limit }); getCa
   - engineering test units vs. final domain;
   - the stock → provision → NFC Tools steps (Write → Add record → URL/URI → paste the exact URL → Write; Read to confirm; never "Lock tag" or set a password; compatible NTAG21x);
   - tap test on a real phone (Android with NFC on; iPhone XS+ background reading where available), checking the address bar shows the exact URI. A 404 page is expected until M7;
-  - package match (the OWNER verifies the private credential packaged with this DBC matches this Card; the `/activate` QR and route are M5), Replace, GRC reserve/encode, Retire;
+  - package match (the OWNER verifies the printed code packaged with this DBC matches this Card; the common `/activate` insert/QR is used in M4 packing, while the working activation route is M5), Replace, GRC reserve/encode, Retire;
   - the seed contains no Ready DBC and no physical evidence, by design;
   - migration 0009 notes (`NOT VALID` rationale);
   - the hardware evidence checklist (§Acceptance).
@@ -324,7 +324,7 @@ cardStateCounts(db); listCards(db, { before?: { createdAt; id }, limit }); getCa
 
 ### Task 12 — Physical hardware acceptance gate (BLOCKED until cards arrive)
 On `neffi-dev`, with engineering test cards physically labeled TEST:
-- [ ] **DBC:** provision; write the exact URL with NFC Tools; read back and confirm it's identical; tap with a real phone (record the model/OS) and confirm it opens the exact URI; confirm the tag is still writable (rewrite the same URL, read back again); record the NFC check; physically package the card with its revealed private code (no `/activate` QR needed in M4); re-enter the code from that package to match → Ready.
+- [ ] **DBC:** provision; write the exact URL with NFC Tools; read back and confirm it's identical; tap with a real phone (record the model/OS) and confirm it opens the exact URI; confirm the tag is still writable (rewrite the same URL, read back again); record the NFC check; physically package the matched Card with the common activation insert containing the static `/activate` QR and its exact-Card printed activation-code label, inside the sealed package; re-enter the code from that package to match → Ready. The working `/activate` experience is not required for this M4 check. An internal engineering NFC encoding test alone is not customer/pilot package acceptance; development URLs remain engineering-only.
 - [ ] **Replacement:** Replace on that card (Ready → Blank) → the old package code fails to match, the new package matches → Ready again.
 - [ ] **GRC prerequisite (approval):** either an approved `db:seed` reset (adds `itemInProgressGrcB`; destroys dev sign-ins), or one reviewed insert of a controlled dev Order Item whose `review_url` is a real direct Google Review URL you choose (better tap evidence).
 - [ ] **GRC:** reserve against that controlled item; write its review URL; read back, tap and check writable; record the encode check.

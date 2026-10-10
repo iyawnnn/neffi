@@ -7,13 +7,13 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 | `accounts` | Account, Authentication Identity, OWNER role | 2 (schema), 3 (behavior) |
 | `cards` | Physical Card, permanent `/c/{token}`, Card→Profile routing, disable/re-enable | 4 |
 | `activation` | Activation Credential lifecycle, code-first claim | 4 (credential issue/revoke), 5 (claim) |
-| `profiles` | Profile, Profile Link, publish state | 6 |
+| `profiles` | Profile/shared identity, Scenes, ordered Blocks/Actions, publish state, native Forms/Form Submissions | 6 |
 | `orders` | Product, Customer/Purchaser, Order, Order Item, Shipment | 8 |
 | `payments` | Payment, Refund (separate history records) | 8 |
 | `inventory` | Stock Purchase, derived Card-state counts | 4, 8 |
 | `support` | Support Case and controlled recovery actions | 9 |
 | `expenses` | Manual Expense; reporting combines canonical Stock Purchase / Shipment costs | 8 |
-| `notifications` | EmailService boundary (Resend) | 9 |
+| `notifications` | EmailService boundary (Resend), meaningful owner notification email for native Form Submissions; later recovery/support | 6 (forms), 9 (recovery/support) |
 | `activity` | Activity Event history | 2 |
 
 Infrastructure boundaries outside `modules/`:
@@ -53,6 +53,8 @@ Migration `0007` adds auth abuse storage; forward fix `0008` indexes abandoned I
 `cards/card.ts` (lock, NFC check, retire), `cards/dbc.ts` (provision, package match, credential replacement), `cards/grc.ts` (reserve, eligible items), `activation/credentials.ts` (issue/revoke; HMAC only), `activity/record.ts` and `inventory/{stock-intake,queries}.ts` are server-only services taking a `Db`. Each mutation is one transaction that locks the card row first (`reserveGrc` locks the order item, then the card), re-reads state under the lock and writes its Activity Event in the same transaction. `activation/code.ts` and `cards/token.ts` are pure helpers. Actions in `src/app/admin/inventory/actions.ts` authorize as OWNER, validate with Zod and call the services. M4 does not claim cards, validate codes for customers, resolve `/c/{token}` or create orders; those are Milestones 5, 7 and 8. See the [provisioning runbook](../../README.md#physical-card-provisioning-m4).
 
 ## Rules
+
+M6 evolves Profile/shared identity → Scenes → ordered Blocks/Actions through additive migrations, including native Forms/Form Submissions and meaningful owner notification email. Existing Profile Links become Link-type Scene Blocks, not a competing flat public renderer. Scenes belong to Profiles, with Profile-level Theme/Appearance and no Card→Scene override in V1. These capabilities are deferred, not implemented in M4; the public active/default Scene resolver remains M7.
 
 - UI, Server Actions and Route Handlers call domain services; domain services own business rules and persistence.
 - Server Actions and Route Handlers are public endpoints: authenticate, authorize, validate and rate-limit them server-side. Hiding UI is never authorization.
