@@ -73,8 +73,11 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
 
       {isDbc && blank && dbcUri && !card.nfcVerifiedAt ? (
         <Section title="Next step" tone="next">
-          <h3 className="font-medium">Write and test the NFC tag</h3>
-          <p className="text-sm">A physical NFC card is required. No action is needed until it is available. Then write the permanent Card URL using NFC Tools and test the actual tag before recording any checks.</p>
+          <h3 className="font-medium">Physical NFC check</h3>
+          <div className="text-sm">
+            <p className="font-medium">Waiting for physical card</p>
+            <p>You can leave this card here and continue when the NFC card is available.</p>
+          </div>
           <NfcCheckForm cardId={card.id} expectedUri={dbcUri} />
         </Section>
       ) : null}
@@ -88,8 +91,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
 
       {reservedGrc && card.orderContext?.reviewUrl ? (
         <Section title="Next step" tone="next">
-          <h3 className="font-medium">Encode and test the review link</h3>
-          <p className="text-sm">Wait until the physical NFC card is available before writing or recording checks.</p>
+          <h3 className="font-medium">Physical NFC check</h3>
           <NfcCheckForm cardId={card.id} expectedUri={card.orderContext.reviewUrl} />
         </Section>
       ) : null}

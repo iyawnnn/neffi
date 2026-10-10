@@ -9,7 +9,7 @@ vi.mock("@/modules/inventory/queries", () => ({ getCardDetail }));
 vi.mock("@/modules/cards/grc", () => ({ eligibleGrcItems: vi.fn().mockResolvedValue([]) }));
 vi.mock("../../forms", () => ({
   ProvisionForm: ({ available }: { available: boolean }) => available ? <button>Provision Digital Business Card</button> : null,
-  NfcCheckForm: () => <button>Record NFC check</button>,
+  NfcCheckForm: () => <button>Confirm NFC check</button>,
   MatchPackageForm: () => <button>Match package</button>,
   ReplaceForm: () => <button>Replace credential</button>,
   ReserveForm: () => <button>Reserve Google Review Card</button>,
@@ -33,11 +33,12 @@ test("Blank DBC shows honest progress, physical next step, then details, activit
   expect(html).toContain("In provisioning");
   expect(html.match(/>Complete</g)).toHaveLength(1);
   expect(html.match(/>Pending</g)).toHaveLength(3);
-  expect(html).toContain("No action is needed until it is available");
+  expect(html).toContain("Waiting for physical card");
+  expect(html).toContain("You can leave this card here and continue when the NFC card is available.");
   const headings = ["Provisioning progress", "Next step", "Card details", "Recent activity", "Credential recovery", "Danger zone"];
   const positions = headings.map((heading) => html.indexOf(`>${heading}</h2>`));
   expect(positions.every((position, index) => position >= 0 && (!index || position > positions[index - 1]))).toBe(true);
-  expect(html).toContain("Record NFC check");
+  expect(html).toContain("Confirm NFC check");
   expect(html).not.toContain("<button>Match package");
 });
 
@@ -46,7 +47,7 @@ test("recorded NFC check advances the displayed operation to package matching", 
   const html = await render();
   expect(html).toContain("Match the activation package");
   expect(html.match(/>Complete</g)).toHaveLength(2);
-  expect(html).not.toContain("Record NFC check");
+  expect(html).not.toContain("Confirm NFC check");
 });
 
 test("legacy Ready card does not fabricate missing physical checks in progress", async () => {

@@ -132,31 +132,27 @@ export function ProvisionForm({ cardId, available }: { cardId: string; available
 
 export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expectedUri: string }) {
   return (
-    <ActionForm action={recordNfcCheckAction} submit="Record NFC check">
+    <ActionForm action={recordNfcCheckAction} submit="Confirm NFC check">
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-sm">Use NFC Tools to write this exact address to the physical tag, then read it back:</p>
+      <p className="text-sm">Complete this only when you have the physical card.</p>
       <CardUrl url={expectedUri} />
-      <p className="text-sm text-muted-foreground">
-        Confirm each check only after testing a real physical tag: the address reads back exactly,
-        a real phone recognises and opens it, and the tag remains unlocked and writable.
-        Software testing cannot replace these checks.
-      </p>
+      <ol className="list-decimal space-y-1 pl-5 text-sm">
+        <li>Write this URL to the card using NFC Tools.</li>
+        <li>Scan the card again using NFC Tools → Read.</li>
+        <li>Paste the URL you read from the card below.</li>
+      </ol>
       <label className={label}>
-        Address read back from the tag
+        URL read from the card
         <input name="readBackUri" required autoComplete="off" spellCheck={false} autoCapitalize="off" className={field} />
       </label>
       <label className={check}>
-        <input type="checkbox" name="readBackMatched" required className="mt-1" />I read the tag back and the address is exactly the one above.
+        <input type="checkbox" name="readBackMatched" required className="mt-1" />The URL on the card matches the Card URL above.
       </label>
       <label className={check}>
-        <input type="checkbox" name="phoneOpenedUri" required className="mt-1" />A real phone recognised the tag and tried to open that exact address.
+        <input type="checkbox" name="phoneOpenedUri" required className="mt-1" />Tapping the card on a phone opens the correct URL.
       </label>
       <label className={check}>
-        <input type="checkbox" name="tagLeftWritable" required className="mt-1" />The tag was left unlocked and writable.
-      </label>
-      <label className={label}>
-        Phone / device (optional)
-        <input name="device" maxLength={100} className={field} />
+        <input type="checkbox" name="tagLeftWritable" required className="mt-1" />The card is still writable.
       </label>
     </ActionForm>
   );

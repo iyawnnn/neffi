@@ -21,7 +21,7 @@ vi.mock("@/modules/inventory/queries", () => ({ getCardDetail: readCard }));
 vi.mock("@/modules/cards/grc", () => ({ eligibleGrcItems: vi.fn().mockResolvedValue([]) }));
 
 import CardPage from "./cards/[cardId]/page";
-import { ProvisionForm } from "./forms";
+import { NfcCheckForm, ProvisionForm } from "./forms";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const initial = { id, kind: "dbc", state: "blank", publicToken: null, createdAt: new Date("2026-10-10"),
   nfcVerifiedAt: null, packageMatchedAt: null, usableCredentialId: null, credentialCount: 0, orderContext: null, activity: [] };
@@ -49,7 +49,7 @@ test("provision response remains visible after persisted card update, and fresh 
   expect(html).toContain("Activation code");
   expect(html).toContain(reveal.code);
   expect(html).toContain(reveal.url);
-  expect(html.indexOf(reveal.code)).toBeLessThan(html.indexOf("Write and test the NFC tag"));
+  expect(html.indexOf(reveal.code)).toBeLessThan(html.indexOf("Physical NFC check"));
   expect(html).not.toContain("Provision Digital Business Card");
   // A reload has no action response, only the persisted token and credential summary.
   responses.clear();
@@ -61,6 +61,24 @@ test("provision response remains visible after persisted card update, and fresh 
   expect(refreshed).toContain("1 issued");
   expect(refreshed).toContain("In provisioning");
   expect(refreshed.match(/>Pending</g)).toHaveLength(3);
+});
+
+test("physical check uses plain labels, retains required confirmations, and omits optional device input", () => {
+  const html = renderToStaticMarkup(<NfcCheckForm cardId={id} expectedUri={reveal.url} />);
+  for (const text of [
+    "Complete this only when you have the physical card.", "Copy URL",
+    "Write this URL to the card using NFC Tools.", "Scan the card again using NFC Tools → Read.",
+    "Paste the URL you read from the card below.", "URL read from the card",
+    "The URL on the card matches the Card URL above.", "Tapping the card on a phone opens the correct URL.",
+    "The card is still writable.", "Confirm NFC check", reveal.url,
+  ]) expect(html).toContain(text);
+  for (const name of ["readBackUri", "readBackMatched", "phoneOpenedUri", "tagLeftWritable"]) {
+    expect(html).toMatch(new RegExp(`<input[^>]*required=""[^>]*name="${name}"`));
+  }
+  expect(html).not.toContain('name="device"');
+  expect(html).not.toContain("Phone / device");
+  expect(html).not.toContain("Address read back from the tag");
+  expect(html).not.toContain("Record NFC check");
 });
 
 test("replacement response reveals independently of the initial provisioning response", async () => {
