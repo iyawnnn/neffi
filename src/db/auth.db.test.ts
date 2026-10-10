@@ -47,7 +47,8 @@ describe("Account / Authentication Identity integrity", () => {
       await tx.insert(authSessions).values({ token: "t-2", userId: a.id, expiresAt: new Date(Date.now() + 60_000) });
       await tx.delete(accounts).where(eq(accounts.id, a.id));
       const { rows } = await tx.execute<{ n: number }>(
-        sql`select (select count(*) from auth_identities) + (select count(*) from auth_sessions) as n`,
+        sql`select (select count(*) from auth_identities where account_id = ${a.id})
+                 + (select count(*) from auth_sessions where account_id = ${a.id}) as n`,
       );
       expect(Number(rows[0].n)).toBe(0);
     }));
