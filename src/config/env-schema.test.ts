@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseMigrationEnv, parseServerEnv } from "./env-schema";
+import { parseMigrationEnv, parseSeedEnv, parseServerEnv } from "./env-schema";
 
 const DEV_POOLED = "postgresql://dev:devpass@ep-dev-1-pooler.ap-southeast-1.aws.neon.tech/tapcard?sslmode=require";
 const DEV_DIRECT = "postgresql://dev:devpass@ep-dev-1.ap-southeast-1.aws.neon.tech/tapcard?sslmode=require";
@@ -120,5 +120,23 @@ describe("parseMigrationEnv", () => {
     expect(() => parseMigrationEnv({ DATABASE_URL_UNPOOLED: DEV_DIRECT, VERCEL_ENV: "production" })).toThrow(
       /production/,
     );
+  });
+});
+
+describe("parseSeedEnv", () => {
+  test("requires explicit development even when the runtime defaults to development", () => {
+    expect(() => parseSeedEnv({ DATABASE_URL_UNPOOLED: DEV_DIRECT })).toThrow(/development/);
+  });
+
+  test("rejects a production runtime even with an explicit development app environment", () => {
+    expect(() => parseSeedEnv({ DATABASE_URL_UNPOOLED: DEV_DIRECT, VERCEL_ENV: "development", NODE_ENV: "production" }))
+      .toThrow(/development/);
+  });
+
+  test("accepts explicit development in a standalone CLI with NODE_ENV unset", () => {
+    expect(parseSeedEnv({ DATABASE_URL_UNPOOLED: DEV_DIRECT, VERCEL_ENV: "development" })).toEqual({
+      appEnv: "development",
+      migrationDatabaseUrl: DEV_DIRECT,
+    });
   });
 });

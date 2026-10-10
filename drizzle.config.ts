@@ -10,7 +10,8 @@ const { migrationDatabaseUrl } = parseMigrationEnv(process.env);
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/schema.ts",
+  schema: "./src/db/schema/index.ts",
+  casing: "snake_case",
   out: "./drizzle",
   dbCredentials: { url: migrationDatabaseUrl },
 });
