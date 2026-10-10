@@ -11,6 +11,8 @@ beforeAll(async () => {
   vi.stubEnv("GOOGLE_CLIENT_SECRET", "synthetic-google-client-secret");
   vi.stubEnv("RESEND_API_KEY", "re_synthetic_key_not_real");
   vi.stubEnv("AUTH_EMAIL_FROM", "Neffi <auth@example.test>");
+  vi.stubEnv("ACTIVATION_CODE_SECRET", "a".repeat(40));
+  vi.stubEnv("CARD_URL_ORIGIN", "http://localhost:3000");
   ({ db } = await import("./index"));
 });
 
