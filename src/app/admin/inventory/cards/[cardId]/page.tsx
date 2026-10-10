@@ -12,10 +12,10 @@ import { dateTime, KIND_LABEL, STATE_LABEL } from "../../format";
 
 export const instant = false;
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, tone }: { title: string; children: React.ReactNode; tone?: "next" | "danger" }) {
   return (
-    <section className="flex flex-col gap-3 rounded-lg border p-4">
-      <h2 className="text-sm font-medium">{title}</h2>
+    <section className={`flex flex-col gap-3 ${tone === "next" ? "rounded-lg border border-primary p-5" : tone === "danger" ? "rounded-lg border border-destructive p-4" : "border-t pt-5"}`}>
+      <h2 className={`text-base font-semibold ${tone === "danger" ? "text-destructive" : ""}`}>{title}</h2>
       {children}
     </section>
   );
@@ -42,13 +42,76 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
       <Link href="/admin/inventory" className="text-sm underline">
         ← Inventory
       </Link>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {KIND_LABEL[card.kind ?? "none"]} · {STATE_LABEL[card.state]}
-        {blank && card.publicToken ? " · in provisioning" : ""}
-      </h1>
+      <header className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight">{KIND_LABEL[card.kind ?? "none"]}</h1>
+        <p className="text-lg font-medium">{blank && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}</p>
+        <p className="break-all font-mono text-xs text-muted-foreground">Card ID: {card.id}</p>
+      </header>
 
-      <Section title="Details">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      {card.kind === "dbc" ? (
+        <Section title="Provisioning progress">
+          <ol className="grid gap-2 text-sm sm:grid-cols-2">
+            {[
+              { label: "Card provisioned", complete: Boolean(card.publicToken) },
+              { label: "NFC written/tested", complete: Boolean(card.nfcVerifiedAt) },
+              { label: "Activation package matched", complete: Boolean(card.packageMatchedAt) },
+              { label: "Ready for sale", complete: ["ready", "reserved", "released"].includes(card.state) },
+            ].map((step) => (
+              <li key={step.label} className="flex items-start justify-between gap-3">
+                <span>{step.label}</span>
+                <span className={step.complete ? "font-medium" : "text-muted-foreground"}>
+                  {step.complete ? "Complete" : card.state === "retired" ? "Not applicable" : "Pending"}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {card.state === "retired" ? <p className="text-sm text-muted-foreground">This card is retired and cannot be sold.</p> : null}
+        </Section>
+      ) : null}
+
+      {canProvision ? (
+        <Section title="Next step" tone="next">
+          <h3 className="font-medium">Provision this card</h3>
+          <ProvisionForm cardId={card.id} />
+        </Section>
+      ) : null}
+
+      {isDbc && blank && dbcUri && !card.nfcVerifiedAt ? (
+        <Section title="Next step" tone="next">
+          <h3 className="font-medium">Write and test the NFC tag</h3>
+          <p className="text-sm">A physical NFC card is required. No action is needed until it is available. Then write the permanent Card URL using NFC Tools and test the actual tag before recording any checks.</p>
+          <NfcCheckForm cardId={card.id} expectedUri={dbcUri} />
+        </Section>
+      ) : null}
+
+      {isDbc && blank && card.nfcVerifiedAt ? (
+        <Section title="Next step" tone="next">
+          <h3 className="font-medium">Match the activation package</h3>
+          <MatchPackageForm cardId={card.id} />
+        </Section>
+      ) : null}
+
+      {reservedGrc && card.orderContext?.reviewUrl ? (
+        <Section title="Next step" tone="next">
+          <h3 className="font-medium">Encode and test the review link</h3>
+          <p className="text-sm">Wait until the physical NFC card is available before writing or recording checks.</p>
+          <NfcCheckForm cardId={card.id} expectedUri={card.orderContext.reviewUrl} />
+        </Section>
+      ) : null}
+
+      {canReserve ? (
+        <Section title="Next step" tone="next">
+          <h3 className="font-medium">Reserve for an order</h3>
+          {eligibleItems.length > 0 ? (
+            <ReserveForm cardId={card.id} items={eligibleItems} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No open Google Review Card order item needs a card right now.</p>
+          )}
+        </Section>
+      ) : null}
+
+      <Section title="Card details">
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted-foreground">Added</dt>
           <dd>{dateTime(card.createdAt)}</dd>
           {dbcUri ? (
@@ -87,52 +150,6 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
         </dl>
       </Section>
 
-      {canProvision ? (
-        <Section title="Provision">
-          <ProvisionForm cardId={card.id} />
-        </Section>
-      ) : null}
-
-      {isDbc && blank && dbcUri && !card.nfcVerifiedAt ? (
-        <Section title="Write and test the NFC tag">
-          <NfcCheckForm cardId={card.id} expectedUri={dbcUri} />
-        </Section>
-      ) : null}
-
-      {isDbc && blank && card.nfcVerifiedAt ? (
-        <Section title="Match the package">
-          <MatchPackageForm cardId={card.id} />
-        </Section>
-      ) : null}
-
-      {reservedGrc && card.orderContext?.reviewUrl ? (
-        <Section title="Encode and test the review link">
-          <NfcCheckForm cardId={card.id} expectedUri={card.orderContext.reviewUrl} />
-        </Section>
-      ) : null}
-
-      {canReserve ? (
-        <Section title="Reserve for an order">
-          {eligibleItems.length > 0 ? (
-            <ReserveForm cardId={card.id} items={eligibleItems} />
-          ) : (
-            <p className="text-sm text-muted-foreground">No open Google Review Card order item needs a card right now.</p>
-          )}
-        </Section>
-      ) : null}
-
-      {isDbc && card.usableCredentialId && (blank || card.state === "ready") ? (
-        <Section title="Replace credential">
-          <ReplaceForm cardId={card.id} credentialId={card.usableCredentialId} />
-        </Section>
-      ) : null}
-
-      {retirable ? (
-        <Section title="Retire">
-          <RetireForm cardId={card.id} />
-        </Section>
-      ) : null}
-
       <Section title="Recent activity">
         <ul className="flex flex-col gap-2 text-sm">
           {card.activity.map((event, index) => (
@@ -146,6 +163,18 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
           {card.activity.length === 0 ? <li className="text-muted-foreground">Nothing recorded yet.</li> : null}
         </ul>
       </Section>
+      {isDbc && card.usableCredentialId && (blank || card.state === "ready") ? (
+        <Section title="Credential recovery">
+          <ReplaceForm cardId={card.id} credentialId={card.usableCredentialId} />
+        </Section>
+      ) : null}
+
+      {retirable ? (
+        <Section title="Danger zone" tone="danger">
+          <RetireForm cardId={card.id} />
+        </Section>
+      ) : null}
+
     </main>
   );
 }

@@ -64,9 +64,11 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
           {page.cards.map((card) => (
             <li key={card.id}>
               <Link href={`/admin/inventory/cards/${card.id}`} className="flex flex-col gap-0.5 px-3 py-3 hover:bg-muted">
-                <span className="text-sm font-medium">
-                  {KIND_LABEL[card.kind ?? "none"]} · {STATE_LABEL[card.state]}
-                  {card.state === "blank" && card.publicToken ? " · in provisioning" : ""}
+                <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-medium">
+                  <span>{KIND_LABEL[card.kind ?? "none"]}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-xs">
+                    {card.state === "blank" && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}
+                  </span>
                 </span>
                 <span className="break-all font-mono text-xs text-muted-foreground">{card.publicToken ?? card.id}</span>
                 <span className="text-xs text-muted-foreground">Added {dateTime(card.createdAt)}</span>

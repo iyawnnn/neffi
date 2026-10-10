@@ -2,6 +2,7 @@
 
 import { useActionState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { CardUrl } from "./card-url";
 import {
   matchPackageAction,
   provisionDbcAction,
@@ -97,8 +98,13 @@ export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expected
   return (
     <ActionForm action={recordNfcCheckAction} submit="Record NFC check">
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-sm">Write this exact address to the tag, then read it back:</p>
-      <p className="break-all font-mono text-xs select-all">{expectedUri}</p>
+      <p className="text-sm">Use NFC Tools to write this exact address to the physical tag, then read it back:</p>
+      <CardUrl url={expectedUri} />
+      <p className="text-sm text-muted-foreground">
+        Confirm each check only after testing a real physical tag: the address reads back exactly,
+        a real phone recognises and opens it, and the tag remains unlocked and writable.
+        Software testing cannot replace these checks.
+      </p>
       <label className={label}>
         Address read back from the tag
         <input name="readBackUri" required autoComplete="off" spellCheck={false} autoCapitalize="off" className={field} />
@@ -139,7 +145,8 @@ export function ReplaceForm({ cardId, credentialId }: { cardId: string; credenti
       <input type="hidden" name="cardId" value={cardId} />
       <input type="hidden" name="credentialId" value={credentialId} />
       <p className="text-sm text-muted-foreground">
-        For a lost or mismatched code on a card that hasn&apos;t been released. The old code stops working and the package must be matched again.
+        Only for a lost or mismatched unused code before the card is released. This is a recovery action,
+        not the next provisioning step. The old code stops working and the package must be matched again.
       </p>
       <label className={label}>
         Reason
