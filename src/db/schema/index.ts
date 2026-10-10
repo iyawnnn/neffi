@@ -1,3 +1,4 @@
 // Drizzle schema entry point: Drizzle Kit, the app client, Better Auth's adapter and the test harness all
 // load it. Kept free of `server-only` and `@/` imports because it runs outside Next.js.
-export {};
+export * from "./enums";
+export * from "./auth";
