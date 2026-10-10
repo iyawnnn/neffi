@@ -9,6 +9,10 @@ export type ServerEnv = {
   betterAuthSecret: string;
   authBaseUrl: string;
   sentryDsn?: string;
+  googleClientId: string;
+  googleClientSecret: string;
+  resendApiKey: string;
+  authEmailFrom: string;
 };
 
 // Platforms often set unused variables to "", which should count as missing.
@@ -16,6 +20,8 @@ const blankAsMissing = <T extends z.ZodType>(schema: T) => z.preprocess((value) 
 
 // Custom messages only: validation errors must never echo secret values.
 const url = (name: string) => z.url({ error: `${name} must be a valid URL` });
+
+const required = (name: string) => blankAsMissing(z.string({ error: `${name} is required` }).min(1, { error: `${name} is required` }));
 
 const serverSchema = z.object({
   DATABASE_URL: blankAsMissing(url("DATABASE_URL")),
@@ -26,6 +32,10 @@ const serverSchema = z.object({
   BETTER_AUTH_URL: blankAsMissing(url("BETTER_AUTH_URL").optional()),
   VERCEL_BRANCH_URL: blankAsMissing(z.string().optional()),
   NEXT_PUBLIC_SENTRY_DSN: blankAsMissing(url("NEXT_PUBLIC_SENTRY_DSN").optional()),
+  GOOGLE_CLIENT_ID: required("GOOGLE_CLIENT_ID"),
+  GOOGLE_CLIENT_SECRET: required("GOOGLE_CLIENT_SECRET"),
+  RESEND_API_KEY: required("RESEND_API_KEY"),
+  AUTH_EMAIL_FROM: required("AUTH_EMAIL_FROM"),
 });
 
 const migrationSchema = z.object({
@@ -59,6 +69,10 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
     betterAuthSecret: env.BETTER_AUTH_SECRET,
     authBaseUrl: resolveAuthBaseUrl(appEnv, env.BETTER_AUTH_URL, env.VERCEL_BRANCH_URL),
     sentryDsn: env.NEXT_PUBLIC_SENTRY_DSN,
+    googleClientId: env.GOOGLE_CLIENT_ID,
+    googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+    resendApiKey: env.RESEND_API_KEY,
+    authEmailFrom: env.AUTH_EMAIL_FROM,
   };
 }
 

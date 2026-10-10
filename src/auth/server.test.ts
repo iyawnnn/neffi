@@ -9,6 +9,10 @@ beforeAll(async () => {
   vi.stubEnv("DATABASE_URL", "postgresql://test:test@db.test.invalid/tapcard");
   vi.stubEnv("BETTER_AUTH_SECRET", "test-only-secret-not-used-anywhere-0123456789");
   vi.stubEnv("BETTER_AUTH_URL", BASE_URL);
+  vi.stubEnv("GOOGLE_CLIENT_ID", "synthetic-google-client-id.apps.example.test");
+  vi.stubEnv("GOOGLE_CLIENT_SECRET", "synthetic-google-client-secret");
+  vi.stubEnv("RESEND_API_KEY", "re_synthetic_key_not_real");
+  vi.stubEnv("AUTH_EMAIL_FROM", "Neffi <auth@example.test>");
   ({ auth } = await import("./server"));
 });
 

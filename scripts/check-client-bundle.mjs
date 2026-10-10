@@ -4,7 +4,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const SECRET_VARS = ["DATABASE_URL", "DATABASE_URL_UNPOOLED", "BETTER_AUTH_SECRET"];
+const SECRET_VARS = [
+  "DATABASE_URL",
+  "DATABASE_URL_UNPOOLED",
+  "BETTER_AUTH_SECRET",
+  "GOOGLE_CLIENT_SECRET",
+  "RESEND_API_KEY",
+];
 const PUBLIC_OUTPUTS = [
   { dir: ".next/static", extensions: null },
   { dir: ".next/server/app", extensions: [".html", ".rsc", ".body", ".txt"] },
