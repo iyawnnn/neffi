@@ -16,6 +16,7 @@
     "db:erd": "tsx scripts/generate-erd.ts",
     "accounts:set-role": "node --conditions=react-server --import tsx scripts/set-account-role.ts",
     "check:db-concurrency": "node scripts/check-credential-concurrency.mjs",
+    "check:provisioning-concurrency": "node --conditions=react-server --import tsx scripts/check-provisioning-concurrency.mts",
     "check:bundle": "node scripts/check-client-bundle.mjs"
   },
   "dependencies": {

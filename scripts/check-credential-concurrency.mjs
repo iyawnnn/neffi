@@ -32,7 +32,7 @@ try {
   for (const isolation of ["READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"]) {
     for (const retirementFirst of [true, false]) {
       const card = randomUUID();
-      await admin.query("INSERT INTO cards(id,stock_purchase_id,product_id,kind,state,public_token) VALUES ($1,$2,$3,'dbc','ready',$4)", [card, stock, product, `SYNTH-${card}`]);
+      await admin.query("INSERT INTO cards(id,stock_purchase_id,product_id,kind,public_token) VALUES ($1,$2,$3,'dbc',$4)", [card, stock, product, `SYNTH-${card}`]);
       const retire = (client) => client.query("UPDATE cards SET state='retired' WHERE id=$1", [card]);
       const issue = (client) => client.query("INSERT INTO activation_credentials(card_id,lookup_hmac) VALUES ($1,$2)", [card, card.replaceAll("-", "").padEnd(64, "0")]);
       const label = `${isolation}: ${retirementFirst ? "retirement" : "issuance"} first`;
