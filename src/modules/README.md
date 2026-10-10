@@ -37,7 +37,7 @@ M2 delivers the shared schema under `src/db/schema/`, reviewed migrations, integ
 
 Database constraints enforce DBC/GRC separation, matching card/profile owners, credential uniqueness/outcomes and historical lifecycle/money integrity. Later domain services own authentication/authorization, credential generation and claim, URL validation, completion eligibility, cancellation rules, refund limits and support transactions. Balances, payment state and inventory counts stay derived. Stock-purchase and shipment costs remain on their source rows; manual expenses are separate.
 
-The seed and ERD are developer tooling, not domain APIs. Live M2 migration/reset on `tapcard-dev` requires the Task 9 restore-point confirmation and explicit approval described in the [database workflow](../../README.md#database-migrations).
+The seed and ERD are developer tooling, not domain APIs. Live M2 migration/reset on `neffi-dev` requires the Task 9 restore-point confirmation and explicit approval described in the [database workflow](../../README.md#database-migrations).
 
 ## Rules
 

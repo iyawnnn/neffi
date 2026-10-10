@@ -14,6 +14,7 @@
     "db:check": "drizzle-kit check",
     "db:seed": "tsx scripts/seed-dev.ts",
     "db:erd": "tsx scripts/generate-erd.ts",
+    "check:db-concurrency": "node scripts/check-credential-concurrency.mjs",
     "check:bundle": "node scripts/check-client-bundle.mjs"
   },
   "dependencies": {

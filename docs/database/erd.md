@@ -914,11 +914,15 @@ CREATE OR REPLACE FUNCTION public.activation_credentials_guard()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
+DECLARE
+  target_state card_state;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF NEW.used_at IS NULL AND NEW.revoked_at IS NULL
-       AND EXISTS (SELECT 1 FROM cards WHERE id = NEW.card_id AND state = 'retired') THEN
-      RAISE EXCEPTION 'a retired card cannot get a usable activation credential' USING ERRCODE = 'P0001';
+    IF NEW.used_at IS NULL AND NEW.revoked_at IS NULL THEN
+      UPDATE cards SET updated_at = updated_at WHERE id = NEW.card_id RETURNING state INTO target_state;
+      IF target_state = 'retired' THEN
+        RAISE EXCEPTION 'a retired card cannot get a usable activation credential' USING ERRCODE = 'P0001';
+      END IF;
     END IF;
     RETURN NEW;
   END IF;

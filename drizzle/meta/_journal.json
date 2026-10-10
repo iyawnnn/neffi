@@ -43,6 +43,13 @@
       "when": 1791602748987,
       "tag": "0005_integrity_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791607254420,
+      "tag": "0006_serialize_credential_retirement",
+      "breakpoints": true
     }
   ]
 }

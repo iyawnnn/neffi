@@ -8,22 +8,24 @@ The product and architecture specification lives in the locked Notion pages (sti
 
 - Node.js 24 (`.nvmrc`)
 - pnpm 11 (`packageManager` in `package.json`; `corepack enable` picks it up)
-- A **development** Neon project (`tapcard-dev`). Never use production credentials locally or in Preview.
+- A **development** Neon project (`neffi-dev`). Never use production credentials locally or in Preview.
 
 ## Setup
 
 1. Clone and install: `git clone <repo-url> neffi && cd neffi && pnpm install --frozen-lockfile`
-2. Create the development database: in the Neon console, create project `tapcard-dev` (AWS Asia Pacific, Singapore). Do not enable Neon Auth.
+2. Create the development database: in the Neon console, create project `neffi-dev` (AWS Asia Pacific, Singapore). Do not enable Neon Auth.
 3. Configure: `cp .env.example .env.local` (`copy` in cmd.exe), then fill in:
    - `DATABASE_URL`: the pooled connection string (Connect → connection pooling **on**; host contains `-pooler`)
    - `DATABASE_URL_UNPOOLED`: the direct connection string (connection pooling **off**)
    - `BETTER_AUTH_SECRET`: output of `openssl rand -base64 32`
    - `BETTER_AUTH_URL`: `http://localhost:3000`
    - optional `NEXT_PUBLIC_SENTRY_DSN`: Sentry stays disabled without it
-4. Before the first M2 migration on `tapcard-dev`, create a `pre-m2` Neon restore branch/snapshot and explicitly approve Task 9. Then migrate: `pnpm db:migrate`.
+4. Before the first M2 migration on `neffi-dev`, create a `pre-m2` Neon restore branch/snapshot and explicitly approve Task 9. Then migrate: `pnpm db:migrate`.
 5. Run: `pnpm dev`, then check <http://localhost:3000/api/health> returns `{"status":"ok","db":"ok"}`.
 
 The app refuses to start with missing or invalid configuration and names the variable without printing its value.
+
+The approved development target is Neon project `neffi-dev`, branch `production`. That branch name is Neon's default label; it is a development database, separate from application Production. `pre-m2` is the restore branch and must not receive migrations or seed resets. Verify the project, branch and endpoint before every database-changing command.
 
 ## Scripts
 
@@ -40,6 +42,7 @@ The app refuses to start with missing or invalid configuration and names the var
 | `pnpm db:check` | Check migration history consistency |
 | `pnpm db:seed` | Destructive development-only reset to synthetic fixtures; requires explicit development context |
 | `pnpm db:erd` | Generate the ERD and integrity catalog from migrations on PGlite (no credentials/network) |
+| `pnpm check:db-concurrency` | Two-session integrity regression on disposable loopback PostgreSQL only |
 
 ## Database schema
 
@@ -67,9 +70,9 @@ PostgreSQL is the source of truth; Neon is replaceable hosting.
 3. Run `pnpm test`, `pnpm db:check`, and `pnpm db:erd`; commit the regenerated ERD with any migration change. Separate custom SQL statements with `--> statement-breakpoint` so PGlite and the live migrator apply the same sequence.
 4. After the live-database approval gate, run `pnpm db:migrate` against the development database. Running it again should make no changes.
 
-There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; M2 adds `0001_accounts_auth` through `0005_integrity_guards`. CI generates the schema and rejects a diff in `drizzle/`.
+There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; M2 adds `0001_accounts_auth` through `0005_integrity_guards`, plus the reviewed forward fix `0006_serialize_credential_retirement`. CI generates the schema and rejects a diff in `drizzle/`.
 
-**Recovery:** Drizzle has no down migrations. Before applying M2 to `tapcard-dev`, keep a `pre-m2` restore branch/snapshot and obtain explicit Task 9 approval. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
+**Recovery:** Drizzle has no down migrations. Before applying M2 to `neffi-dev`, keep a `pre-m2` restore branch/snapshot and obtain explicit Task 9 approval. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
 
 ## Synthetic development seed
 
@@ -93,12 +96,14 @@ Fixtures cover owners/customers, commercial history, DBC/GRC lifecycle, profiles
 
 Tests and `db:erd` need no live database credentials. `db:generate`/`db:check` load the migration configuration but do not connect. PGlite verification does not replace Task 9's gated Neon verification. No live migration, seed/reset or other schema/data change is authorized before that gate.
 
+`pnpm check:db-concurrency` runs the two-session retirement/credential-issuance regression under READ COMMITTED, REPEATABLE READ and SERIALIZABLE. It requires a disposable local PostgreSQL database named `neffi_m2_test`, with `DATABASE_URL_TEST` targeting `127.0.0.1`; it never loads `.env.local` and refuses Neon. The check applies migrations and inserts synthetic fixtures, so use an isolated database. PGlite and the credential-free CI suite cannot exercise independent concurrent sessions. Usable-credential issuance writes the parent card without changing its values, serializing retirement and making stale snapshots reject with a serialization failure; future domain transactions must retry such failures.
+
 ## Environments and isolation
 
 | Environment | Database | Where its config lives |
 |---|---|---|
-| Local development | Neon `tapcard-dev` | `.env.local` (git-ignored) |
-| Vercel Preview | Neon `tapcard-dev` | Vercel env vars, Preview scope |
+| Local development | Neon `neffi-dev` | `.env.local` (git-ignored) |
+| Vercel Preview | Neon `neffi-dev` | Vercel env vars, Preview scope |
 | Production / pilot | Separate production Neon project (not created yet) | Vercel env vars, Production scope only |
 
 Safeguards:
@@ -112,7 +117,7 @@ Safeguards:
 ## Deploying a Preview (Vercel)
 
 1. Import the GitHub repository in Vercel (Hobby, Node 24.x).
-2. Set `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `BETTER_AUTH_SECRET` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `tapcard-dev` values. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
+2. Set `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `BETTER_AUTH_SECRET` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
 3. Leave the **Production** scope empty until the production database exists.
 4. Enable "Automatically expose System Environment Variables".
 5. Push a branch and check `<preview-url>/api/health` and `<preview-url>/api/auth/ok`.
