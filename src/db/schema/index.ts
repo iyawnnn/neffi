@@ -3,3 +3,5 @@
 export * from "./enums";
 export * from "./auth";
 export * from "./commerce";
+export * from "./profiles";
+export * from "./inventory";

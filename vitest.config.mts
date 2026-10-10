@@ -11,5 +11,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Each *.db.test.ts file boots in-process Postgres and applies every migration; under a parallel run
+    // that alone can exceed the 5s default.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });
