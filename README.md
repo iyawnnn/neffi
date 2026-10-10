@@ -76,7 +76,7 @@ There is intentionally no `db:push`: schema changes always go through reviewed, 
 
 ## Synthetic development seed
 
-**`db:seed` is a reset, not an additive import.** One transaction truncates only the 20 explicitly listed M2 domain/auth tables in `public`, restarts identities, and inserts synthetic fixtures with stable fixture IDs. It bypasses row-history triggers deliberately. It uses `RESTRICT`, so an unlisted referencing table aborts the entire reset rather than being cascade-truncated. The migration journal and unrelated tables stay intact.
+**`db:seed` is a reset, not an additive import.** One transaction truncates only the 22 explicitly listed M2 domain/auth tables in `public`, restarts identities, and inserts synthetic fixtures with stable fixture IDs. It bypasses row-history triggers deliberately. It uses `RESTRICT`, so an unlisted referencing table aborts the entire reset rather than being cascade-truncated. The migration journal and unrelated tables stay intact.
 
 The CLI and the exported seed function both require `VERCEL_ENV=development`, with `NODE_ENV` unset or `development`, and validate `DATABASE_URL_UNPOOLED` through the existing isolation guard. Missing/blank environment markers, Preview, Production, test and unknown contexts are refused. Explicit development selects the operation's context; verify that the direct URL belongs to the intended development database before invoking it.
 

@@ -1,4 +1,5 @@
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigint, boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { timestamps } from "./columns";
 import { accountRole } from "./enums";
 
@@ -71,4 +72,28 @@ export const authVerifications = pgTable(
     ...timestamps(),
   },
   (t) => [index("auth_verifications_identifier_idx").on(t.identifier)],
+);
+
+// Better Auth model `rateLimit`: per-IP/path counters (database storage so limits survive across instances).
+// Better Auth prunes rows older than its own longest window, so nothing with a longer window may live here.
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: uuid().primaryKey().defaultRandom(),
+  key: text().notNull().unique("auth_rate_limits_key_unique"),
+  count: integer().notNull(),
+  lastRequest: bigint({ mode: "number" }).notNull(),
+});
+
+// Per-email OTP send quota (3 per 10 minutes). Keyed by an HMAC of the lowercased email, never the email itself,
+// and kept apart from `auth_rate_limits` so Better Auth's pruning cannot erase it.
+export const authOtpQuotas = pgTable(
+  "auth_otp_quotas",
+  {
+    key: text().primaryKey(),
+    count: integer().notNull(),
+    windowStartedAt: timestamp({ withTimezone: true }).notNull(),
+  },
+  (t) => [
+    check("auth_otp_quotas_count_positive", sql`${t.count} > 0`),
+    check("auth_otp_quotas_key_hash", sql`${t.key} ~ '^[0-9a-f]{64}$'`),
+  ],
 );

@@ -56,9 +56,9 @@ test("the development seed is deterministic and re-runnable", async () => {
 
   expect(second).toEqual(first);
   // Every domain table is exercised; no sign-in exists yet, so identities, sessions and verifications stay empty.
-  const authOnly = ["auth_identities", "auth_sessions", "auth_verifications"];
+  const authOnly = ["auth_identities", "auth_sessions", "auth_verifications", "auth_rate_limits", "auth_otp_quotas"];
   expect(Object.entries(first).filter(([table, n]) => !authOnly.includes(table) && n === 0)).toEqual([]);
-  expect(authOnly.map((table) => first[table])).toEqual([0, 0, 0]);
+  expect(authOnly.map((table) => first[table])).toEqual([0, 0, 0, 0, 0]);
   const [owner] = await db.select().from(accounts).where(eq(accounts.id, SEED_IDS.ownerOne));
   expect(owner.email).toMatch(/@example\.test$/);
 });

@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth/minimal";
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { authOptions } from "@/auth/options";
-import { accounts, authIdentities, authSessions } from "./schema";
+import { accounts, authIdentities, authOtpQuotas, authRateLimits, authSessions } from "./schema";
 import { createTestDb, expectPgError, rollback, type TestDb } from "./testing";
 
 let db: TestDb;
@@ -83,4 +83,45 @@ describe("Better Auth persists through the Neffi schema", () => {
     });
     expect((await internalAdapter.findVerificationValue("round-trip"))?.value).toBe("synthetic");
   });
+});
+
+describe("Auth abuse-limit storage", () => {
+  test("a rate-limit key is stored once", () =>
+    rollback(db, async (tx) => {
+      await tx.insert(authRateLimits).values({ key: "203.0.113.1/sign-in/email-otp", count: 1, lastRequest: Date.now() });
+      await expectPgError(
+        tx,
+        (s) => s.insert(authRateLimits).values({ key: "203.0.113.1/sign-in/email-otp", count: 1, lastRequest: Date.now() }),
+        "23505",
+        "auth_rate_limits_key_unique",
+      );
+    }));
+
+  test("an OTP quota is one row per hashed email and always counts at least one send", () =>
+    rollback(db, async (tx) => {
+      const key = "a".repeat(64);
+      await tx.insert(authOtpQuotas).values({ key, count: 1, windowStartedAt: new Date() });
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key, count: 1, windowStartedAt: new Date() }),
+        "23505",
+        "auth_otp_quotas_pkey",
+      );
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key: "b".repeat(64), count: 0, windowStartedAt: new Date() }),
+        "23514",
+        "auth_otp_quotas_count_positive",
+      );
+    }));
+
+  test("the quota key is a hash, never a plaintext email", () =>
+    rollback(db, async (tx) => {
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key: "person@example.test", count: 1, windowStartedAt: new Date() }),
+        "23514",
+        "auth_otp_quotas_key_hash",
+      );
+    }));
 });
