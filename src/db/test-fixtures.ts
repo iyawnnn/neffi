@@ -82,7 +82,19 @@ export async function insertReadyDbc(tx: TestTx) {
   const product = await insertProduct(tx, "dbc");
   const [card] = await tx
     .insert(cards)
-    .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready", publicToken: syntheticToken() })
+    .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready", publicToken: syntheticToken(), nfcVerifiedAt: new Date(), packageMatchedAt: new Date() })
+    .returning();
+  return { card, product, stock };
+}
+
+// A DBC mid-provisioning: blank with its permanent token and no physical evidence. This is the only form that can
+// hold a usable credential before the package match.
+export async function insertProvisioningDbc(tx: TestTx) {
+  const stock = await insertStockPurchase(tx);
+  const product = await insertProduct(tx, "dbc");
+  const [card] = await tx
+    .insert(cards)
+    .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", publicToken: syntheticToken() })
     .returning();
   return { card, product, stock };
 }

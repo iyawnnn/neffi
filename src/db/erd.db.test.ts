@@ -21,6 +21,8 @@ test("the ERD catalogs composite and nullable relationships, partial indexes and
   expect(erd).toContain("activation_credentials_one_usable_per_card");
   expect(erd).toContain("WHERE ((used_at IS NULL) AND (revoked_at IS NULL))");
   expect(erd).toContain("cards_dbc_only_fields");
+  expect(erd).toContain("cards_dbc_ready_checks_recorded");
+  expect(erd).toContain("package_matched_at = NULL");
   expect(erd).toContain("payments_history_guard");
   expect(erd).toMatch(/CREATE TRIGGER payments_history_guard BEFORE (DELETE OR UPDATE|UPDATE OR DELETE) ON (public\.)?payments/);
   expect(erd).toContain("FUNCTION public.history_guard()");

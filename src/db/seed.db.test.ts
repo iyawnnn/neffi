@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { accounts, activationCredentials } from "./schema";
+import { accounts, activationCredentials, cards } from "./schema";
 import { countRows, SEED_IDS, seed } from "./seed";
 import { createTestDb, type TestDb } from "./testing";
 
@@ -95,4 +95,12 @@ test("seed preserves unrelated tables and migration history", async () => {
   } finally {
     await db.execute(sql`DROP TABLE seed_unrelated`);
   }
+});
+
+test("the seed claims no physical provisioning evidence and holds no Ready DBC", async () => {
+  await seed(db);
+  const all = await db.select().from(cards);
+  expect(all.filter((card) => card.nfcVerifiedAt !== null || card.packageMatchedAt !== null)).toEqual([]);
+  expect(all.filter((card) => card.kind === "dbc" && card.state === "ready")).toEqual([]);
+  expect(all.find((card) => card.id === SEED_IDS.cardProvisioningDbc)?.state).toBe("blank");
 });
