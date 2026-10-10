@@ -137,3 +137,53 @@ describe("orders_guard", () => {
       await tx.update(orders).set({ notes: "synthetic follow-up" }).where(eq(orders.id, done.id));
     }));
 });
+
+describe("review follow-ups", () => {
+  test("recorded money cannot be rewritten in place; annotations can", () =>
+    rollback(db, async (tx) => {
+      const { order, owner } = await insertOrder(tx);
+      const money = { orderId: order.id, amount: 100, method: "cash" as const, recordedByAccountId: owner.id };
+      const [payment] = await tx.insert(payments).values({ ...money, paidOn: today }).returning();
+      const [refund] = await tx.insert(refunds).values({ ...money, refundedOn: today }).returning();
+      await expectPgError(tx, (s) => s.update(payments).set({ amount: 999 }).where(eq(payments.id, payment.id)), GUARD);
+      await expectPgError(tx, (s) => s.update(payments).set({ paidOn: "2026-01-01" }).where(eq(payments.id, payment.id)), GUARD);
+      await expectPgError(tx, (s) => s.update(refunds).set({ method: "gcash" }).where(eq(refunds.id, refund.id)), GUARD);
+      await tx.update(payments).set({ reference: "SYNTH-REF" }).where(eq(payments.id, payment.id));
+      await tx.update(refunds).set({ reason: "Synthetic reason" }).where(eq(refunds.id, refund.id));
+    }));
+
+  test("activity events are immutable", () =>
+    rollback(db, async (tx) => {
+      const { order } = await insertOrder(tx);
+      const [event] = await tx.insert(activityEvents).values({ type: "note", orderId: order.id, note: "synthetic" }).returning();
+      await expectPgError(tx, (s) => s.update(activityEvents).set({ note: "rewritten" }).where(eq(activityEvents.id, event.id)), GUARD);
+    }));
+
+  test("a card cannot be retired while it still has a usable credential, nor get one afterwards", () =>
+    rollback(db, async (tx) => {
+      const { card } = await insertReadyDbc(tx);
+      const [credential] = await tx
+        .insert(activationCredentials)
+        .values({ cardId: card.id, lookupHmac: syntheticLookup(9100) })
+        .returning();
+      await expectPgError(tx, (s) => s.update(cards).set({ state: "retired" }).where(eq(cards.id, card.id)), GUARD);
+      await tx.update(activationCredentials).set({ revokedAt: new Date() }).where(eq(activationCredentials.id, credential.id));
+      await tx.update(cards).set({ state: "retired" }).where(eq(cards.id, card.id));
+      await expectPgError(
+        tx,
+        (s) => s.insert(activationCredentials).values({ cardId: card.id, lookupHmac: syntheticLookup(9101) }),
+        GUARD,
+      );
+      // Recording historical (already revoked) credentials stays possible.
+      await tx.insert(activationCredentials).values({ cardId: card.id, lookupHmac: syntheticLookup(9102), revokedAt: new Date() });
+    }));
+
+  test("completed and cancelled orders cannot be deleted; an empty in-progress one can", () =>
+    rollback(db, async (tx) => {
+      const { order: done } = await insertOrder(tx);
+      await tx.update(orders).set({ status: "completed", completedAt: new Date() }).where(eq(orders.id, done.id));
+      await expectPgError(tx, (s) => s.delete(orders).where(eq(orders.id, done.id)), GUARD);
+      const { order: mistake } = await insertOrder(tx);
+      await tx.delete(orders).where(eq(orders.id, mistake.id));
+    }));
+});

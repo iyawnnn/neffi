@@ -189,3 +189,49 @@ describe("Ownership and Profile routing", () => {
       );
     }));
 });
+
+describe("Composite-FK gap closers (MATCH SIMPLE skips a FK when any column is NULL)", () => {
+  test("product and kind are set together, and committed states need a product", () =>
+    rollback(db, async (tx) => {
+      const stock = await insertStockPurchase(tx);
+      const dbc = await insertProduct(tx, "dbc");
+      await expectPgError(tx, (s) => s.insert(cards).values({ stockPurchaseId: stock.id, productId: dbc.id }), "23514", "cards_product_kind_together");
+      await expectPgError(tx, (s) => s.insert(cards).values({ stockPurchaseId: stock.id, kind: "dbc" }), "23514", "cards_product_kind_together");
+      await expectPgError(
+        tx,
+        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, productId: dbc.id, kind: "grc" }),
+        "23503",
+        "cards_product_fk",
+      );
+      const { item } = await insertOrderItem(tx, "dbc");
+      await expectPgError(
+        tx,
+        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, state: "reserved", orderItemId: item.id }),
+        "23514",
+        "cards_committed_states_need_product",
+      );
+    }));
+
+  test("an order-item link needs a product, so the product match is always checked", () =>
+    rollback(db, async (tx) => {
+      const stock = await insertStockPurchase(tx);
+      const { item } = await insertOrderItem(tx, "dbc");
+      await expectPgError(
+        tx,
+        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, state: "retired", orderItemId: item.id }),
+        "23514",
+        "cards_order_item_needs_product",
+      );
+    }));
+
+  test("only an owned card can be disabled", () =>
+    rollback(db, async (tx) => {
+      const { card } = await insertReadyDbc(tx);
+      await expectPgError(
+        tx,
+        (s) => s.update(cards).set({ disabledAt: new Date() }).where(eq(cards.id, card.id)),
+        "23514",
+        "cards_disabled_needs_owner",
+      );
+    }));
+});
