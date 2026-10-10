@@ -12,6 +12,13 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/auth/access.ts",
   "src/auth/methods.ts",
   "src/modules/accounts/set-role.ts",
+  "src/modules/activation/credentials.ts",
+  "src/modules/activity/record.ts",
+  "src/modules/cards/card.ts",
+  "src/modules/cards/dbc.ts",
+  "src/modules/cards/grc.ts",
+  "src/modules/inventory/queries.ts",
+  "src/modules/inventory/stock-intake.ts",
 ];
 
 test.each(SERVER_ONLY_ENTRYPOINTS)("%s imports server-only before anything else", (file) => {
