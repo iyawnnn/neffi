@@ -58,6 +58,8 @@ try {
   const db = drizzle({ client: pool, schema, casing: "snake_case" });
   await migrate(db, { migrationsFolder: "drizzle" });
 
+  // The database may be reused by other checks that leave products behind; the services need exactly one active product per kind.
+  await admin.query("UPDATE products SET active = false");
   const owner = randomUUID();
   const dbcProduct = randomUUID();
   const grcProduct = randomUUID();
