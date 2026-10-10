@@ -1,7 +1,6 @@
-import { betterAuth } from "better-auth/minimal";
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
-import { authOptions } from "@/auth/options";
+import { createTestAuth } from "@/auth/test-auth";
 import { accounts, authIdentities, authOtpQuotas, authRateLimits, authSessions } from "./schema";
 import { createTestDb, expectPgError, rollback, type TestDb } from "./testing";
 
@@ -56,13 +55,11 @@ describe("Account / Authentication Identity integrity", () => {
 
 describe("Better Auth persists through the Neffi schema", () => {
   test("users, identities, sessions and verifications round-trip with database-generated ids", async () => {
-    const auth = betterAuth(
-      authOptions({ db, secret: "test-only-secret-not-used-anywhere-0123456789", baseURL: "http://localhost:3000" }),
-    );
+    const { auth, db: authDb } = await createTestAuth();
     const { internalAdapter } = await auth.$context;
 
     const user = await internalAdapter.createUser(
-      { name: "Round Trip", email: "Round.Trip@Example.test" },
+      { name: "Round Trip", email: "Round.Trip@Example.test", emailVerified: true },
       { method: "admin" },
     );
     expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -70,7 +67,7 @@ describe("Better Auth persists through the Neffi schema", () => {
     expect((user as typeof user & { role: string }).role).toBe("customer");
 
     await internalAdapter.linkAccount({ userId: user.id, providerId: "google", accountId: "google-subject-rt" });
-    const [identity] = await db.select().from(authIdentities).where(eq(authIdentities.accountId, "google-subject-rt"));
+    const [identity] = await authDb.select().from(authIdentities).where(eq(authIdentities.accountId, "google-subject-rt"));
     expect(identity.userId).toBe(user.id);
 
     const session = await internalAdapter.createSession(user.id);
