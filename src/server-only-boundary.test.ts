@@ -11,6 +11,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/integrations/email/resend.ts",
   "src/auth/access.ts",
   "src/auth/methods.ts",
+  "src/modules/accounts/set-role.ts",
 ];
 
 test.each(SERVER_ONLY_ENTRYPOINTS)("%s imports server-only before anything else", (file) => {
