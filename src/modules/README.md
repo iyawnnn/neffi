@@ -1,6 +1,6 @@
 # Domain modules
 
-TapCard is one modular monolith. Business rules live in domain modules under `src/modules/<name>/`; a module's folder is created when its first real code arrives (no empty scaffolding).
+Neffi is one modular monolith. Business rules live in domain modules under `src/modules/<name>/`; a module's folder is created when its first real code arrives (no empty scaffolding).
 
 | Module | Owns | First milestone |
 |---|---|---|

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TapCard",
+  title: "Neffi",
   description: "NFC digital business cards and Google Review cards.",
 };
 

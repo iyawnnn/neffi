@@ -1,8 +1,8 @@
-# TapCard
+# Neffi
 
 NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monolith (App Router, TypeScript) on PostgreSQL via Drizzle, with Better Auth, Sentry and Vercel.
 
-The product and architecture specification lives in the locked TapCard Notion pages. Domain module boundaries are in [`src/modules/README.md`](src/modules/README.md); milestone plans are in [`docs/superpowers/plans/`](docs/superpowers/plans/).
+The product and architecture specification lives in the locked Notion pages (still titled "TapCard — …" from before the rename to Neffi). Domain module boundaries are in [`src/modules/README.md`](src/modules/README.md); milestone plans are in [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ The product and architecture specification lives in the locked TapCard Notion pa
 
 ## Setup
 
-1. Clone and install: `git clone <repo-url> tapcard && cd tapcard && pnpm install --frozen-lockfile`
+1. Clone and install: `git clone <repo-url> neffi && cd neffi && pnpm install --frozen-lockfile`
 2. Create the development database: in the Neon console, create project `tapcard-dev` (AWS Asia Pacific, Singapore). Do not enable Neon Auth.
 3. Configure: `cp .env.example .env.local` (`copy` in cmd.exe), then fill in:
    - `DATABASE_URL`: the pooled connection string (Connect → connection pooling **on**; host contains `-pooler`)
