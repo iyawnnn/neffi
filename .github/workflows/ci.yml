@@ -35,5 +35,6 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm db:check
+      - run: pnpm db:generate && git diff --exit-code drizzle
       - run: pnpm build
       - run: pnpm check:bundle
