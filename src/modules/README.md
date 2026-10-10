@@ -46,7 +46,7 @@ The seed and ERD are developer tooling, not domain APIs. Live M2 migration/reset
 
 Sign-in, verified identity resolution, safe linking, OTP quotas and session lifecycle live in `src/auth`. `access.ts` checks layouts/pages and authorizes handlers/actions; `policy.ts` holds the pure role/ownership and redirect policies. Customer and owner screens are shells, with no M4+ business behavior. The minimal Resend boundary sends only sign-in codes.
 
-Migration `0007` adds auth abuse storage. It remains behind the M3 Task 8 restore-point and live approval gate; Task 9 whole-branch review follows live verification. The [auth runbook](../../README.md#authentication-runbook-m3) documents provider configuration, role operations, accepted limits and streamed navigation denials.
+Migration `0007` adds auth abuse storage; forward fix `0008` indexes abandoned IP-counter cleanup. Live changes require the M3 Task 8 restore-point and approval gate; Task 9 whole-branch review follows live verification. The [auth runbook](../../README.md#authentication-runbook-m3) documents provider configuration, role operations, accepted limits and streamed navigation denials.
 
 ## Rules
 

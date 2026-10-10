@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 import { accounts, authIdentities, authRateLimits, authSessions, authVerifications } from "@/db/schema";
 import { consumeOtpQuota, hmacHex } from "./otp-quota";
 
@@ -18,6 +19,8 @@ type AuthOptionsInput = {
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 const OTP_LIFETIME_SECONDS = 300;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const keepRateLimit = (_request: Request, rule: { window: number; max: number }) => rule;
 
 // Every HTTP route Better Auth could expose that M3 does not use is switched off. Server code can still call the
 // matching `auth.api.*` function (disabledPaths only guards the HTTP router), so session reads stay available to the app.
@@ -68,6 +71,17 @@ const GENERIC_RATE_LIMIT_MESSAGE = "Too many requests. Please try again later.";
 
 // Shared by the server instance and the database tests, so tests exercise the real persistence and security wiring.
 export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthOptionsInput) {
+  // First match wins. Unknown paths must not create IP/path counters before Better Auth returns 404.
+  const rateLimitRules = {
+    "/email-otp/send-verification-otp": { window: RATE_LIMIT_WINDOW_SECONDS, max: 10 },
+    "/sign-in/email-otp": { window: RATE_LIMIT_WINDOW_SECONDS, max: 10 },
+    "/ok": keepRateLimit,
+    "/sign-in/social": keepRateLimit,
+    "/callback/google": keepRateLimit,
+    "/link-social": keepRateLimit,
+    "/sign-out": keepRateLimit,
+    "/**": false as const,
+  };
   return {
     secret,
     baseURL,
@@ -109,14 +123,10 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
     rateLimit: {
       enabled: true,
       storage: "database",
-      window: 60,
+      window: RATE_LIMIT_WINDOW_SECONDS,
       max: 100,
-      customRules: {
-        // Per IP. Better Auth's default of 3/min would lock out people sharing a network; guessing is still bounded
-        // by three attempts per code. The per-email send quota is enforced in the hook below.
-        "/email-otp/send-verification-otp": { window: 60, max: 10 },
-        "/sign-in/email-otp": { window: 60, max: 10 },
-      },
+      // OTP uses 10/min per IP; all other allowed paths preserve Better Auth's existing limits.
+      customRules: rateLimitRules,
     },
     disabledPaths: DISABLED_PATHS,
     onAPIError: { errorURL: "/sign-in" },
@@ -154,6 +164,16 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
       },
     },
     plugins: [
+      {
+        id: "prune-auth-rate-limits",
+        onRequest: async (request, context) => {
+          const path = new URL(request.url).pathname.slice(new URL(context.baseURL).pathname.length);
+          if (path === "/**" || !Object.hasOwn(rateLimitRules, path)) return;
+          // Better Auth only prunes when a stale key is reused. Also expire abandoned keys on new traffic.
+          // Every configured/special/plugin window is at most 60s; keep this bound aligned with future rules.
+          await db.execute(sql`delete from ${authRateLimits} where ${authRateLimits.lastRequest} < ${Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000}`);
+        },
+      },
       emailOTP({
         otpLength: 6,
         expiresIn: OTP_LIFETIME_SECONDS,

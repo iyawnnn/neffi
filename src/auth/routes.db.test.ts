@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
-import { accounts, authIdentities } from "@/db/schema";
+import { accounts, authIdentities, authRateLimits, authOtpQuotas } from "@/db/schema";
 import { createTestAuth, signInWithEmail, type TestAuth } from "./test-auth";
 
 let t: TestAuth;
@@ -30,6 +30,37 @@ const endpoints = (): { path: string; method: string }[] =>
     });
 
 describe("exposed auth routes", () => {
+  test("arbitrary unknown auth paths return 404 without creating rate-limit rows", async () => {
+    await t.db.insert(authRateLimits).values({ key: "stale-counter-on-denied-request", count: 1, lastRequest: Date.now() - 3_600_000 });
+    const before = await t.db.select().from(authRateLimits);
+    const client = t.client();
+    for (const path of ["/random-one", "/random-two", "/reset-password/random-token", "/ok/extra", "/**", "/", ""]) {
+      expect((await client.get(path)).status).toBe(404);
+    }
+    expect(await t.db.select().from(authRateLimits)).toEqual(before);
+  });
+
+  test("a new allowed request removes abandoned stale rate-limit rows", async () => {
+    const key = "abandoned-rate-key";
+    const activeKey = "active-rate-key";
+    const quotaKey = "f".repeat(64);
+    await t.db.insert(authRateLimits).values({ key, count: 1, lastRequest: Date.now() - 3_600_000 });
+    await t.db.insert(authRateLimits).values({ key: activeKey, count: 9, lastRequest: Date.now() });
+    await t.db.insert(authOtpQuotas).values({ key: quotaKey, count: 3, windowStartedAt: new Date() });
+    expect((await t.client().get("/ok")).status).toBe(200);
+    expect(await t.db.select().from(authRateLimits).where(eq(authRateLimits.key, key))).toHaveLength(0);
+    expect(await t.db.select().from(authRateLimits).where(eq(authRateLimits.key, activeKey))).toMatchObject([{ count: 9 }]);
+    expect(await t.db.select().from(authOtpQuotas).where(eq(authOtpQuotas.key, quotaKey))).toMatchObject([{ count: 3 }]);
+  });
+
+  test("Google sign-in preserves Better Auth's three-per-ten-second IP limit", async () => {
+    const client = t.client();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect((await client.post("/sign-in/social", { body: { provider: "google", callbackURL: "/app" } })).status).toBe(200);
+    }
+    expect((await client.post("/sign-in/social", { body: { provider: "google", callbackURL: "/app" } })).status).toBe(429);
+  });
+
   test("every HTTP route is on the allowlist or answers 404", async () => {
     const found = endpoints();
     expect(found.length).toBeGreaterThan(20);

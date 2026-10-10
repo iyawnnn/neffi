@@ -75,13 +75,13 @@ export const authVerifications = pgTable(
 );
 
 // Better Auth model `rateLimit`: per-IP/path counters (database storage so limits survive across instances).
-// Better Auth prunes rows older than its own longest window, so nothing with a longer window may live here.
+// Request-time cleanup removes abandoned rows older than the longest active rate-limit window.
 export const authRateLimits = pgTable("auth_rate_limits", {
   id: uuid().primaryKey().defaultRandom(),
   key: text().notNull().unique("auth_rate_limits_key_unique"),
   count: integer().notNull(),
   lastRequest: bigint({ mode: "number" }).notNull(),
-});
+}, (t) => [index("auth_rate_limits_last_request_idx").on(t.lastRequest)]);
 
 // Per-email OTP send quota (3 per 10 minutes). Keyed by an HMAC of the lowercased email, never the email itself,
 // and kept apart from `auth_rate_limits` so Better Auth's pruning cannot erase it.
