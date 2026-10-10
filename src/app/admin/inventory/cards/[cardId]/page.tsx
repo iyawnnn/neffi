@@ -69,12 +69,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
         </Section>
       ) : null}
 
-      {canProvision ? (
-        <Section title="Next step" tone="next">
-          <h3 className="font-medium">Provision this card</h3>
-          <ProvisionForm cardId={card.id} />
-        </Section>
-      ) : null}
+      <ProvisionForm key={card.id} cardId={card.id} available={canProvision} />
 
       {isDbc && blank && dbcUri && !card.nfcVerifiedAt ? (
         <Section title="Next step" tone="next">

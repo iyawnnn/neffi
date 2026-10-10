@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useLayoutEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CardUrl } from "./card-url";
 import {
@@ -23,26 +23,54 @@ type Action = (previous: ActionState | undefined, data: FormData) => Promise<Act
 // The revealed code lives only in this response's React state: it is never written to storage, the URL or the
 // console, and it is gone on the next submission or reload.
 function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
+  const [message, setMessage] = useState("");
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(reveal.code);
+      setMessage("Activation code copied. Save it to the card's package now.");
+    } catch {
+      setMessage("Could not copy. Select the code and copy it manually.");
+    }
+  }
+
   return (
-    <div role="status" className="flex flex-col gap-2 rounded-lg border border-primary p-3 text-sm">
-      <p className="font-medium">Activation code (shown once)</p>
-      <p className="break-all font-mono text-lg tracking-wider select-all">{reveal.code}</p>
+    <div role="status" className="flex flex-col gap-4 rounded-lg border-2 border-primary bg-secondary p-5 text-sm">
+      <h2 className="text-xl font-semibold">Activation code — shown once</h2>
+      <p className="break-all font-mono text-2xl font-semibold tracking-wider select-all">{reveal.code}</p>
+      <Button type="button" className="h-10 self-start" onClick={copy}>Copy activation code</Button>
+      <p role="status">{message}</p>
       {reveal.url ? <p className="break-all font-mono text-xs select-all">{reveal.url}</p> : null}
-      <p className="text-muted-foreground">
-        Write it on the card&apos;s package now. It can&apos;t be shown again; if it&apos;s lost, use Replace credential.
+      <p>
+        Save this code to the card&apos;s package now. It cannot be shown again. If it is lost before release,
+        use Credential recovery.
       </p>
     </div>
   );
 }
 
-function ActionForm({ action, submit, variant = "default", children }: { action: Action; submit: string; variant?: "default" | "destructive" | "outline"; children?: ReactNode }) {
+type ActionFormProps = { action: Action; submit: string; variant?: "default" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean };
+
+function ActionForm(props: ActionFormProps) {
+  const [visit, setVisit] = useState(0);
+  // Next's Activity preserves hidden pages. Reset the response holder on navigation so codes cannot return with Back.
+  useLayoutEffect(() => () => setVisit((value) => value + 1), []);
+  return <ActionFormContent key={visit} {...props} />;
+}
+
+function ActionFormContent({ action, submit, variant = "default", children, available = true, provisioning = false }: ActionFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  return (
+  if (!available && !state?.reveal) return null;
+
+  const form = (
     <form action={formAction} className="flex flex-col gap-3">
-      {children}
-      <Button type="submit" variant={variant} size="lg" className="h-10 w-full" disabled={pending}>
-        {pending ? "Working…" : submit}
-      </Button>
+      {available && !(provisioning && state?.reveal) ? (
+        <>
+          {children}
+          <Button type="submit" variant={variant} size="lg" className="h-10 w-full" disabled={pending}>
+            {pending ? "Working…" : submit}
+          </Button>
+        </>
+      ) : null}
       {state?.error ? (
         <p role="alert" className="rounded-lg bg-muted px-3 py-2 text-sm">
           {state.error}
@@ -51,6 +79,14 @@ function ActionForm({ action, submit, variant = "default", children }: { action:
       {state?.ok ? <p role="status" className="text-sm text-muted-foreground">{state.ok}</p> : null}
       {state?.reveal ? <Reveal reveal={state.reveal} /> : null}
     </form>
+  );
+  if (!provisioning || state?.reveal) return form;
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-primary p-5">
+      <h2 className="text-base font-semibold">Next step</h2>
+      <h3 className="font-medium">Provision this card</h3>
+      {form}
+    </section>
   );
 }
 
@@ -85,9 +121,9 @@ export function StockForm({ today }: { today: string }) {
   );
 }
 
-export function ProvisionForm({ cardId }: { cardId: string }) {
+export function ProvisionForm({ cardId, available }: { cardId: string; available: boolean }) {
   return (
-    <ActionForm action={provisionDbcAction} submit="Provision Digital Business Card">
+    <ActionForm action={provisionDbcAction} submit="Provision Digital Business Card" available={available} provisioning>
       <input type="hidden" name="cardId" value={cardId} />
       <p className="text-sm text-muted-foreground">Generates the permanent card URL and its activation code. The code is shown once.</p>
     </ActionForm>
