@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
+import { revokeUsableCredential } from "../activation/credentials";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { cardUrl } from "./token";
@@ -55,21 +56,62 @@ export type NfcCheckInput = {
 };
 
 // Records that a real tag was written, read back and tapped. The OWNER attests to the physical steps; the server
-// verifies the one thing it can: the URI read back is exactly the card's intended URI.
+// verifies the one thing it can: the URI read back is exactly the intended one (the card URL for a DBC, the order
+// item's current direct review URL for a GRC).
 export async function recordNfcCheck(db: Db, input: NfcCheckInput): Promise<void> {
   if (!input.readBackMatched || !input.phoneOpenedUri || !input.tagLeftWritable) throw new CardError("checks_incomplete");
 
   await db.transaction(async (tx) => {
     const card = await lockCard(tx, input.cardId);
-    if (card.kind !== "dbc" || card.state !== "blank" || !card.publicToken) throw new CardError("wrong_state");
-    if (input.readBackUri.trim() !== cardUrl(input.cardUrlOrigin, card.publicToken)) throw new CardError("uri_mismatch");
+    let expectedUri: string;
+    let orderId: string | undefined;
+
+    if (card.kind === "dbc" && card.state === "blank" && card.publicToken) {
+      expectedUri = cardUrl(input.cardUrlOrigin, card.publicToken);
+    } else if (card.kind === "grc" && card.state === "reserved" && card.orderItemId) {
+      const [item] = await tx
+        .select({ reviewUrl: schema.orderItems.reviewUrl, orderId: schema.orders.id, orderStatus: schema.orders.status })
+        .from(schema.orderItems)
+        .innerJoin(schema.orders, eq(schema.orders.id, schema.orderItems.orderId))
+        .where(eq(schema.orderItems.id, card.orderItemId));
+      if (!item?.reviewUrl || item.orderStatus !== "in_progress") throw new CardError("item_ineligible");
+      expectedUri = item.reviewUrl;
+      orderId = item.orderId;
+    } else {
+      throw new CardError("wrong_state");
+    }
+    if (input.readBackUri.trim() !== expectedUri) throw new CardError("uri_mismatch");
 
     await tx.update(schema.cards).set({ nfcVerifiedAt: new Date() }).where(eq(schema.cards.id, card.id));
     await recordActivity(tx, {
       type: "card_nfc_verified",
       actorAccountId: input.actorId,
       cardId: card.id,
+      orderId,
       note: ["read back exactly, phone opened it, tag left writable", input.device?.trim()].filter(Boolean).join("; "),
+    });
+  });
+}
+
+// Pre-release removal of a card that failed or must not be sold. History is kept: credentials are revoked (never
+// deleted) and a reserved GRC keeps its order link, which stops counting against the item so a replacement fits.
+export async function retireCard(db: Db, input: { actorId: string; cardId: string; reason: string }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const card = await lockCard(tx, input.cardId);
+    const retirable = card.state === "blank" || card.state === "ready" || (card.state === "reserved" && card.kind === "grc");
+    if (!retirable) throw new CardError("wrong_state");
+
+    await revokeUsableCredential(tx, card.id);
+    await tx.update(schema.cards).set({ state: "retired" }).where(eq(schema.cards.id, card.id));
+    const [item] = card.orderItemId
+      ? await tx.select({ orderId: schema.orderItems.orderId }).from(schema.orderItems).where(eq(schema.orderItems.id, card.orderItemId))
+      : [];
+    await recordActivity(tx, {
+      type: "card_retired",
+      actorAccountId: input.actorId,
+      cardId: card.id,
+      orderId: item?.orderId,
+      note: `reason: ${input.reason}`,
     });
   });
 }
