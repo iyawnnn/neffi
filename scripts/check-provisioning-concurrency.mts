@@ -30,7 +30,7 @@ const connect = async () => {
   clients.push(client);
   return client;
 };
-const settle = <T>(promise: Promise<T>) => {
+const settle = <T,>(promise: Promise<T>) => {
   const state = { done: false, error: undefined as unknown, value: undefined as T | undefined };
   const finished = promise.then(
     (value) => ((state.done = true), (state.value = value)),
