@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
+import { requireAccount } from "@/auth/access";
+import { SessionKeepAlive } from "@/components/session-keep-alive";
 
-// Customer surface (/app/*). Private and never indexed; authentication arrives in Milestone 3.
+// Customer surface (/app/*). Private and never indexed.
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function CustomerLayout({ children }: LayoutProps<"/app">) {
-  return <>{children}</>;
+// Reads the session, so it renders per request. The gate runs before any child renders; pages check again
+// because layouts do not re-run on client-side navigation between pages.
+export const instant = false;
+
+export default async function CustomerLayout({ children }: LayoutProps<"/app">) {
+  await requireAccount("/app");
+  return (
+    <>
+      {children}
+      <SessionKeepAlive />
+    </>
+  );
 }
