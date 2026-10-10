@@ -1,8 +1,7 @@
-import { betterAuth } from "better-auth/minimal";
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
-import { authOptions } from "@/auth/options";
-import { accounts, authIdentities, authSessions } from "./schema";
+import { createTestAuth } from "@/auth/test-auth";
+import { accounts, authIdentities, authOtpQuotas, authRateLimits, authSessions } from "./schema";
 import { createTestDb, expectPgError, rollback, type TestDb } from "./testing";
 
 let db: TestDb;
@@ -56,13 +55,11 @@ describe("Account / Authentication Identity integrity", () => {
 
 describe("Better Auth persists through the Neffi schema", () => {
   test("users, identities, sessions and verifications round-trip with database-generated ids", async () => {
-    const auth = betterAuth(
-      authOptions({ db, secret: "test-only-secret-not-used-anywhere-0123456789", baseURL: "http://localhost:3000" }),
-    );
+    const { auth, db: authDb } = await createTestAuth();
     const { internalAdapter } = await auth.$context;
 
     const user = await internalAdapter.createUser(
-      { name: "Round Trip", email: "Round.Trip@Example.test" },
+      { name: "Round Trip", email: "Round.Trip@Example.test", emailVerified: true },
       { method: "admin" },
     );
     expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -70,7 +67,7 @@ describe("Better Auth persists through the Neffi schema", () => {
     expect((user as typeof user & { role: string }).role).toBe("customer");
 
     await internalAdapter.linkAccount({ userId: user.id, providerId: "google", accountId: "google-subject-rt" });
-    const [identity] = await db.select().from(authIdentities).where(eq(authIdentities.accountId, "google-subject-rt"));
+    const [identity] = await authDb.select().from(authIdentities).where(eq(authIdentities.accountId, "google-subject-rt"));
     expect(identity.userId).toBe(user.id);
 
     const session = await internalAdapter.createSession(user.id);
@@ -83,4 +80,45 @@ describe("Better Auth persists through the Neffi schema", () => {
     });
     expect((await internalAdapter.findVerificationValue("round-trip"))?.value).toBe("synthetic");
   });
+});
+
+describe("Auth abuse-limit storage", () => {
+  test("a rate-limit key is stored once", () =>
+    rollback(db, async (tx) => {
+      await tx.insert(authRateLimits).values({ key: "203.0.113.1/sign-in/email-otp", count: 1, lastRequest: Date.now() });
+      await expectPgError(
+        tx,
+        (s) => s.insert(authRateLimits).values({ key: "203.0.113.1/sign-in/email-otp", count: 1, lastRequest: Date.now() }),
+        "23505",
+        "auth_rate_limits_key_unique",
+      );
+    }));
+
+  test("an OTP quota is one row per hashed email and always counts at least one send", () =>
+    rollback(db, async (tx) => {
+      const key = "a".repeat(64);
+      await tx.insert(authOtpQuotas).values({ key, count: 1, windowStartedAt: new Date() });
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key, count: 1, windowStartedAt: new Date() }),
+        "23505",
+        "auth_otp_quotas_pkey",
+      );
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key: "b".repeat(64), count: 0, windowStartedAt: new Date() }),
+        "23514",
+        "auth_otp_quotas_count_positive",
+      );
+    }));
+
+  test("the quota key is a hash, never a plaintext email", () =>
+    rollback(db, async (tx) => {
+      await expectPgError(
+        tx,
+        (s) => s.insert(authOtpQuotas).values({ key: "person@example.test", count: 1, windowStartedAt: new Date() }),
+        "23514",
+        "auth_otp_quotas_key_hash",
+      );
+    }));
 });

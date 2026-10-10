@@ -8,6 +8,10 @@ const base = {
   DATABASE_URL: DEV_POOLED,
   BETTER_AUTH_SECRET: "s".repeat(40),
   BETTER_AUTH_URL: "http://localhost:3000",
+  GOOGLE_CLIENT_ID: "synthetic-google-client-id.apps.example.test",
+  GOOGLE_CLIENT_SECRET: "synthetic-google-client-secret",
+  RESEND_API_KEY: "re_synthetic_key_not_real",
+  AUTH_EMAIL_FROM: "Neffi <auth@example.test>",
 };
 
 function errorMessage(fn: () => unknown): string {
@@ -27,8 +31,23 @@ describe("parseServerEnv", () => {
       betterAuthSecret: "s".repeat(40),
       authBaseUrl: "http://localhost:3000",
       sentryDsn: undefined,
+      googleClientId: base.GOOGLE_CLIENT_ID,
+      googleClientSecret: base.GOOGLE_CLIENT_SECRET,
+      resendApiKey: base.RESEND_API_KEY,
+      authEmailFrom: base.AUTH_EMAIL_FROM,
     });
   });
+
+  test.each(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "RESEND_API_KEY", "AUTH_EMAIL_FROM"] as const)(
+    "requires %s and never echoes the other sign-in secrets",
+    (name) => {
+      for (const value of [undefined, ""]) {
+        const message = errorMessage(() => parseServerEnv({ ...base, [name]: value }));
+        expect(message).toContain(name);
+        for (const secret of [base.GOOGLE_CLIENT_SECRET, base.RESEND_API_KEY]) expect(message).not.toContain(secret);
+      }
+    },
+  );
 
   test("names a missing required variable", () => {
     expect(errorMessage(() => parseServerEnv({ ...base, DATABASE_URL: undefined }))).toMatch(/DATABASE_URL/);

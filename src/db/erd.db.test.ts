@@ -12,7 +12,7 @@ test("the committed ERD matches the schema migrated from zero", () => {
 });
 
 test("the ERD catalogs composite and nullable relationships, partial indexes and integrity guards", () => {
-  expect(erd).toContain("20 tables");
+  expect(erd).toContain("22 tables");
   expect(erd).toContain("13 enums");
   expect(erd).toContain('profiles |o..o{ cards : "cards_profile_owner_fk"');
   expect(erd).toContain('accounts ||..o{ auth_sessions : "auth_sessions_account_id_accounts_id_fk"');

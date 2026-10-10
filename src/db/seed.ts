@@ -50,6 +50,8 @@ const SEED_TABLES = [
   "auth_identities",
   "auth_sessions",
   "auth_verifications",
+  "auth_rate_limits",
+  "auth_otp_quotas",
   "products",
   "purchasers",
   "orders",

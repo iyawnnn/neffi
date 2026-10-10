@@ -22,6 +22,10 @@ jobs:
       DATABASE_URL_UNPOOLED: postgresql://ci:ci-dummy-db-password@ep-ci-dummy.example.invalid/ci
       BETTER_AUTH_SECRET: ci-dummy-better-auth-secret-0123456789abcdef
       BETTER_AUTH_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: ci-dummy-google-client-id.apps.example.invalid
+      GOOGLE_CLIENT_SECRET: ci-dummy-google-client-secret-0123456789
+      RESEND_API_KEY: re_ci_dummy_resend_key_0123456789
+      AUTH_EMAIL_FROM: Neffi <ci@example.invalid>
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4

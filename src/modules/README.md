@@ -20,8 +20,9 @@ Infrastructure boundaries outside `modules/`:
 
 - `src/config` — validated environment (`env.ts` is server-only) and environment isolation.
 - `src/db` — the only place that touches the database driver (`index.ts` is server-only).
-- `src/auth` — Better Auth server instance (`server.ts` is server-only).
-- Provider integrations (MediaService/Cloudinary, EmailService/Resend) get their own server-only boundary when introduced.
+- `src/auth` — Better Auth configuration and server instance; server-only access DAL, session actions and linked-method reads; pure authorization policy and browser auth client.
+- `src/integrations/email/resend.ts` — server-only Resend delivery and auth-code template (M3); recovery/support templates remain M9.
+- MediaService/Cloudinary gets its own server-only boundary when introduced.
 
 ## Milestone 2 persistence
 
@@ -38,6 +39,14 @@ M2 delivers the shared schema under `src/db/schema/`, reviewed migrations, integ
 Database constraints enforce DBC/GRC separation, matching card/profile owners, credential uniqueness/outcomes and historical lifecycle/money integrity. Later domain services own authentication/authorization, credential generation and claim, URL validation, completion eligibility, cancellation rules, refund limits and support transactions. Balances, payment state and inventory counts stay derived. Stock-purchase and shipment costs remain on their source rows; manual expenses are separate.
 
 The seed and ERD are developer tooling, not domain APIs. Live M2 migration/reset on `neffi-dev` requires the Task 9 restore-point confirmation and explicit approval described in the [database workflow](../../README.md#database-migrations).
+
+## Milestone 3 account behavior
+
+`accounts/set-role.ts` is the server-only operator service used by `scripts/set-account-role.ts`. It locks the case-insensitive Account match and commits the role transition with its immutable activity event; no-op, invalid, unknown and ambiguous cases write nothing. Browser auth cannot grant OWNER. The CLI uses migration environment isolation and requires live approval before use against Neon.
+
+Sign-in, verified identity resolution, safe linking, OTP quotas and session lifecycle live in `src/auth`. `access.ts` checks layouts/pages and authorizes handlers/actions; `policy.ts` holds the pure role/ownership and redirect policies. Customer and owner screens are shells, with no M4+ business behavior. The minimal Resend boundary sends only sign-in codes.
+
+Migration `0007` adds auth abuse storage; forward fix `0008` indexes abandoned IP-counter cleanup. Live changes require the M3 Task 8 restore-point and approval gate; Task 9 whole-branch review follows live verification. The [auth runbook](../../README.md#authentication-runbook-m3) documents provider configuration, role operations, accepted limits and streamed navigation denials.
 
 ## Rules
 
