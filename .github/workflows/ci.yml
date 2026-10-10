@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Synthetic, non-secret values: CI never connects to a database. They are distinctive so
+      # check:bundle can prove none of them reach public build output.
+      DATABASE_URL: postgresql://ci:ci-dummy-db-password@ep-ci-dummy.example.invalid/ci
+      DATABASE_URL_UNPOOLED: postgresql://ci:ci-dummy-db-password@ep-ci-dummy.example.invalid/ci
+      BETTER_AUTH_SECRET: ci-dummy-better-auth-secret-0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm db:check
+      - run: pnpm build
+      - run: pnpm check:bundle

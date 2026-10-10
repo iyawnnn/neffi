@@ -1,0 +1,33 @@
+# Domain modules
+
+Neffi is one modular monolith. Business rules live in domain modules under `src/modules/<name>/`; a module's folder is created when its first real code arrives (no empty scaffolding).
+
+| Module | Owns | First milestone |
+|---|---|---|
+| `accounts` | Account, Authentication Identity, OWNER role | 2 (schema), 3 (behavior) |
+| `cards` | Physical Card, permanent `/c/{token}`, Card→Profile routing, disable/re-enable | 4 |
+| `activation` | Activation Credential lifecycle, code-first claim | 4 (credentials), 5 (claim) |
+| `profiles` | Profile, Profile Link, publish state | 6 |
+| `orders` | Product, Customer/Purchaser, Order, Order Item, Shipment | 8 |
+| `payments` | Payment, Refund (separate history records) | 8 |
+| `inventory` | Stock Purchase, derived Card-state counts | 4, 8 |
+| `support` | Support Case and controlled recovery actions | 9 |
+| `expenses` | Expense (linked from Stock Purchase / Shipment) | 8 |
+| `notifications` | EmailService boundary (Resend) | 9 |
+| `activity` | Activity Event history | 2 |
+
+Infrastructure boundaries outside `modules/`:
+
+- `src/config` — validated environment (`env.ts` is server-only) and environment isolation.
+- `src/db` — the only place that touches the database driver (`index.ts` is server-only).
+- `src/auth` — Better Auth server instance (`server.ts` is server-only).
+- Provider integrations (MediaService/Cloudinary, EmailService/Resend) get their own server-only boundary when introduced.
+
+## Rules
+
+- UI, Server Actions and Route Handlers call domain services; domain services own business rules and persistence.
+- Server Actions and Route Handlers are public endpoints: authenticate, authorize, validate and rate-limit them server-side. Hiding UI is never authorization.
+- Client Components receive minimal DTOs, never raw database rows or server config.
+- Select only the columns a screen needs; paginate unbounded lists; let PostgreSQL aggregate; use real transactions for multi-record invariants (e.g. Card claim).
+- Keep DBC and GRC behavior distinct, Purchaser separate from Account, and Card ownership separate from Card→Profile routing.
+- Never put activation codes, OTPs, tokens or other secrets into URLs, logs, error messages, analytics or browser storage.
