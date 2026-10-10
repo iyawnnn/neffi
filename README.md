@@ -125,7 +125,7 @@ Safeguards:
 ## Deploying a Preview (Vercel)
 
 1. Import the GitHub repository in Vercel (Hobby, Node 24.x).
-2. After explicit approval to modify Vercel, set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY` and `AUTH_EMAIL_FROM` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
+2. After explicit approval to modify Vercel, set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `AUTH_EMAIL_FROM`, `ACTIVATION_CODE_SECRET` and `CARD_URL_ORIGIN` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Keep the activation secret consistent with issued development credentials. `CARD_URL_ORIGIN` must use HTTPS in Preview; localhost is permitted only in development. Preview/test-origin cards remain engineering-only; lock the final long-lived origin before any customer/pilot provisioning. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
 3. Leave the **Production** scope empty until the production database exists.
 4. Enable "Automatically expose System Environment Variables".
 5. After explicit push approval, push a branch and check `<preview-url>/api/health` and `<preview-url>/api/auth/ok`. Complete the auth Preview checks below; keep Vercel Authentication enabled.

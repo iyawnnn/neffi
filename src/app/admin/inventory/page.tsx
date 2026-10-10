@@ -55,7 +55,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
 
       <section className="flex flex-col gap-3 rounded-lg border p-4">
         <h2 className="text-sm font-medium">Receive stock</h2>
-        <StockForm today={new Date().toISOString().slice(0, 10)} />
+        <StockForm />
       </section>
 
       <section className="flex flex-col gap-2">

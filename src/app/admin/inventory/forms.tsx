@@ -90,12 +90,19 @@ function ActionFormContent({ action, submit, variant = "default", children, avai
   );
 }
 
-export function StockForm({ today }: { today: string }) {
+// A receiving date is the OWNER's local calendar date, not the server's UTC date.
+function defaultReceivedDate(input: HTMLInputElement | null) {
+  if (!input) return;
+  const today = new Date();
+  input.defaultValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+export function StockForm() {
   return (
     <ActionForm action={receiveStockAction} submit="Receive stock">
       <label className={label}>
         Received on
-        <input name="receivedOn" type="date" defaultValue={today} required className={field} />
+        <input name="receivedOn" type="date" ref={defaultReceivedDate} required className={field} />
       </label>
       <label className={label}>
         Quantity
@@ -116,6 +123,10 @@ export function StockForm({ today }: { today: string }) {
       <label className={label}>
         Reference (optional)
         <input name="reference" maxLength={100} className={field} />
+      </label>
+      <label className={label}>
+        Notes (optional)
+        <textarea name="notes" maxLength={500} rows={3} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base" />
       </label>
     </ActionForm>
   );
