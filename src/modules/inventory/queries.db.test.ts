@@ -53,6 +53,14 @@ describe("listCards", () => {
       expect(new Set(seen)).toEqual(new Set(created.map((card) => card.id)));
     }));
 
+  test("ignores a malformed cursor instead of failing", () =>
+    rollback(db, async (tx) => {
+      await blankCards(tx, 2);
+      for (const before of ["junk", "2026-13-45|x", "'; DROP TABLE cards;--|", "|"]) {
+        expect((await listCards(tx, { before, limit: 5 })).cards).toHaveLength(2);
+      }
+    }));
+
   test("exposes only display fields, never lookup values", () =>
     rollback(db, async (tx) => {
       await insertProvisioningDbc(tx);

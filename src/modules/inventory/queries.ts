@@ -20,8 +20,12 @@ export async function cardStateCounts(db: Db) {
 
 // Keyset pagination on (created_at, id). The cursor carries created_at as the database's own text so microseconds
 // survive; a JS Date would truncate them and skip rows that share a millisecond.
+const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+
+// `before` comes from the URL, so anything that is not a cursor this function issued is ignored.
 export async function listCards(db: Db, { before, limit }: { before?: string; limit: number }) {
-  const [cursorAt, cursorId] = before ? before.split("|") : [];
+  const cursor = before ? CURSOR.exec(before) : null;
+  const [cursorAt, cursorId] = cursor ? [cursor[1], cursor[4]] : [];
   const rows = await db
     .select({
       id: schema.cards.id,
@@ -34,7 +38,7 @@ export async function listCards(db: Db, { before, limit }: { before?: string; li
       cursor: sql<string>`${schema.cards.createdAt}::text || '|' || ${schema.cards.id}::text`,
     })
     .from(schema.cards)
-    .where(before ? sql`(${schema.cards.createdAt}, ${schema.cards.id}) < (${cursorAt}::timestamptz, ${cursorId}::uuid)` : undefined)
+    .where(cursor ? sql`(${schema.cards.createdAt}, ${schema.cards.id}) < (${cursorAt}::timestamptz, ${cursorId}::uuid)` : undefined)
     .orderBy(desc(schema.cards.createdAt), desc(schema.cards.id))
     .limit(limit + 1);
   const page = rows.slice(0, limit);
