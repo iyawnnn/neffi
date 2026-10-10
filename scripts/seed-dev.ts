@@ -4,16 +4,13 @@
 import { existsSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { parseMigrationEnv } from "../src/config/env-schema";
+import { parseSeedEnv } from "../src/config/env-schema";
 import * as schema from "../src/db/schema";
 import { countRows, seed } from "../src/db/seed";
 
 async function main() {
   if (existsSync(".env.local")) process.loadEnvFile(".env.local");
-  const { appEnv, migrationDatabaseUrl } = parseMigrationEnv(process.env);
-  if (appEnv !== "development") {
-    throw new Error(`db:seed resets data and only runs against the development database (VERCEL_ENV is ${appEnv})`);
-  }
+  const { migrationDatabaseUrl } = parseSeedEnv(process.env);
 
   const pool = new Pool({ connectionString: migrationDatabaseUrl });
   try {

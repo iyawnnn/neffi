@@ -1,9 +1,10 @@
 // Development-only synthetic seed. Every value is invented (names, @example.test emails, prices, tokens) and
 // every id is fixed, so re-running yields the identical dataset. `seed` empties the tables first: it is a
-// reset, and scripts/seed-dev.ts refuses to run it anywhere but the development database.
+// reset, guarded here as well as in scripts/seed-dev.ts by the explicit development environment.
 // Activation credentials carry only synthetic lookup values; no activation code exists for any of them.
 import { sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { parseSeedEnv } from "../config/env-schema";
 import * as schema from "./schema";
 
 type SeedDb = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -68,9 +69,10 @@ const SEED_TABLES = [
 ] as const;
 
 export async function seed(db: SeedDb): Promise<void> {
+  parseSeedEnv(process.env);
   await db.transaction(async (tx) => {
     // TRUNCATE bypasses the row-level history guards on purpose: this resets synthetic development data.
-    await tx.execute(sql.raw(`TRUNCATE ${SEED_TABLES.join(", ")} RESTART IDENTITY CASCADE`));
+    await tx.execute(sql.raw(`TRUNCATE ${SEED_TABLES.map((table) => `ONLY public."${table}"`).join(", ")} RESTART IDENTITY RESTRICT`));
 
     await tx.insert(schema.accounts).values([
       { id: S.ownerOne, name: "Synthetic Owner One", email: "owner.one@example.test", emailVerified: true, role: "owner" },
@@ -205,7 +207,7 @@ export async function countRows(db: SeedDb): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   for (const table of SEED_TABLES) {
     // Both drivers (node-postgres and PGlite) return `{ rows }`; the generic PgDatabase type does not say so.
-    const result = (await db.execute(sql.raw(`select count(*)::int as n from ${table}`))) as unknown as {
+    const result = (await db.execute(sql.raw(`select count(*)::int as n from public."${table}"`))) as unknown as {
       rows: { n: number }[];
     };
     counts[table] = Number(result.rows[0].n);

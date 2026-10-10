@@ -68,3 +68,11 @@ export function parseMigrationEnv(raw: RawEnv): { appEnv: AppEnv; migrationDatab
   assertDatabaseIsolation(appEnv, DATABASE_URL_UNPOOLED);
   return { appEnv, migrationDatabaseUrl: DATABASE_URL_UNPOOLED };
 }
+
+export function parseSeedEnv(raw: RawEnv): { appEnv: AppEnv; migrationDatabaseUrl: string } {
+  // Destructive resets must never inherit resolveAppEnv's development default.
+  if (raw.VERCEL_ENV !== "development" || (raw.NODE_ENV !== undefined && raw.NODE_ENV !== "development")) {
+    throw new Error("db:seed resets data and requires VERCEL_ENV=development and NODE_ENV unset or development");
+  }
+  return parseMigrationEnv(raw);
+}
