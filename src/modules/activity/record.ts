@@ -14,6 +14,9 @@ export type ActivityType =
   | "order_created"
   | "card_released"
   | "card_claimed"
+  | "card_profile_changed"
+  | "card_disabled"
+  | "card_enabled"
   | "support_case_resolved"
   | "note";
 
