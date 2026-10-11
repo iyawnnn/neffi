@@ -1,0 +1,50 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, expect, test, vi } from "vitest";
+
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), getLinkedMethods: vi.fn(), ownedCards: vi.fn() }));
+vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
+vi.mock("@/auth/methods", () => ({ getLinkedMethods: m.getLinkedMethods }));
+vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
+vi.mock("@/db", () => ({ db: {} }));
+vi.mock("./account-actions", () => ({ AccountActions: () => <div data-account-actions="" /> }));
+
+import CustomerHome from "./page";
+
+const TOKEN = "A".repeat(22) + "WXYZ";
+const render = async (search: Record<string, string> = {}) =>
+  renderToStaticMarkup(await CustomerHome({ params: Promise.resolve({}), searchParams: Promise.resolve(search) } as Parameters<typeof CustomerHome>[0]));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  m.requireAccount.mockResolvedValue({ accountId: "a1", email: "a@example.test", role: "customer" });
+  m.getLinkedMethods.mockResolvedValue({ google: false });
+  m.ownedCards.mockResolvedValue([]);
+});
+
+test("after a claim, confirms the Neffi was added", async () => {
+  const html = await render({ added: "1" });
+  expect(html).toMatch(/role="status"/);
+  expect(html).toContain("Your Neffi has been added to your account. Next, you&#x27;ll set it up.");
+});
+
+test("lists owned cards waiting for setup without exposing the full card address", async () => {
+  m.ownedCards.mockResolvedValue([
+    { id: "c1", publicToken: TOKEN, profileId: null },
+    { id: "c2", publicToken: "B".repeat(26), profileId: "p1" },
+  ]);
+  const html = await render();
+  expect(html).toContain("Ready to set up");
+  expect(html).toContain("Neffi ending in WXYZ");
+  expect(html).toContain("Activate another Neffi");
+  expect(html).not.toContain(TOKEN);
+  expect(html).not.toContain("BBBB");
+  expect(m.ownedCards).toHaveBeenCalledWith({}, "a1");
+});
+
+test("with no cards keeps the empty-state line and offers activation", async () => {
+  const html = await render();
+  expect(html).toContain("Your cards and profiles will appear here.");
+  expect(html).not.toContain("Ready to set up");
+  expect(html).toContain('href="/activate"');
+  expect(html).toContain("Activate a Neffi");
+});
