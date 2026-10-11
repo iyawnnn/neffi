@@ -14,11 +14,10 @@ export const metadata: Metadata = {
 export const instant = false;
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
-  if (await getViewer()) redirect("/app");
-
   const params = await searchParams;
   const error = Array.isArray(params.error) ? params.error[0] : params.error;
   const next = safeNext(Array.isArray(params.next) ? params.next[0] : params.next);
+  if (await getViewer()) redirect(next);
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-16">
