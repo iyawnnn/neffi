@@ -17,6 +17,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/activation/claim.ts",
   "src/modules/cards/owned.ts",
   "src/modules/profiles/profiles.ts",
+  "src/modules/profiles/view.ts",
   "src/modules/cards/manage.ts",
   "src/modules/activity/record.ts",
   "src/modules/cards/card.ts",
