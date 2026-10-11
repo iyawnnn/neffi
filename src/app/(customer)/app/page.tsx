@@ -50,7 +50,7 @@ export default async function CustomerHome({ searchParams }: PageProps<"/app">) 
       </section>
       <AccountActions googleLinked={methods.google} />
       {cards.length ? null : <p className="max-w-sm text-center text-sm text-muted-foreground">Your cards and profiles will appear here.</p>}
-      <Link href="/activate" className="text-sm font-medium underline underline-offset-4">
+      <Link href="/activate" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
         {cards.length ? "Activate another Neffi" : "Activate a Neffi"}
       </Link>
     </main>

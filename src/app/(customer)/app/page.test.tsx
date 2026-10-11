@@ -48,3 +48,14 @@ test("with no cards keeps the empty-state line and offers activation", async () 
   expect(html).toContain('href="/activate"');
   expect(html).toContain("Activate a Neffi");
 });
+
+test.each([false, true])("activation navigation has a 44px touch target (owns cards: %s)", async (ownsCards) => {
+  m.ownedCards.mockResolvedValue(ownsCards ? [{ id: "c1", publicToken: TOKEN, profileId: null }] : []);
+  const html = await render();
+  const link = [...html.matchAll(/<a\b[^>]*>/g)]
+    .map(([tag]) => tag)
+    .find((tag) => tag.includes('href="/activate"'));
+  expect(link).toBeDefined();
+  expect(link).toContain("inline-flex");
+  expect(link).toContain("min-h-11");
+});
