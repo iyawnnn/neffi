@@ -48,6 +48,20 @@ test("signed in without cards: activate your Neffi, identity shown, easy way hom
   expect(html).toContain('href="/app"');
 });
 
+test.each([
+  [null, "/sign-in?next=/activate"],
+  [VIEWER, "/app"],
+])("code-entry navigation has a 44px touch target (viewer %#)", async (viewer, href) => {
+  m.getViewer.mockResolvedValue(viewer);
+  const html = await render();
+  const link = [...html.matchAll(/<a\b[^>]*>/g)]
+    .map(([tag]) => tag)
+    .find((tag) => tag.includes(`href="${href}"`));
+  expect(link).toBeDefined();
+  expect(link).toContain("inline-flex");
+  expect(link).toContain("min-h-11");
+});
+
 test("signed in with a card: repeat scan offers another activation, no auto-redirect", async () => {
   m.getViewer.mockResolvedValue(VIEWER);
   m.ownedCards.mockResolvedValue([CARD]);

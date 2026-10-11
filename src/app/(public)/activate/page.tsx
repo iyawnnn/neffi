@@ -65,11 +65,11 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
         ) : null}
         <CodeForm />
         {viewer ? (
-          <Link href="/app" className="text-sm font-medium underline underline-offset-4">
+          <Link href="/app" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
             Go to my Neffi
           </Link>
         ) : (
-          <Link href="/sign-in?next=/activate" className="text-sm text-muted-foreground underline underline-offset-4">
+          <Link href="/sign-in?next=/activate" className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4">
             Already activated? Sign in
           </Link>
         )}
