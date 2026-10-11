@@ -34,7 +34,8 @@ test("lists owned cards waiting for setup without exposing the full card address
   ]);
   const html = await render();
   expect(html).toContain("Ready to set up");
-  expect(html).toContain("Neffi ending in WXYZ");
+  expect(html).toContain("Set up Neffi ending in WXYZ");
+  expect(html).toContain('href="/app/setup/c1"');
   expect(html).toContain("Activate another Neffi");
   expect(html).not.toContain(TOKEN);
   expect(html).not.toContain("BBBB");

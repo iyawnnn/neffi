@@ -32,9 +32,12 @@ export default async function CustomerHome({ searchParams }: PageProps<"/app">) 
         <section className="flex w-full max-w-sm flex-col gap-2 rounded-lg border p-4">
           <h2 className="text-sm font-medium">Ready to set up</h2>
           <ul className="text-sm">
-            {/* M6 turns each item into the entry of its guided setup. */}
             {waiting.map((card) => (
-              <li key={card.id}>Neffi ending in {card.publicToken.slice(-4)} — waiting for setup</li>
+              <li key={card.id}>
+                <Link href={`/app/setup/${card.id}`} className="inline-flex min-h-11 items-center font-medium underline underline-offset-4">
+                  Set up Neffi ending in {card.publicToken.slice(-4)}
+                </Link>
+              </li>
             ))}
           </ul>
         </section>
