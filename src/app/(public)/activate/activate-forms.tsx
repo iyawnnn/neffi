@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { inputClass } from "../sign-in/sign-in-form";
+import { inputClass } from "@/components/ui/input";
 import { checkCodeAction, claimAction, startOverAction, switchAccountAction } from "./actions";
 
 // The typed code lives only in this component's memory; it is posted, never stored or put in the URL.

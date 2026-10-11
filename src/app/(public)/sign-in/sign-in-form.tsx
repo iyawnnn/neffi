@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { authClient } from "@/auth/client";
 import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/input";
 
 type Step = "email" | "code";
 
-export const inputClass =
-  "h-11 w-full rounded-lg border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+export { inputClass };
 
 export function SignInForm({ next, notice }: { next: string; notice?: string }) {
   const router = useRouter();
