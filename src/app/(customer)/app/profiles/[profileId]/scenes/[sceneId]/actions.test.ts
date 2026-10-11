@@ -1,13 +1,14 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { ProfileError } from "@/modules/profiles/errors";
 import { PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
-const m = vi.hoisted(() => ({ authorize: vi.fn(), rename: vi.fn(), deleteScene: vi.fn(), add: vi.fn(), update: vi.fn(), move: vi.fn(), visible: vi.fn(), remove: vi.fn() }));
+const m = vi.hoisted(() => ({ authorize: vi.fn(), rename: vi.fn(), deleteScene: vi.fn(), add: vi.fn(), update: vi.fn(), move: vi.fn(), visible: vi.fn(), remove: vi.fn(), form: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/modules/forms/forms", () => ({ updateForm: m.form }));
 vi.mock("@/modules/profiles/scenes", () => ({ renameScene: m.rename, deleteScene: m.deleteScene }));
 vi.mock("@/modules/profiles/blocks", () => ({ addBlock: m.add, updateBlock: m.update, moveBlock: m.move, setBlockVisible: m.visible, deleteBlock: m.remove }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
-import { addBlockAction, deleteSceneAction, moveBlockAction, removeBlockAction, renameSceneAction, toggleBlockAction, updateBlockAction } from "./actions";
+import { addBlockAction, deleteSceneAction, moveBlockAction, removeBlockAction, renameSceneAction, toggleBlockAction, updateBlockAction, updateFormAction } from "./actions";
 const PROFILE = "11111111-1111-4111-8111-111111111111";
 const SCENE = "22222222-2222-4222-8222-222222222222";
 const BLOCK = "33333333-3333-4333-8333-333333333333";
@@ -64,4 +65,14 @@ test("signed-out and malformed requests never call the domain", async () => {
   await expect(renameSceneAction(undefined, data({ sceneId: "bad" }))).rejects.toThrow("NOT_FOUND");
   expect(m.add).not.toHaveBeenCalled();
   expect(m.rename).not.toHaveBeenCalled();
+});
+
+const formData = (extra: Record<string, string> = {}) => data({ formId: BLOCK, title: "Enquiries", "field.name": "required", "field.email": "required", "field.phone": "optional", "field.company": "hidden", "field.message": "optional", ...extra });
+test("form settings build fields, retain ids, drop blank questions and generate new ids", async () => {
+  await expect(updateFormAction(undefined, formData({ "question.0.id": "abcdefgh", "question.0.label": " Old question ", "question.0.required": "on", "question.1.label": "New question", "question.2.label": " " }))).rejects.toThrow(destination);
+  expect(m.form).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, formId: BLOCK, title: "Enquiries", config: { fields: { name: "required", email: "required", phone: "optional", company: "hidden", message: "optional" }, questions: [{ id: "abcdefgh", label: "Old question", required: true }, { id: expect.stringMatching(/^[a-z0-9]{8}$/), label: "New question", required: false }] } });
+});
+test("more than three nonblank questions refuses without mutation", async () => {
+  expect(await updateFormAction(undefined, formData({ "question.0.label": "One", "question.1.label": "Two", "question.2.label": "Three", "question.3.label": "Four" }))).toEqual({ error: "You can add up to 3 questions." });
+  expect(m.form).not.toHaveBeenCalled();
 });

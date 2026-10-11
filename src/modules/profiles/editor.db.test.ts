@@ -39,3 +39,11 @@ test("a scene of another profile is not returned", () => rollback(db, async tx =
   const { scene } = await insertProfileWithScene(tx, input.accountId);
   expect(await sceneForEditing(tx, input.accountId, input.profileId, scene.id)).toBeNull();
 }));
+
+ test("form editing data includes its shared form title and configuration", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
+  const block = edit!.blocks.find(b => b.type === "form")!;
+  const row = await blockForEditing(tx, input.accountId, input.profileId, block.id);
+  expect(row).toMatchObject({ form: { id: row!.formId, title: "Let's connect", config: { fields: { name: "required", email: "required" }, questions: [] } } });
+}));

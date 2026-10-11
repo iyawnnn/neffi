@@ -22,6 +22,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/profiles/scenes.ts",
   "src/modules/profiles/blocks.ts",
   "src/modules/profiles/editor.ts",
+  "src/modules/forms/forms.ts",
   "src/modules/cards/manage.ts",
   "src/modules/activity/record.ts",
   "src/modules/cards/card.ts",

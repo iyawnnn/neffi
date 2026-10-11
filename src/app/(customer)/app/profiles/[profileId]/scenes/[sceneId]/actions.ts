@@ -1,10 +1,13 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
 import { db } from "@/db";
 import { blockType, formPreset } from "@/db/schema/enums";
+import { FORM_FIELDS, MAX_QUESTIONS } from "@/modules/forms/config";
+import { updateForm } from "@/modules/forms/forms";
 import { addBlock, deleteBlock, moveBlock, setBlockVisible, updateBlock } from "@/modules/profiles/blocks";
 import type { BlockType } from "@/modules/profiles/block-content";
 import { ProfileError } from "@/modules/profiles/errors";
@@ -88,5 +91,19 @@ export async function removeBlockAction(_previous: SceneActionState | undefined,
   const blockId = id(data.get("blockId"));
   if (data.get("confirm") !== "on") return { error: "Tick the box to confirm." };
   try { await deleteBlock(db, { accountId: input.accountId, profileId: input.profileId, blockId }); } catch (error) { return failure(error); }
+  redirect(`/app/profiles/${input.profileId}/scenes/${input.sceneId}`);
+}
+
+export async function updateFormAction(_previous: SceneActionState | undefined, data: FormData): Promise<SceneActionState> {
+  const input = await context(data);
+  const formId = id(data.get("formId"));
+  const fields = Object.fromEntries(FORM_FIELDS.map(field => [field, text(data, `field.${field}`)]));
+  const indices = [...new Set([...data.keys()].flatMap(key => key.match(/^question\.(\d+)\.label$/)?.[1] ?? []))].sort((a, b) => Number(a) - Number(b));
+  const questions = indices.filter(index => text(data, `question.${index}.label`).trim()).map(index => ({
+    id: text(data, `question.${index}.id`) || randomBytes(4).toString("hex"),
+    label: text(data, `question.${index}.label`).trim(), required: data.get(`question.${index}.required`) === "on",
+  }));
+  if (questions.length > MAX_QUESTIONS) return { error: "You can add up to 3 questions." };
+  try { await updateForm(db, { accountId: input.accountId, profileId: input.profileId, formId, title: text(data, "title"), config: { fields, questions } }); } catch (error) { return failure(error); }
   redirect(`/app/profiles/${input.profileId}/scenes/${input.sceneId}`);
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
+import type { FormConfig } from "../forms/config";
 import { LINK_KIND_LABELS, type LinkKind } from "./block-content";
 
 function summary(type: string, content: Record<string, unknown>, formTitle: string | null) {
@@ -34,11 +35,12 @@ export async function sceneForEditing(db: Db, accountId: string, profileId: stri
 }
 
 export async function blockForEditing(db: Db, accountId: string, profileId: string, blockId: string) {
-  const [row] = await db.select(blockColumns).from(schema.sceneBlocks)
+  const [row] = await db.select({ ...blockColumns, formConfig: schema.formDefinitions.config }).from(schema.sceneBlocks)
     .innerJoin(schema.scenes, eq(schema.scenes.id, schema.sceneBlocks.sceneId))
     .innerJoin(schema.profiles, eq(schema.profiles.id, schema.scenes.profileId))
     .leftJoin(schema.formDefinitions, eq(schema.formDefinitions.id, schema.sceneBlocks.formId))
     .where(and(eq(schema.sceneBlocks.id, blockId), eq(schema.profiles.id, profileId), eq(schema.profiles.accountId, accountId)));
   if (!row) return null;
-  return { id: row.id, sceneId: row.sceneId, type: row.type, visible: row.visible, content: row.content as Record<string, unknown>, formId: row.formId };
+  return { id: row.id, sceneId: row.sceneId, type: row.type, visible: row.visible, content: row.content as Record<string, unknown>, formId: row.formId,
+    form: row.formId && row.formTitle && row.formConfig ? { id: row.formId, title: row.formTitle, config: row.formConfig as FormConfig } : null };
 }
