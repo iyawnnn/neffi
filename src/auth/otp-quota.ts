@@ -12,11 +12,10 @@ export const OTP_EMAIL_WINDOW_MS = 10 * 60_000;
 
 type QuotaDb = { execute: (query: SQL) => Promise<unknown> };
 
-// Counts one OTP send for this email and says whether it is still within the quota. One atomic upsert, so
-// concurrent requests cannot both slip under the limit. Rows are keyed by an HMAC of the email, never the
-// address, and rows older than the window are removed in the same pass.
-export async function consumeOtpQuota(db: QuotaDb, secret: string, email: string, now = new Date()): Promise<boolean> {
-  const key = hmacHex(secret, "otp-email", email.toLowerCase());
+// Counts one hit for an HMAC key and says whether it is still within `limit`. One atomic upsert, so concurrent
+// requests cannot both slip under. Shared by every 10-minute counter (OTP email, activation); keys are
+// domain-separated HMACs, never raw emails or IPs, and expired rows are removed in the same pass.
+export async function consumeQuota(db: QuotaDb, key: string, limit: number, now = new Date()): Promise<boolean> {
   const windowStart = new Date(now.getTime() - OTP_EMAIL_WINDOW_MS);
   await db.execute(sql`delete from auth_otp_quotas where window_started_at <= ${windowStart.toISOString()}::timestamptz`);
   const result = (await db.execute(sql`
@@ -25,5 +24,8 @@ export async function consumeOtpQuota(db: QuotaDb, secret: string, email: string
     on conflict (key) do update set count = auth_otp_quotas.count + 1
     returning count
   `)) as { rows: { count: number }[] };
-  return Number(result.rows[0].count) <= OTP_EMAIL_LIMIT;
+  return Number(result.rows[0].count) <= limit;
 }
+
+export const consumeOtpQuota = (db: QuotaDb, secret: string, email: string, now = new Date()) =>
+  consumeQuota(db, hmacHex(secret, "otp-email", email.toLowerCase()), OTP_EMAIL_LIMIT, now);

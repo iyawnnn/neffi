@@ -21,6 +21,7 @@ type ActivityInput = {
   type: ActivityType;
   actorAccountId: string;
   cardId?: string;
+  accountId?: string;
   orderId?: string;
   stockPurchaseId?: string;
   note?: string;
