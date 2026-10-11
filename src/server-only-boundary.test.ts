@@ -24,6 +24,8 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/profiles/editor.ts",
   "src/modules/forms/forms.ts",
   "src/modules/forms/submissions.ts",
+  "src/modules/forms/notify.ts",
+  "src/integrations/email/sender.ts",
   "src/modules/cards/manage.ts",
   "src/modules/activity/record.ts",
   "src/modules/cards/card.ts",

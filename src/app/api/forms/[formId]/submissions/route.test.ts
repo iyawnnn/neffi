@@ -1,7 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { hmacHex } from "@/auth/otp-quota";
-const m = vi.hoisted(() => ({ quota: vi.fn(), submit: vi.fn() }));
+const m = vi.hoisted(() => ({ quota: vi.fn(), submit: vi.fn(), after: vi.fn(), notify: vi.fn(), send: vi.fn() }));
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("next/server", () => ({ after: m.after }));
+vi.mock("@/modules/forms/notify", () => ({ notifySubmission: m.notify }));
+vi.mock("@/integrations/email/sender", () => ({ sendEmail: m.send }));
 vi.mock("@/config/env", () => ({ env: { authBaseUrl: "http://localhost:3000", betterAuthSecret: "synthetic-form-secret" } }));
 vi.mock("@/auth/otp-quota", async original => ({ ...await original<typeof import("@/auth/otp-quota")>(), consumeQuota: m.quota }));
 vi.mock("@/modules/forms/submissions", () => ({ submitForm: m.submit }));
@@ -32,4 +35,13 @@ test.each([
 ])("maps result %j without echoing answers", async (result, status, body) => {
   m.submit.mockResolvedValue(result); const response = await call(); expect(response.status).toBe(status); expect(await response.json()).toEqual(body);
   expect(m.submit).toHaveBeenCalledWith({}, { formId: FORM, clientKey: KEY, answers: valid.answers });
+});
+
+test("created schedules notification after the response; duplicate never schedules", async () => {
+  await call();
+  expect(m.after).toHaveBeenCalledOnce();
+  await m.after.mock.calls[0][0]();
+  expect(m.notify).toHaveBeenCalledWith({}, m.send, { submissionId: "s1", appOrigin: "http://localhost:3000", replyTo: "vic@e.test" });
+  m.after.mockClear(); m.submit.mockResolvedValue({ status: "duplicate", submissionId: "s1" });
+  await call(); expect(m.after).not.toHaveBeenCalled();
 });

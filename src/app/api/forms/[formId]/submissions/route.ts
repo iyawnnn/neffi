@@ -1,3 +1,6 @@
+import { after } from "next/server";
+import { sendEmail } from "@/integrations/email/sender";
+import { notifySubmission } from "@/modules/forms/notify";
 import { z } from "zod";
 import { consumeQuota, hmacHex } from "@/auth/otp-quota";
 import { env } from "@/config/env";
@@ -31,5 +34,9 @@ export async function POST(request: Request, { params }: RouteContext<"/api/form
   const result = await submitForm(db, { formId, clientKey: parsed.key, answers: parsed.answers });
   if (result.status === "unavailable") return json({ error: "unavailable" }, 404);
   if (result.status === "invalid") return json({ error: "invalid", fields: result.fields }, 400);
+  if (result.status === "created") {
+    const appOrigin = new URL(env.authBaseUrl).origin;
+    after(() => notifySubmission(db, sendEmail, { submissionId: result.submissionId, appOrigin, replyTo: result.replyTo }));
+  }
   return json({ ok: true }, 201);
 }
