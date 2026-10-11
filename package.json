@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:activation-fixture": "node --conditions=react-server --import tsx scripts/dev-activation-fixture.mts",
+    "dev:form-submission": "node --conditions=react-server --import tsx scripts/dev-form-submission.mts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
