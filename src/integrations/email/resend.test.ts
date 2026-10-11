@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { authCodeEmail, createResendSender } from "./resend";
+import { authCodeEmail, changeEmailCodeEmail, createResendSender } from "./resend";
 
 const config = { apiKey: "re_synthetic_key_not_real", from: "Neffi <auth@example.test>" };
 
@@ -59,6 +59,14 @@ describe("Resend sender", () => {
 });
 
 describe("auth code email", () => {
+  test("email change explains the new sign-in address, expiry and single use without links", () => {
+    const mail = changeEmailCodeEmail("482913", 5);
+    expect(mail.subject).toBe("Confirm your new Neffi sign-in email");
+    expect(mail.text).toContain("482913");
+    expect(mail.text).toContain("use this address for signing in");
+    expect(mail.text).toContain("5 minutes and works once");
+    expect(mail.text).not.toMatch(/https?:\/\//);
+  });
   test("states the code and its lifetime, with no links", () => {
     const mail = authCodeEmail("482913", 5);
     expect(mail.subject).toBe("Your Neffi sign-in code");

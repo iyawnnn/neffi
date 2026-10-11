@@ -14,7 +14,7 @@ type AuthOptionsInput = {
   baseURL: string;
   google: { clientId: string; clientSecret: string };
   // Delivers a one-time sign-in code. Injected so tests can capture it and production can use Resend.
-  sendAuthCode: (message: { email: string; code: string }) => Promise<void>;
+  sendAuthCode: (message: { email: string; code: string; type: string }) => Promise<void>;
 };
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
@@ -106,6 +106,8 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
       updateAccountOnSignIn: false,
       accountLinking: {
         enabled: true,
+        // The verified email code always remains a sign-in method, so removing Google never locks anyone out (Step 2).
+        allowUnlinkingAll: true,
         // A new Google identity never attaches itself to an existing Account by email. Linking happens only
         // through the signed-in "Connect Google" action, and only for the Account's own email.
         disableImplicitLinking: true,
@@ -175,12 +177,13 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
         },
       },
       emailOTP({
+        changeEmail: { enabled: true },
         otpLength: 6,
         expiresIn: OTP_LIFETIME_SECONDS,
         allowedAttempts: 3,
         // Keyed hash, never the code: a database leak alone cannot reveal or replay a code.
         storeOTP: { hash: async (code: string) => hmacHex(secret, "otp", code) },
-        sendVerificationOTP: async ({ email, otp }) => sendAuthCode({ email, code: otp }),
+        sendVerificationOTP: async ({ email, otp, type }) => sendAuthCode({ email, code: otp, type }),
       }),
       // Must stay last: it forwards Set-Cookie to Next.js when a Server Action or route handler signs in.
       nextCookies(),

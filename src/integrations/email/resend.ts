@@ -34,3 +34,10 @@ export function authCodeEmail(code: string, lifetimeMinutes: number): Pick<Email
     text: `Your Neffi sign-in code is ${code}.\n\nIt expires in ${lifetimeMinutes} minutes and works once. If you did not ask for it, ignore this message.`,
   };
 }
+
+export function changeEmailCodeEmail(code: string, lifetimeMinutes: number): Pick<Email, "subject" | "text"> {
+  return {
+    subject: "Confirm your new Neffi sign-in email",
+    text: `Your Neffi code is ${code}.\n\nEnter it to use this address for signing in. It expires in ${lifetimeMinutes} minutes and works once. If you did not ask for this, ignore this message.`,
+  };
+}

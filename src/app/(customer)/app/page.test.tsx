@@ -6,7 +6,6 @@ vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/auth/methods", () => ({ getLinkedMethods: m.getLinkedMethods }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("./account-actions", () => ({ AccountActions: () => <div data-account-actions="" /> }));
 
 import CustomerHome from "./page";
 
@@ -44,6 +43,8 @@ test("lists owned cards waiting for setup without exposing the full card address
 
 test("with no cards keeps the empty-state line and offers activation", async () => {
   const html = await render();
+  expect(html).not.toContain("Signed in as");
+  expect(html).not.toContain("Sign-in methods");
   expect(html).toContain("Your cards and profiles will appear here.");
   expect(html).not.toContain("Ready to set up");
   expect(html).toContain('href="/activate"');

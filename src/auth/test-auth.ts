@@ -22,7 +22,7 @@ export function fakeGoogleIdToken(profile: GoogleProfile) {
 
 export async function createTestAuth({ baseURL = TEST_BASE_URL }: { baseURL?: string } = {}) {
   const db = await createTestDb();
-  const sent: { email: string; code: string }[] = [];
+  const sent: { email: string; code: string; type: string }[] = [];
   const auth = betterAuth(
     authOptions({
       db,

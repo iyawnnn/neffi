@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth/minimal";
 import { env } from "@/config/env";
 import { db } from "@/db";
 import { sendEmail } from "@/integrations/email/sender";
-import { authCodeEmail } from "@/integrations/email/resend";
+import { authCodeEmail, changeEmailCodeEmail } from "@/integrations/email/resend";
 import { authOptions } from "./options";
 
 export const auth = betterAuth(
@@ -12,6 +12,6 @@ export const auth = betterAuth(
     secret: env.betterAuthSecret,
     baseURL: env.authBaseUrl,
     google: { clientId: env.googleClientId, clientSecret: env.googleClientSecret },
-    sendAuthCode: ({ email, code }) => sendEmail({ to: email, ...authCodeEmail(code, 5) }),
+    sendAuthCode: ({ email, code, type }) => sendEmail({ to: email, ...(type === "change-email" ? changeEmailCodeEmail(code, 5) : authCodeEmail(code, 5)) }),
   }),
 );
