@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:activation-fixture": "node --conditions=react-server --import tsx scripts/dev-activation-fixture.mts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
