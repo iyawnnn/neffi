@@ -6,7 +6,7 @@ import { CardError, lockCard } from "../cards/card";
 import type { Db } from "../db";
 import { PRESETS } from "../forms/config";
 import { ProfileError } from "./errors";
-import { LIMITS, publishGaps, type PublishGap } from "./rules";
+import { ACCENTS, LIMITS, publishGaps, type Identity, type PublishGap } from "./rules";
 import { PURPOSES, starterBlocks, type Essentials, type Purpose } from "./starters";
 
 // Every profile mutation starts here: the WHERE on account_id is the ownership check, FOR UPDATE serializes edits.
@@ -139,4 +139,58 @@ export async function getOwnedProfile(db: Db, accountId: string, profileId: stri
     gaps: publishGaps({ ...p, visibleDefaultBlocks: visible }),
     unread: unreadCount,
   };
+}
+
+export async function publishProfile(db: Db, input: { accountId: string; profileId: string }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    const gaps = publishGaps({ ...p, visibleDefaultBlocks: await visibleBlockCount(tx, p.defaultSceneId) });
+    if (gaps.length) throw new ProfileError("not_ready", gaps);
+    await tx.update(schema.profiles).set({ status: "published" }).where(eq(schema.profiles.id, p.id));
+  });
+}
+
+export async function unpublishProfile(db: Db, input: { accountId: string; profileId: string }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    if (p.status === "published") await tx.update(schema.profiles).set({ status: "unpublished" }).where(eq(schema.profiles.id, p.id));
+  });
+}
+
+// A Published profile must stay publishable (D6): edits that would empty it are refused, not silently applied.
+export async function updateIdentity(db: Db, input: { accountId: string; profileId: string; identity: Identity }): Promise<void> {
+  await db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    if (p.status === "published") {
+      const gaps = publishGaps({ ...input.identity, visibleDefaultBlocks: await visibleBlockCount(tx, p.defaultSceneId) });
+      if (gaps.length) throw new ProfileError("not_ready", gaps);
+    }
+    await tx.update(schema.profiles).set(input.identity).where(eq(schema.profiles.id, p.id));
+  });
+}
+
+export async function updateAppearance(db: Db, input: { accountId: string; profileId: string; accentColor: string; imageIsLogo: boolean }): Promise<void> {
+  if (!ACCENTS.some((accent) => accent.hex === input.accentColor)) throw new ProfileError("invalid");
+  await db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    await tx.update(schema.profiles).set({ accentColor: input.accentColor, imageIsLogo: input.imageIsLogo }).where(eq(schema.profiles.id, p.id));
+  });
+}
+
+export async function setProfileImage(db: Db, input: { accountId: string; profileId: string; assetId: string | null }) {
+  return db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    await tx.update(schema.profiles).set({ imageAssetId: input.assetId }).where(eq(schema.profiles.id, p.id));
+    return { previousAssetId: p.imageAssetId === input.assetId ? null : p.imageAssetId };
+  });
+}
+
+export async function deleteProfile(db: Db, input: { accountId: string; profileId: string }) {
+  return db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    const [{ n }] = await tx.select({ n: count() }).from(schema.cards).where(eq(schema.cards.profileId, p.id));
+    if (n > 0) throw new ProfileError("has_cards");
+    await tx.delete(schema.profiles).where(eq(schema.profiles.id, p.id));
+    return { imageAssetId: p.imageAssetId };
+  });
 }
