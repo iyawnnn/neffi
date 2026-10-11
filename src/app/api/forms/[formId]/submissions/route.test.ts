@@ -1,0 +1,35 @@
+import { beforeEach, expect, test, vi } from "vitest";
+import { hmacHex } from "@/auth/otp-quota";
+const m = vi.hoisted(() => ({ quota: vi.fn(), submit: vi.fn() }));
+vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/config/env", () => ({ env: { authBaseUrl: "http://localhost:3000", betterAuthSecret: "synthetic-form-secret" } }));
+vi.mock("@/auth/otp-quota", async original => ({ ...await original<typeof import("@/auth/otp-quota")>(), consumeQuota: m.quota }));
+vi.mock("@/modules/forms/submissions", () => ({ submitForm: m.submit }));
+import { POST } from "./route";
+const FORM = "11111111-1111-4111-8111-111111111111";
+const KEY = "22222222-2222-4222-8222-222222222222";
+const valid = { key: KEY, answers: { name: "Vic", email: "vic@e.test" } };
+const call = (body: string = JSON.stringify(valid), origin: string | null = "http://localhost:3000", formId = FORM) => POST(new Request(`http://localhost:3000/api/forms/${formId}/submissions`, { method: "POST", headers: { ...(origin ? { origin } : {}), "x-vercel-forwarded-for": "203.0.113.9" }, body }), { params: Promise.resolve({ formId }) });
+beforeEach(() => { vi.resetAllMocks(); m.quota.mockResolvedValue(true); m.submit.mockResolvedValue({ status: "created", submissionId: "s1", replyTo: "vic@e.test" }); });
+test.each([null, "https://foreign.example.test"])("rejects missing or foreign origin %s before any work", async origin => {
+  expect((await call(undefined, origin)).status).toBe(403); expect(m.quota).not.toHaveBeenCalled(); expect(m.submit).not.toHaveBeenCalled();
+});
+test("quota exhaustion uses the HMAC IP key and limit 10", async () => {
+  m.quota.mockResolvedValue(false); expect((await call()).status).toBe(429);
+  expect(m.quota).toHaveBeenCalledWith({}, hmacHex("synthetic-form-secret", "form-ip", "203.0.113.9"), 10); expect(m.submit).not.toHaveBeenCalled();
+});
+test("oversize bodies are refused", async () => { expect((await call("x".repeat(16_001))).status).toBe(413); expect(m.submit).not.toHaveBeenCalled(); });
+test.each(["not json", JSON.stringify({ ...valid, key: "bad" }), JSON.stringify({ ...valid, answers: { name: "x".repeat(2001) } })])("invalid body returns only the generic error", async body => {
+  const response = await call(body); expect(response.status).toBe(400); expect(await response.json()).toEqual({ error: "invalid" }); expect(m.submit).not.toHaveBeenCalled();
+});
+test("malformed form id is not available", async () => { expect((await call(undefined, undefined, "bad")).status).toBe(404); expect(m.submit).not.toHaveBeenCalled(); });
+test("honeypot silently drops the message", async () => { const response = await call(JSON.stringify({ ...valid, website: "x" })); expect(response.status).toBe(201); expect(await response.json()).toEqual({ ok: true }); expect(m.submit).not.toHaveBeenCalled(); });
+test.each([
+  [{ status: "unavailable" }, 404, { error: "unavailable" }],
+  [{ status: "invalid", fields: ["name"] }, 400, { error: "invalid", fields: ["name"] }],
+  [{ status: "created", submissionId: "s1", replyTo: null }, 201, { ok: true }],
+  [{ status: "duplicate", submissionId: "s1" }, 201, { ok: true }],
+])("maps result %j without echoing answers", async (result, status, body) => {
+  m.submit.mockResolvedValue(result); const response = await call(); expect(response.status).toBe(status); expect(await response.json()).toEqual(body);
+  expect(m.submit).toHaveBeenCalledWith({}, { formId: FORM, clientKey: KEY, answers: valid.answers });
+});
