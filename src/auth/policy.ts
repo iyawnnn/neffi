@@ -28,7 +28,7 @@ export const ownsAccountResource = (viewer: Viewer, ownerAccountId: string) => v
 const NEXT_ORIGIN = "http://neffi.invalid";
 const FALLBACK = "/app";
 
-// Post-sign-in destination. Only paths inside /app or /admin on this site are honored; everything else (other
+// Post-sign-in destination. Only paths inside /app, /admin or /activate on this site are honored; everything else (other
 // origins, protocol-relative or backslash tricks, encoded variants, dot segments) falls back to /app.
 export function safeNext(raw: unknown): string {
   if (typeof raw !== "string" || raw === "") return FALLBACK;
@@ -40,6 +40,6 @@ export function safeNext(raw: unknown): string {
   }
   if (url.origin !== NEXT_ORIGIN) return FALLBACK;
   const path = url.pathname;
-  const inside = ["/app", "/admin"].some((root) => path === root || path.startsWith(`${root}/`));
+  const inside = ["/app", "/admin", "/activate"].some((root) => path === root || path.startsWith(`${root}/`));
   return inside ? path : FALLBACK;
 }

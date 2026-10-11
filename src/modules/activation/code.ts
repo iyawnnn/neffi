@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { hmacHex } from "@/auth/otp-quota";
 import { CROCKFORD, randomCrockford } from "@/lib/crockford";
 
@@ -17,3 +18,6 @@ export function normalizeActivationCode(input: string): string | null {
 
 // Domain-separated keyed hash: the only form of an activation code that is ever stored.
 export const activationLookup = (secret: string, normalizedCode: string) => hmacHex(secret, "activation", normalizedCode);
+
+// Constant-time comparison of two hex lookup values; unequal lengths are simply unequal.
+export const sameLookup = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));

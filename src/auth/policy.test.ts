@@ -39,6 +39,20 @@ describe("policies", () => {
 });
 
 describe("safeNext", () => {
+  test("returns to /activate after sign-in", () => {
+    expect(safeNext("/activate")).toBe("/activate");
+  });
+
+  test.each([
+    ["/activate?code=N8KF42PQ7XYZABCD", "/activate"],
+    ["/activate/../admin", "/admin"],
+    ["/activatex", "/app"],
+    ["//evil.example/activate", "/app"],
+    ["https://evil.example/activate", "/app"],
+  ])("safeNext(%s) → %s", (raw, expected) => {
+    expect(safeNext(raw)).toBe(expected);
+  });
+
   test.each([
     ["/app", "/app"],
     ["/app/cards", "/app/cards"],

@@ -98,3 +98,14 @@ export async function insertProvisioningDbc(tx: TestTx) {
     .returning();
   return { card, product, stock };
 }
+
+// A DBC that was sold but not yet activated: released against an order item, no owner.
+export async function insertReleasedDbc(tx: TestTx) {
+  const { item, product } = await insertOrderItem(tx, "dbc");
+  const stock = await insertStockPurchase(tx);
+  const [card] = await tx
+    .insert(cards)
+    .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "released", orderItemId: item.id, publicToken: syntheticToken() })
+    .returning();
+  return { card, item, product, stock };
+}

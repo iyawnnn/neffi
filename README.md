@@ -174,7 +174,7 @@ Accepted abuse limits: another person can consume an email's send quota or inval
 
 ## Physical card provisioning (M4)
 
-OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. There is no `/c/{token}` page and no `/activate` flow yet: the public card resolver is Milestone 7 and activation/claim is Milestone 5.
+OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. There is no `/c/{token}` page yet: the public card resolver is Milestone 7. Customer activation is described under Activation below.
 
 **Configuration.** `CARD_URL_ORIGIN` is a bare origin (no path, query or hash; https outside development). The NFC value written for a DBC is exactly `<CARD_URL_ORIGIN>/c/<token>`. Cards provisioned while it points at a development origin are **engineering test units and must never be sold.** Before any pilot or commercial DBC is provisioned, lock the final long-lived NFC domain and change `CARD_URL_ORIGIN` to it. `ACTIVATION_CODE_SECRET` keys the HMAC stored for each activation code; changing it makes every issued, unclaimed code unverifiable, so treat it like a database credential and do not rotate it casually.
 
@@ -192,7 +192,7 @@ OWNER-only screens at `/admin/inventory` receive stock, provision Digital Busine
 
 **Retire** removes a Blank, Ready or reserved-GRC card that failed or must not be sold. It revokes any unused credential, keeps all history, and a retired reserved GRC stops counting against its order item so a replacement can be reserved.
 
-**Physical evidence.** `nfc_verified_at` and `package_matched_at` exist only after a real physical check. A DBC cannot be Ready without both (a database constraint), and issuing any new usable credential clears the package match. The development seed contains no Ready DBC and no physical evidence by design; only isolated automated tests use synthetic timestamps. Never record a check you did not perform, including on `neffi-dev`.
+**Physical evidence.** `nfc_verified_at` and `package_matched_at` exist only after a real physical check. A DBC cannot be Ready without both (a database constraint), and issuing any new usable credential clears the package match. The development seed contains no Ready DBC and no physical evidence by design; only isolated automated tests and disposable loopback activation fixtures use synthetic timestamps. Never record a check you did not perform, including on `neffi-dev`.
 
 **Migration 0009.** Adds the two columns and `cards_dbc_ready_checks_recorded`, created `NOT VALID` so a pre-M4 development row that was seeded as Ready (with no physical evidence) is not given invented timestamps. New and updated rows are still checked, and a database migrated from zero has no legacy rows. Milestone 10 validates the constraint. It also replaces the `activation_credentials_guard` function; the serialization with retirement from `0006` is unchanged.
 
@@ -203,6 +203,16 @@ An internal engineering NFC encoding test checks the exact URL, phone tap and wr
 - [ ] DBC written with NFC Tools, read back identical, tapped on a real phone (opened the exact address), tag still writable, NFC check recorded, package matched, card Ready.
 - [ ] Credential replaced on that card, old code refused, new code matched, card Ready again.
 - [ ] GRC reserved against a controlled item, review URL written, read back, tapped, writable, encode check recorded.
+
+## Activation (Milestone 5)
+
+The customer flow is `/activate` → activation code → sign in with Google or email code if needed → **Add to my account** → `/app`. Only Released DBCs can be claimed; the release workflow belongs to M8. Claiming assigns ownership, consumes the credential and records Activity atomically. `/app` lists owned cards **Ready to set up** as the resumable M6 handoff; activation creates no Profile or Scene.
+
+An accepted code sets the 15-minute `neffi_activation` cookie (`HttpOnly`, `SameSite=Lax`, `Path=/activate`, secure over HTTPS). It contains only a signed opaque credential reference and expiry, never the activation code. Checks allow 20 attempts per IP and claims allow 10 attempts per Account per 10 minutes, using the existing HMAC-keyed quota counters.
+
+`pnpm check:claim-concurrency` proves single-winner claims using `DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test` only. `pnpm dev:activation-fixture` creates synthetic claimable and unavailable cases and prints their synthetic codes for private local browser acceptance. It requires a loopback `DATABASE_URL` and the same `ACTIVATION_CODE_SECRET` as the dev server; it never loads `.env.local` itself and must never target Neon. Its synthetic Ready timestamps are software test inputs, never evidence of physical acceptance.
+
+Run `DATABASE_URL=<loopback> pnpm dev` with the process environment overriding `.env.local` so browser acceptance uses the disposable local database. Google requires the registered localhost OAuth callback and email sign-in requires a real controlled inbox. Do not copy codes, OTPs or cookies into logs or acceptance records. Real packaged-card acceptance remains deferred until M4's physical gate passes; M5 is not fully complete until its real packaged-card test passes.
 
 ## Security rules
 

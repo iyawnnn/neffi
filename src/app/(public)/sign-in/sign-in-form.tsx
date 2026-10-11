@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 type Step = "email" | "code";
 
-const inputClass =
+export const inputClass =
   "h-11 w-full rounded-lg border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function SignInForm({ next, notice }: { next: string; notice?: string }) {
@@ -115,10 +115,10 @@ export function SignInForm({ next, notice }: { next: string; notice?: string }) 
           <Button type="submit" size="lg" className="h-11 w-full" disabled={busy}>
             Sign in
           </Button>
-          <Button type="button" variant="ghost" disabled={busy} onClick={() => void requestCode()}>
+          <Button type="button" variant="ghost" className="h-11" disabled={busy} onClick={() => void requestCode()}>
             Send a new code
           </Button>
-          <Button type="button" variant="link" disabled={busy} onClick={() => setStep("email")}>
+          <Button type="button" variant="link" className="h-11" disabled={busy} onClick={() => setStep("email")}>
             Use a different email
           </Button>
         </form>
