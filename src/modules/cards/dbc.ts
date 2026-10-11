@@ -1,8 +1,7 @@
 import "server-only";
-import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
-import { activationLookup, normalizeActivationCode } from "../activation/code";
+import { activationLookup, normalizeActivationCode, sameLookup } from "../activation/code";
 import { issueActivationCredential, revokeUsableCredential, usableCredential } from "../activation/credentials";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
@@ -30,8 +29,6 @@ export async function provisionDbc(
     return { publicToken, credentialId, activationCode: code };
   });
 }
-
-const sameLookup = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 // The OWNER confirms the private code physically packaged with this DBC belongs to this Card. Only then is it Ready.
 export async function matchPackage(db: Db, input: Actor & { activationCode: string; activationSecret: string }): Promise<void> {

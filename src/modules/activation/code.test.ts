@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { hmacHex } from "@/auth/otp-quota";
-import { activationLookup, formatActivationCode, generateActivationCode, normalizeActivationCode } from "./code";
+import { activationLookup, formatActivationCode, generateActivationCode, normalizeActivationCode, sameLookup } from "./code";
 
 const ALPHABET = /^[0-9A-HJKMNP-TV-Z]+$/;
 
@@ -40,4 +40,10 @@ describe("activation code", () => {
     expect(lookup).not.toBe(activationLookup("t".repeat(40), code));
     expect(lookup).not.toContain(code);
   });
+});
+
+test("sameLookup compares in constant time and tolerates length mismatch", () => {
+  expect(sameLookup("a".repeat(64), "a".repeat(64))).toBe(true);
+  expect(sameLookup("a".repeat(64), "b".repeat(64))).toBe(false);
+  expect(sameLookup("a".repeat(64), "a".repeat(63))).toBe(false);
 });
