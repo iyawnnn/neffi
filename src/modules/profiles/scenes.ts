@@ -11,7 +11,7 @@ const sceneName = (raw: string) => {
   if (name.length < 1 || name.length > 40) throw new ProfileError("invalid");
   return name;
 };
-async function ownedScene(tx: Db, profileId: string, sceneId: string) {
+export async function ownedScene(tx: Db, profileId: string, sceneId: string) {
   const [scene] = await tx.select({ id: schema.scenes.id }).from(schema.scenes).where(and(eq(schema.scenes.id, sceneId), eq(schema.scenes.profileId, profileId)));
   if (!scene) throw new ProfileError("not_found");
   return scene;
