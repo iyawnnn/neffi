@@ -1,12 +1,13 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { ProfileError } from "@/modules/profiles/errors";
 import { PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
-const m = vi.hoisted(() => ({ authorize: vi.fn(), publish: vi.fn(), unpublish: vi.fn() }));
+const m = vi.hoisted(() => ({ authorize: vi.fn(), publish: vi.fn(), unpublish: vi.fn(), updateIdentity: vi.fn(), deleteProfile: vi.fn(), showScene: vi.fn(), createScene: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/modules/profiles/profiles", () => ({ publishProfile: m.publish, unpublishProfile: m.unpublish }));
+vi.mock("@/modules/profiles/profiles", () => ({ publishProfile: m.publish, unpublishProfile: m.unpublish, updateIdentity: m.updateIdentity, deleteProfile: m.deleteProfile }));
+vi.mock("@/modules/profiles/scenes", () => ({ showScene: m.showScene, createScene: m.createScene }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
-import { publishAction, unpublishAction } from "./actions";
+import { createSceneAction, deleteProfileAction, publishAction, showSceneAction, unpublishAction, updateIdentityAction } from "./actions";
 const PROFILE = "11111111-1111-4111-8111-111111111111";
 const form = (profileId = PROFILE) => { const data = new FormData(); data.set("profileId", profileId); return data; };
 beforeEach(() => { vi.resetAllMocks(); m.authorize.mockResolvedValue({ ok: true, viewer: { accountId: "a1" } }); });
@@ -34,4 +35,50 @@ test("signed-out actions require authentication", async () => {
   await expect(unpublishAction(form())).rejects.toThrow("REDIRECT:/sign-in?next=/app");
   expect(m.publish).not.toHaveBeenCalled();
   expect(m.unpublish).not.toHaveBeenCalled();
+});
+
+const dataWith = (values: Record<string, string>) => {
+  const data = form();
+  for (const [key, value] of Object.entries(values)) data.set(key, value);
+  return data;
+};
+const identityData = (email = "ANA@E.TEST") => dataWith({ fullName: " Ana ", email });
+const SCENE = "22222222-2222-4222-8222-222222222222";
+test("identity invalid email highlights the field and does not mutate", async () => {
+  expect(await updateIdentityAction(undefined, identityData("bad"))).toEqual({ error: "Check the highlighted fields and try again.", fields: ["email"] });
+  expect(m.updateIdentity).not.toHaveBeenCalled();
+});
+test("identity saves normalized details", async () => {
+  expect(await updateIdentityAction(undefined, identityData())).toEqual({ ok: "Saved." });
+  expect(m.updateIdentity).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, identity: { fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null } });
+});
+test("identity not_ready returns publish gap copy", async () => {
+  m.updateIdentity.mockRejectedValue(new ProfileError("not_ready", ["contact"]));
+  expect(await updateIdentityAction(undefined, identityData())).toEqual({ error: "Your Neffi isn't ready to publish yet.", gaps: [PUBLISH_GAP_COPY.contact] });
+});
+test("showScene redirects after the owned mutation", async () => {
+  await expect(showSceneAction(dataWith({ sceneId: SCENE }))).rejects.toThrow(`REDIRECT:/app/profiles/${PROFILE}`);
+  expect(m.showScene).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, sceneId: SCENE });
+});
+test.each(["empty", SCENE])("createScene accepts Start from %s", async copyFrom => {
+  m.createScene.mockResolvedValue({ sceneId: SCENE });
+  await expect(createSceneAction(undefined, dataWith({ name: "Events", copyFrom }))).rejects.toThrow(`REDIRECT:/app/profiles/${PROFILE}/scenes/${SCENE}`);
+  expect(m.createScene).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, name: "Events", copyFromSceneId: copyFrom === "empty" ? null : SCENE });
+});
+test("createScene limit returns customer copy", async () => {
+  m.createScene.mockRejectedValue(new ProfileError("limit_reached"));
+  expect(await createSceneAction(undefined, dataWith({ name: "Events", copyFrom: "empty" }))).toEqual({ error: "You've reached the limit for this. Remove one first." });
+});
+test("delete requires explicit confirmation", async () => {
+  expect(await deleteProfileAction(undefined, form())).toEqual({ error: "Tick the box to confirm." });
+  expect(m.deleteProfile).not.toHaveBeenCalled();
+});
+test("delete success redirects to profile list", async () => {
+  m.deleteProfile.mockResolvedValue({ imageAssetId: null });
+  await expect(deleteProfileAction(undefined, dataWith({ confirm: "on" }))).rejects.toThrow("REDIRECT:/app/profiles");
+  expect(m.deleteProfile).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE });
+});
+test("delete linked-Card failure explains moving Cards, never disabling them", async () => {
+  m.deleteProfile.mockRejectedValue(new ProfileError("has_cards"));
+  expect(await deleteProfileAction(undefined, dataWith({ confirm: "on" }))).toEqual({ error: "Move the cards showing this profile to another profile before deleting it." });
 });
