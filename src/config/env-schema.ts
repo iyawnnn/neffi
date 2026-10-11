@@ -13,6 +13,8 @@ export type ServerEnv = {
   googleClientSecret: string;
   resendApiKey: string;
   authEmailFrom: string;
+  activationCodeSecret: string;
+  cardUrlOrigin: string;
 };
 
 // Platforms often set unused variables to "", which should count as missing.
@@ -22,6 +24,20 @@ const blankAsMissing = <T extends z.ZodType>(schema: T) => z.preprocess((value) 
 const url = (name: string) => z.url({ error: `${name} must be a valid URL` });
 
 const required = (name: string) => blankAsMissing(z.string({ error: `${name} is required` }).min(1, { error: `${name} is required` }));
+
+// The origin written into physical cards. It is bare (no path, query or hash) so `${origin}/c/${token}` is exact.
+const cardUrlOrigin = blankAsMissing(
+  z
+    .string({ error: "CARD_URL_ORIGIN is required" })
+    .transform((value, ctx) => {
+      try {
+        const parsed = new URL(value);
+        if (["http:", "https:"].includes(parsed.protocol) && parsed.pathname === "/" && !parsed.search && !parsed.hash) return parsed.origin;
+      } catch {}
+      ctx.addIssue({ code: "custom", message: "CARD_URL_ORIGIN must be an http(s) origin with no path, query or hash" });
+      return z.NEVER;
+    }),
+);
 
 const serverSchema = z.object({
   DATABASE_URL: blankAsMissing(url("DATABASE_URL")),
@@ -36,6 +52,10 @@ const serverSchema = z.object({
   GOOGLE_CLIENT_SECRET: required("GOOGLE_CLIENT_SECRET"),
   RESEND_API_KEY: required("RESEND_API_KEY"),
   AUTH_EMAIL_FROM: required("AUTH_EMAIL_FROM"),
+  ACTIVATION_CODE_SECRET: blankAsMissing(
+    z.string({ error: "ACTIVATION_CODE_SECRET is required" }).min(32, { error: "ACTIVATION_CODE_SECRET must be at least 32 characters" }),
+  ),
+  CARD_URL_ORIGIN: cardUrlOrigin,
 });
 
 const migrationSchema = z.object({
@@ -62,6 +82,10 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
   const appEnv = resolveAppEnv(raw.VERCEL_ENV || undefined);
   const env = parse(serverSchema, raw);
   assertDatabaseIsolation(appEnv, env.DATABASE_URL);
+  if (appEnv !== "development" && !env.CARD_URL_ORIGIN.startsWith("https://")) {
+    throw new Error(`Invalid environment configuration:
+- CARD_URL_ORIGIN: must be https in ${appEnv}`);
+  }
 
   return {
     appEnv,
@@ -73,6 +97,8 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     resendApiKey: env.RESEND_API_KEY,
     authEmailFrom: env.AUTH_EMAIL_FROM,
+    activationCodeSecret: env.ACTIVATION_CODE_SECRET,
+    cardUrlOrigin: env.CARD_URL_ORIGIN,
   };
 }
 

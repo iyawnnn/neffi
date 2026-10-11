@@ -12,6 +12,8 @@ const base = {
   GOOGLE_CLIENT_SECRET: "synthetic-google-client-secret",
   RESEND_API_KEY: "re_synthetic_key_not_real",
   AUTH_EMAIL_FROM: "Neffi <auth@example.test>",
+  ACTIVATION_CODE_SECRET: "a".repeat(40),
+  CARD_URL_ORIGIN: "http://localhost:3000",
 };
 
 function errorMessage(fn: () => unknown): string {
@@ -35,7 +37,37 @@ describe("parseServerEnv", () => {
       googleClientSecret: base.GOOGLE_CLIENT_SECRET,
       resendApiKey: base.RESEND_API_KEY,
       authEmailFrom: base.AUTH_EMAIL_FROM,
+      activationCodeSecret: "a".repeat(40),
+      cardUrlOrigin: "http://localhost:3000",
     });
+  });
+
+  test("requires a 32+ character activation code secret and never echoes it", () => {
+    for (const value of [undefined, "", "short-secret"]) {
+      const message = errorMessage(() => parseServerEnv({ ...base, ACTIVATION_CODE_SECRET: value }));
+      expect(message).toContain("ACTIVATION_CODE_SECRET");
+      expect(message).not.toContain("short-secret");
+    }
+  });
+
+  test.each([
+    ["http://localhost:3000/", "http://localhost:3000"],
+    ["https://tap.example.test", "https://tap.example.test"],
+  ])("normalizes CARD_URL_ORIGIN %s", (value, expected) => {
+    expect(parseServerEnv({ ...base, CARD_URL_ORIGIN: value }).cardUrlOrigin).toBe(expected);
+  });
+
+  test.each([undefined, "", "not-a-url", "https://tap.example.test/c", "https://tap.example.test/?x=1", "https://tap.example.test/#f", "ftp://tap.example.test"])(
+    "rejects CARD_URL_ORIGIN %s",
+    (value) => {
+      expect(errorMessage(() => parseServerEnv({ ...base, CARD_URL_ORIGIN: value }))).toContain("CARD_URL_ORIGIN");
+    },
+  );
+
+  test("CARD_URL_ORIGIN must be https outside development", () => {
+    const preview = { ...base, VERCEL_ENV: "preview", BETTER_AUTH_URL: "https://x.example.test" };
+    expect(errorMessage(() => parseServerEnv({ ...preview, CARD_URL_ORIGIN: "http://tap.example.test" }))).toContain("CARD_URL_ORIGIN");
+    expect(parseServerEnv({ ...preview, CARD_URL_ORIGIN: "https://tap.example.test" }).cardUrlOrigin).toBe("https://tap.example.test");
   });
 
   test.each(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "RESEND_API_KEY", "AUTH_EMAIL_FROM"] as const)(
@@ -78,6 +110,7 @@ describe("parseServerEnv", () => {
       ...base,
       BETTER_AUTH_URL: undefined,
       VERCEL_ENV: "preview",
+      CARD_URL_ORIGIN: "https://tap.example.test",
       VERCEL_BRANCH_URL: "tapcard-git-x.vercel.app",
     });
     expect(env.appEnv).toBe("preview");
@@ -87,6 +120,7 @@ describe("parseServerEnv", () => {
   test("an explicit BETTER_AUTH_URL wins in preview", () => {
     const env = parseServerEnv({
       ...base,
+      CARD_URL_ORIGIN: "https://tap.example.test",
       BETTER_AUTH_URL: "https://preview.example.dev",
       VERCEL_ENV: "preview",
       VERCEL_BRANCH_URL: "tapcard-git-x.vercel.app",
@@ -97,6 +131,7 @@ describe("parseServerEnv", () => {
   test("a blank BETTER_AUTH_URL in preview falls back to the branch URL", () => {
     const env = parseServerEnv({
       ...base,
+      CARD_URL_ORIGIN: "https://tap.example.test",
       BETTER_AUTH_URL: "",
       VERCEL_ENV: "preview",
       VERCEL_BRANCH_URL: "tapcard-git-x.vercel.app",
@@ -109,7 +144,7 @@ describe("parseServerEnv", () => {
   });
 
   test("preview without any auth URL fails clearly", () => {
-    const message = errorMessage(() => parseServerEnv({ ...base, BETTER_AUTH_URL: undefined, VERCEL_ENV: "preview" }));
+    const message = errorMessage(() => parseServerEnv({ ...base, CARD_URL_ORIGIN: "https://tap.example.test", BETTER_AUTH_URL: undefined, VERCEL_ENV: "preview" }));
     expect(message).toMatch(/BETTER_AUTH_URL/);
   });
 

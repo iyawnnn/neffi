@@ -26,6 +26,8 @@ jobs:
       GOOGLE_CLIENT_SECRET: ci-dummy-google-client-secret-0123456789
       RESEND_API_KEY: re_ci_dummy_resend_key_0123456789
       AUTH_EMAIL_FROM: Neffi <ci@example.invalid>
+      ACTIVATION_CODE_SECRET: ci-dummy-activation-code-secret-0123456789abcdef
+      CARD_URL_ORIGIN: http://localhost:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4

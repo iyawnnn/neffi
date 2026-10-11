@@ -65,6 +65,10 @@ export const cards = pgTable(
     ownerAccountId: uuid().references(() => accounts.id),
     profileId: uuid(),
     disabledAt: timestamp({ withTimezone: true }),
+    // Physical provisioning evidence, recorded by the OWNER after a real check. NFC: the exact URI was read back,
+    // a phone opened it, the tag stayed writable. Package: the packaged private credential matches this DBC.
+    nfcVerifiedAt: timestamp({ withTimezone: true }),
+    packageMatchedAt: timestamp({ withTimezone: true }),
     ...timestamps(),
   },
   (t) => [
@@ -86,6 +90,10 @@ export const cards = pgTable(
       sql`COALESCE(${t.kind} = 'dbc', false) OR (${t.publicToken} IS NULL AND ${t.ownerAccountId} IS NULL AND ${t.profileId} IS NULL AND ${t.disabledAt} IS NULL)`,
     ),
     check("cards_committed_states_need_product", sql`${t.state} IN ('blank', 'retired') OR ${t.productId} IS NOT NULL`),
+    check(
+      "cards_dbc_ready_checks_recorded",
+      sql`${t.kind} IS DISTINCT FROM 'dbc' OR ${t.state} <> 'ready' OR (${t.nfcVerifiedAt} IS NOT NULL AND ${t.packageMatchedAt} IS NOT NULL)`,
+    ),
     check("cards_grc_never_ready", sql`NOT COALESCE(${t.kind} = 'grc' AND ${t.state} = 'ready', false)`),
     check(
       "cards_dbc_token_when_provisioned",

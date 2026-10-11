@@ -26,7 +26,7 @@ describe("DBC public token", () => {
       await expectPgError(
         tx,
         (s) =>
-          s.insert(cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready", publicToken: card.publicToken }),
+          s.insert(cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", publicToken: card.publicToken }),
         "23505",
         "cards_public_token_unique",
       );
@@ -38,7 +38,7 @@ describe("DBC public token", () => {
       const { stock, product } = await insertReadyDbc(tx);
       await expectPgError(
         tx,
-        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready" }),
+        (s) => s.insert(cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready", nfcVerifiedAt: new Date(), packageMatchedAt: new Date() }),
         "23514",
         "cards_dbc_token_when_provisioned",
       );
@@ -232,6 +232,46 @@ describe("Composite-FK gap closers (MATCH SIMPLE skips a FK when any column is N
         (s) => s.update(cards).set({ disabledAt: new Date() }).where(eq(cards.id, card.id)),
         "23514",
         "cards_disabled_needs_owner",
+      );
+    }));
+});
+
+describe("DBC Ready requires recorded provisioning checks", () => {
+  const checks = { nfcVerifiedAt: new Date(), packageMatchedAt: new Date() };
+
+  test("a Ready DBC needs both the NFC check and the package match", () =>
+    rollback(db, async (tx) => {
+      const stock = await insertStockPurchase(tx);
+      const product = await insertProduct(tx, "dbc");
+      const base = { stockPurchaseId: stock.id, productId: product.id, kind: "dbc" as const, state: "ready" as const };
+      for (const partial of [{}, { nfcVerifiedAt: new Date() }, { packageMatchedAt: new Date() }]) {
+        await expectPgError(
+          tx,
+          (s) => s.insert(cards).values({ ...base, publicToken: syntheticToken(), ...partial }),
+          "23514",
+          "cards_dbc_ready_checks_recorded",
+        );
+      }
+      await tx.insert(cards).values({ ...base, publicToken: syntheticToken(), ...checks });
+    }));
+
+  test("blank DBCs and GRCs are not gated", () =>
+    rollback(db, async (tx) => {
+      const stock = await insertStockPurchase(tx);
+      const dbc = await insertProduct(tx, "dbc");
+      const grc = await insertProduct(tx, "grc");
+      await tx.insert(cards).values({ stockPurchaseId: stock.id, productId: dbc.id, kind: "dbc", publicToken: syntheticToken() });
+      await tx.insert(cards).values({ stockPurchaseId: stock.id, productId: grc.id, kind: "grc" });
+    }));
+
+  test("a Ready DBC cannot lose either check", () =>
+    rollback(db, async (tx) => {
+      const { card } = await insertReadyDbc(tx);
+      await expectPgError(
+        tx,
+        (s) => s.update(cards).set({ packageMatchedAt: null }).where(eq(cards.id, card.id)),
+        "23514",
+        "cards_dbc_ready_checks_recorded",
       );
     }));
 });

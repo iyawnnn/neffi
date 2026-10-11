@@ -29,11 +29,12 @@ export const SEED_IDS = {
   itemCompletedDbc: id(50),
   itemInProgressDbc: id(51),
   itemInProgressGrc: id(52),
+  itemInProgressGrcB: id(54),
   itemCancelledDbc: id(53),
   profileAna: id(60),
   profileBenDraft: id(61),
   cardBlank: id(70),
-  cardReadyDbc: id(71),
+  cardProvisioningDbc: id(71),
   cardClaimedDbc: id(72),
   cardDisabledDbc: id(73),
   cardRetiredDbc: id(74),
@@ -118,6 +119,8 @@ export async function seed(db: SeedDb): Promise<void> {
       { id: S.itemCompletedDbc, orderId: S.orderCompleted, productId: S.productDbc, productKind: "dbc", quantity: 2, unitPrice: 50_000, agreedTotal: 90_000 },
       { id: S.itemInProgressDbc, orderId: S.orderInProgress, productId: S.productDbc, productKind: "dbc", quantity: 1, unitPrice: 50_000 },
       { id: S.itemInProgressGrc, orderId: S.orderInProgress, productId: S.productGrc, productKind: "grc", quantity: 2, unitPrice: 30_000, label: "Branch A", reviewUrl: "https://g.page/r/synthetic-branch-a/review" },
+      // Free capacity: lets the M4 GRC reservation capability be exercised against a controlled development item.
+      { id: S.itemInProgressGrcB, orderId: S.orderInProgress, productId: S.productGrc, productKind: "grc", quantity: 1, unitPrice: 30_000, label: "Branch B", reviewUrl: "https://g.page/r/synthetic-branch-b/review" },
       { id: S.itemCancelledDbc, orderId: S.orderCancelled, productId: S.productDbc, productKind: "dbc", quantity: 1, unitPrice: 50_000 },
     ]);
 
@@ -136,7 +139,9 @@ export async function seed(db: SeedDb): Promise<void> {
     await tx.insert(schema.cards).values([
       { id: S.cardBlank, ...stock },
       { id: S.cardBlankGrc, ...grc },
-      { id: S.cardReadyDbc, ...dbc, state: "ready", publicToken: "SEEDDBC00001" },
+      // Mid-provisioning: token and usable credential issued, but no physical NFC check or package match exists.
+      // The seed never claims physical evidence, so it holds no Ready DBC.
+      { id: S.cardProvisioningDbc, ...dbc, publicToken: "SEEDDBC00001" },
       // Claimed by Ana and routed to her published profile (it replaced the defective card below).
       { id: S.cardClaimedDbc, ...dbc, state: "released", orderItemId: S.itemCompletedDbc, publicToken: "SEEDDBC00002", ownerAccountId: S.customerAna, profileId: S.profileAna },
       // Ana's second card, reported lost and disabled.
@@ -150,8 +155,8 @@ export async function seed(db: SeedDb): Promise<void> {
 
     const now = new Date("2026-10-05T09:00:00Z");
     await tx.insert(schema.activationCredentials).values([
-      { cardId: S.cardReadyDbc, lookupHmac: lookup(1), revokedAt: now },
-      { cardId: S.cardReadyDbc, lookupHmac: lookup(2) },
+      { cardId: S.cardProvisioningDbc, lookupHmac: lookup(1), revokedAt: now },
+      { cardId: S.cardProvisioningDbc, lookupHmac: lookup(2) },
       { cardId: S.cardClaimedDbc, lookupHmac: lookup(3), usedAt: now },
       { cardId: S.cardDisabledDbc, lookupHmac: lookup(4), usedAt: now },
       { cardId: S.cardRetiredDbc, lookupHmac: lookup(5), revokedAt: now },

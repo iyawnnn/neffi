@@ -21,6 +21,8 @@ The product and architecture specification lives in the locked Notion pages (sti
    - `BETTER_AUTH_URL`: `http://localhost:3000`
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: the development/Preview OAuth web client
    - `RESEND_API_KEY`, `AUTH_EMAIL_FROM`: the development/Preview send-only key and sender (see the auth runbook below)
+   - `ACTIVATION_CODE_SECRET`: at least 32 random characters (`openssl rand -base64 32`); keys the activation-code lookup hash
+   - `CARD_URL_ORIGIN`: bare origin written onto NFC cards, e.g. `http://localhost:3000` (see Physical card provisioning)
    - optional `NEXT_PUBLIC_SENTRY_DSN`: Sentry stays disabled without it
 4. Before the first M2 migration on `neffi-dev`, create a `pre-m2` Neon restore branch/snapshot and explicitly approve Task 9. Then migrate: `pnpm db:migrate`.
 5. Run: `pnpm dev`, then check <http://localhost:3000/api/health> returns `{"status":"ok","db":"ok"}`.
@@ -45,6 +47,7 @@ The approved development target is Neon project `neffi-dev`, branch `production`
 | `pnpm db:seed` | Destructive development-only reset to synthetic fixtures; requires explicit development context |
 | `pnpm db:erd` | Generate the ERD and integrity catalog from migrations on PGlite (no credentials/network) |
 | `pnpm check:db-concurrency` | Two-session integrity regression on disposable loopback PostgreSQL only |
+| `pnpm check:provisioning-concurrency` | Two-session lock/race regression for the provisioning services; same disposable loopback database rules as `check:db-concurrency` |
 | `pnpm accounts:set-role <email> <owner\|customer>` | Guarded operator-only role change with an atomic activity event |
 
 ## Database schema
@@ -122,7 +125,7 @@ Safeguards:
 ## Deploying a Preview (Vercel)
 
 1. Import the GitHub repository in Vercel (Hobby, Node 24.x).
-2. After explicit approval to modify Vercel, set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY` and `AUTH_EMAIL_FROM` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
+2. After explicit approval to modify Vercel, set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `AUTH_EMAIL_FROM`, `ACTIVATION_CODE_SECRET` and `CARD_URL_ORIGIN` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Keep the activation secret consistent with issued development credentials. `CARD_URL_ORIGIN` must use HTTPS in Preview; localhost is permitted only in development. Preview/test-origin cards remain engineering-only; lock the final long-lived origin before any customer/pilot provisioning. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
 3. Leave the **Production** scope empty until the production database exists.
 4. Enable "Automatically expose System Environment Variables".
 5. After explicit push approval, push a branch and check `<preview-url>/api/health` and `<preview-url>/api/auth/ok`. Complete the auth Preview checks below; keep Vercel Authentication enabled.
@@ -168,6 +171,38 @@ Local tests use fresh PGlite databases and mocked Google/Resend responses; they 
 At the approved Task 8 gate, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Application Production remains untouched.
 
 Accepted abuse limits: another person can consume an email's send quota or invalidate its outstanding code; delivery failures also consume quota. Defaults allow up to nine incorrect guesses across three sends per ten minutes. Google is a fallback; stronger anti-abuse measures are M10 work. Milestone 3 remains incomplete until the gated live verification and Task 9 final review pass.
+
+## Physical card provisioning (M4)
+
+OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. There is no `/c/{token}` page and no `/activate` flow yet: the public card resolver is Milestone 7 and activation/claim is Milestone 5.
+
+**Configuration.** `CARD_URL_ORIGIN` is a bare origin (no path, query or hash; https outside development). The NFC value written for a DBC is exactly `<CARD_URL_ORIGIN>/c/<token>`. Cards provisioned while it points at a development origin are **engineering test units and must never be sold.** Before any pilot or commercial DBC is provisioned, lock the final long-lived NFC domain and change `CARD_URL_ORIGIN` to it. `ACTIVATION_CODE_SECRET` keys the HMAC stored for each activation code; changing it makes every issued, unclaimed code unverifiable, so treat it like a database credential and do not rotate it casually.
+
+**Tokens and codes.** The permanent public token is 26 Crockford Base32 characters (130 bits), issued once and never changed. It is public and is not proof of ownership. The activation code is 16 Crockford characters shown as `XXXX-XXXX-XXXX-XXXX`; only its keyed hash is stored. The raw code appears once, in the response of the Provision or Replace action, and is never persisted, logged or placed in a URL. If a response is lost, use **Replace credential**.
+
+**DBC lifecycle.**
+
+1. **Receive stock** creates a stock purchase and N Blank cards. Costs are not captured here (Milestone 8).
+2. **Provision** (card page) gives a Blank card its permanent token and its first credential and shows the code once. The card stays Blank and is shown as *in provisioning*; that label is derived, not a new state.
+3. **Write and test the NFC tag** with NFC Tools on a real phone: *Write, Add a record, URL/URI*, paste the exact URL shown on the card page, *Write*; then *Read* it back. Do not use *Lock tag* or set a password; the tag must stay writable. Tap the tag with a real phone (Android with NFC on, or an iPhone XS or later) and confirm it recognises the tag and tries to open that exact address. A not-found page is expected until Milestone 7. Then record the NFC check with the address you read back and the three confirmations. The server checks that the read-back address is exactly the card's URL.
+4. **Match the package.** Pack the matched Card with the common activation insert containing the static `/activate` QR plus its unique printed activation-code label, inside the sealed package; type the code from that package. The server compares it with the card's current credential. This means the OWNER verified that the code physically packaged with this card matches this card. The QR is common, not Card-specific, and never contains the code. The physical insert is part of M4 packing; the working `/activate` validation/claim experience remains Milestone 5 and is not needed for this match. A matching code makes the card **Ready**.
+5. **Replace credential** is the pre-release fix for a lost or mismatched unused code: it revokes the old code, issues a new one, returns a Ready card to Blank and requires the package to be matched again. It never restores a used or revoked credential and does not apply once a card is Released; customer-facing lost-code and recovery cases are Milestone 9.
+
+**GRC.** A GRC stays Blank until an eligible order item needs it. **Reserve** a Blank card against an existing open GRC item that has a review URL and spare quantity, then write that direct review URL to the tag, read it back, tap it, and record the check. GRCs never get a token, credential, owner or profile. Creating orders and order items is Milestone 8; until then use controlled development items (the development seed includes one with spare capacity).
+
+**Retire** removes a Blank, Ready or reserved-GRC card that failed or must not be sold. It revokes any unused credential, keeps all history, and a retired reserved GRC stops counting against its order item so a replacement can be reserved.
+
+**Physical evidence.** `nfc_verified_at` and `package_matched_at` exist only after a real physical check. A DBC cannot be Ready without both (a database constraint), and issuing any new usable credential clears the package match. The development seed contains no Ready DBC and no physical evidence by design; only isolated automated tests use synthetic timestamps. Never record a check you did not perform, including on `neffi-dev`.
+
+**Migration 0009.** Adds the two columns and `cards_dbc_ready_checks_recorded`, created `NOT VALID` so a pre-M4 development row that was seeded as Ready (with no physical evidence) is not given invented timestamps. New and updated rows are still checked, and a database migrated from zero has no legacy rows. Milestone 10 validates the constraint. It also replaces the `activation_credentials_guard` function; the serialization with retirement from `0006` is unchanged.
+
+**Hardware acceptance (required before M4 is complete).** On `neffi-dev`, using engineering cards labelled TEST, record device, date and card id (never a code or a photo showing one):
+
+An internal engineering NFC encoding test checks the exact URL, phone tap and writable tag; it alone is not customer/pilot package acceptance. Customer/pilot package acceptance must also use the common activation insert with its static `/activate` QR, the exact-Card printed activation-code label inside the sealed package, and the matched Card. Localhost and other development/test URLs are engineering-only; these cards must never be sold or used as customer/pilot units. Customer/pilot cards require the final long-lived origin before provisioning.
+
+- [ ] DBC written with NFC Tools, read back identical, tapped on a real phone (opened the exact address), tag still writable, NFC check recorded, package matched, card Ready.
+- [ ] Credential replaced on that card, old code refused, new code matched, card Ready again.
+- [ ] GRC reserved against a controlled item, review URL written, read back, tapped, writable, encode check recorded.
 
 ## Security rules
 

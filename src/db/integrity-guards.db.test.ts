@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { activationCredentials, activityEvents, cards, orders, payments, refunds } from "./schema";
-import { insertClaimedCard, insertOrder, insertReadyDbc, insertStockPurchase, syntheticLookup } from "./test-fixtures";
+import { insertClaimedCard, insertOrder, insertProvisioningDbc, insertReadyDbc, insertStockPurchase, syntheticLookup } from "./test-fixtures";
 import { createTestDb, expectPgError, rollback, type TestDb } from "./testing";
 
 // Trigger guards (migration 0005): rules that compare a row's old and new values, which CHECK constraints
@@ -51,8 +51,8 @@ describe("cards_guard", () => {
 describe("activation_credentials_guard", () => {
   test("used and revoked are final, and the lookup value and card are immutable", () =>
     rollback(db, async (tx) => {
-      const { card } = await insertReadyDbc(tx);
-      const { card: other } = await insertReadyDbc(tx);
+      const { card } = await insertProvisioningDbc(tx);
+      const { card: other } = await insertProvisioningDbc(tx);
       const [used] = await tx
         .insert(activationCredentials)
         .values({ cardId: card.id, lookupHmac: syntheticLookup(9001) })
@@ -76,7 +76,7 @@ describe("activation_credentials_guard", () => {
 
   test("credentials are history and cannot be deleted", () =>
     rollback(db, async (tx) => {
-      const { card } = await insertReadyDbc(tx);
+      const { card } = await insertProvisioningDbc(tx);
       const [credential] = await tx
         .insert(activationCredentials)
         .values({ cardId: card.id, lookupHmac: syntheticLookup(9004) })
@@ -161,7 +161,7 @@ describe("review follow-ups", () => {
 
   test("a card cannot be retired while it still has a usable credential, nor get one afterwards", () =>
     rollback(db, async (tx) => {
-      const { card } = await insertReadyDbc(tx);
+      const { card } = await insertProvisioningDbc(tx);
       const [credential] = await tx
         .insert(activationCredentials)
         .values({ cardId: card.id, lookupHmac: syntheticLookup(9100) })
