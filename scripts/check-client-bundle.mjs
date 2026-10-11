@@ -11,6 +11,7 @@ const SECRET_VARS = [
   "GOOGLE_CLIENT_SECRET",
   "RESEND_API_KEY",
   "ACTIVATION_CODE_SECRET",
+  "CLOUDINARY_API_SECRET",
 ];
 const PUBLIC_OUTPUTS = [
   { dir: ".next/static", extensions: null },

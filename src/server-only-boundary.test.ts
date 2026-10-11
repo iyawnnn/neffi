@@ -9,6 +9,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/db/index.ts",
   "src/auth/server.ts",
   "src/integrations/email/resend.ts",
+  "src/integrations/media/cloudinary.ts",
   "src/auth/access.ts",
   "src/auth/methods.ts",
   "src/app/(public)/activate/challenge-cookie.ts",
