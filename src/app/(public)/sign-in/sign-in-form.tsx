@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 type Step = "email" | "code";
 
-const inputClass =
+export const inputClass =
   "h-11 w-full rounded-lg border border-input bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export function SignInForm({ next, notice }: { next: string; notice?: string }) {
