@@ -4,6 +4,8 @@ import { PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
 const m = vi.hoisted(() => ({ authorize: vi.fn(), publish: vi.fn(), unpublish: vi.fn(), updateIdentity: vi.fn(), deleteProfile: vi.fn(), showScene: vi.fn(), createScene: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo", cloudinaryApiKey: "synthetic-key", cloudinaryApiSecret: "synthetic-secret" } }));
+vi.mock("@/integrations/media/cloudinary", () => ({ destroyImage: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/modules/profiles/profiles", () => ({ publishProfile: m.publish, unpublishProfile: m.unpublish, updateIdentity: m.updateIdentity, deleteProfile: m.deleteProfile }));
 vi.mock("@/modules/profiles/scenes", () => ({ showScene: m.showScene, createScene: m.createScene }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));

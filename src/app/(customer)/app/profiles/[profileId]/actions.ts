@@ -3,10 +3,13 @@
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
+import { consumeQuota, hmacHex } from "@/auth/otp-quota";
+import { env } from "@/config/env";
 import { db } from "@/db";
+import { checkImage, destroyImage, getImage, isProfileImageId, signImageUpload } from "@/integrations/media/cloudinary";
 import { ProfileError } from "@/modules/profiles/errors";
-import { deleteProfile, publishProfile, unpublishProfile, updateIdentity } from "@/modules/profiles/profiles";
-import { identitySchema, PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
+import { deleteProfile, getOwnedProfile, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "@/modules/profiles/profiles";
+import { ACCENTS, identitySchema, PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
 import { createScene, showScene } from "@/modules/profiles/scenes";
 
 export type ProfileActionState = { error?: string; gaps?: string[]; fields?: string[]; ok?: string };
@@ -17,6 +20,8 @@ const PROFILE_MESSAGES = {
   default_scene: "Your main scene can't be deleted.",
   not_ready: "Your Neffi isn't ready to publish yet.",
 };
+const mediaConfig = { cloudName: env.cloudinaryCloudName, apiKey: env.cloudinaryApiKey, apiSecret: env.cloudinaryApiSecret };
+const IMAGE_ERROR = "Use a JPG, PNG, WebP or HEIC image up to 5 MB.";
 
 async function ownerId() {
   const authorization = await authorize("account");
@@ -82,6 +87,50 @@ export async function deleteProfileAction(_previous: ProfileActionState | undefi
   const accountId = await ownerId();
   const profileId = id(data.get("profileId"));
   if (data.get("confirm") !== "on") return { error: "Tick the box to confirm." };
-  try { await deleteProfile(db, { accountId, profileId }); } catch (error) { return failure(error); }
+  try {
+    const { imageAssetId } = await deleteProfile(db, { accountId, profileId });
+    if (imageAssetId) await destroyImage(mediaConfig, imageAssetId).catch(() => undefined);
+  } catch (error) { return failure(error); }
   redirect("/app/profiles");
+}
+
+export async function updateAppearanceAction(_previous: ProfileActionState | undefined, data: FormData): Promise<ProfileActionState> {
+  const accountId = await ownerId();
+  const profileId = id(data.get("profileId"));
+  const accentColor = text(data, "accentColor");
+  if (!ACCENTS.some(accent => accent.hex === accentColor)) return { error: PROFILE_MESSAGES.invalid };
+  try { await updateAppearance(db, { accountId, profileId, accentColor, imageIsLogo: data.get("imageIsLogo") === "true" }); } catch (error) { return failure(error); }
+  return { ok: "Saved." };
+}
+
+// ponytail: orphaned Cloudinary assets from abandoned uploads are not swept; add a periodic sweep in M10 if storage matters.
+export async function startImageUploadAction(profileId: string) {
+  const accountId = await ownerId();
+  id(profileId);
+  if (!await getOwnedProfile(db, accountId, profileId)) notFound();
+  if (!await consumeQuota(db, hmacHex(env.betterAuthSecret, "media-sign", accountId), 20)) return { error: "Too many uploads. Please wait a few minutes and try again." };
+  return { ticket: signImageUpload(mediaConfig, { profileId }) };
+}
+
+export async function confirmImageAction(profileId: string, publicId: string): Promise<{ ok?: true; error?: string }> {
+  const accountId = await ownerId();
+  id(profileId);
+  if (!await getOwnedProfile(db, accountId, profileId)) notFound();
+  if (typeof publicId !== "string" || !isProfileImageId(profileId, publicId)) return { error: IMAGE_ERROR };
+  const image = await getImage(mediaConfig, publicId);
+  if (!image) return { error: IMAGE_ERROR };
+  if (!checkImage(image)) {
+    await destroyImage(mediaConfig, publicId).catch(() => undefined);
+    return { error: IMAGE_ERROR };
+  }
+  const { previousAssetId } = await setProfileImage(db, { accountId, profileId, assetId: publicId });
+  if (previousAssetId) await destroyImage(mediaConfig, previousAssetId).catch(() => undefined);
+  return { ok: true };
+}
+
+export async function removeImageAction(profileId: string): Promise<void> {
+  const accountId = await ownerId();
+  id(profileId);
+  const { previousAssetId } = await setProfileImage(db, { accountId, profileId, assetId: null });
+  if (previousAssetId) await destroyImage(mediaConfig, previousAssetId).catch(() => undefined);
 }
