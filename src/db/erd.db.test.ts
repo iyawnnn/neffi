@@ -12,8 +12,11 @@ test("the committed ERD matches the schema migrated from zero", () => {
 });
 
 test("the ERD catalogs composite and nullable relationships, partial indexes and integrity guards", () => {
-  expect(erd).toContain("22 tables");
-  expect(erd).toContain("13 enums");
+  expect(erd).toContain("26 tables");
+  expect(erd).toContain("15 enums");
+  expect(erd).toContain("profiles_default_scene_fk");
+  expect(erd).toContain("form_submissions_form_client_key_unique");
+  expect(erd).toContain("scene_blocks_form_only_on_form");
   expect(erd).toContain('profiles |o..o{ cards : "cards_profile_owner_fk"');
   expect(erd).toContain('accounts ||..o{ auth_sessions : "auth_sessions_account_id_accounts_id_fk"');
   expect(erd).toContain("FOREIGN KEY (profile_id, owner_account_id) REFERENCES profiles(id, account_id)");

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { profileLinks, profiles } from "./schema";
-import { insertAccount, insertProfile } from "./test-fixtures";
+import { insertAccount, insertProfile, insertProfileWithScene } from "./test-fixtures";
 import { createTestDb, expectPgError, rollback, type TestDb } from "./testing";
 
 let db: TestDb;
@@ -12,7 +12,7 @@ beforeAll(async () => {
 describe("Profiles", () => {
   test("a Published profile must have a full name", () =>
     rollback(db, async (tx) => {
-      const profile = await insertProfile(tx, (await insertAccount(tx)).id);
+      const { profile } = await insertProfileWithScene(tx, (await insertAccount(tx)).id);
       await expectPgError(
         tx,
         (s) => s.update(profiles).set({ status: "published" }).where(eq(profiles.id, profile.id)),
