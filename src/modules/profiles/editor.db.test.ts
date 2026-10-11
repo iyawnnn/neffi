@@ -1,0 +1,41 @@
+import { eq } from "drizzle-orm";
+import { beforeAll, expect, test } from "vitest";
+import { cards, profiles } from "@/db/schema";
+import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
+import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
+import { addBlock } from "./blocks";
+import { blockForEditing, sceneForEditing } from "./editor";
+import { createProfileFromStarter } from "./profiles";
+
+let db: TestDb;
+beforeAll(async () => { db = await createTestDb(); });
+async function setup(tx: TestTx) {
+  const owner = await insertAccount(tx);
+  const { card } = await insertReleasedDbc(tx);
+  await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
+  const { profileId } = await createProfileFromStarter(tx, { accountId: owner.id, cardId: card.id, purpose: "network", essentials: { fullName: "Ana", headline: null, bio: "A".repeat(80), email: "ana@e.test", phone: null, link: "https://github.com/ana" } });
+  const [profile] = await tx.select().from(profiles).where(eq(profiles.id, profileId));
+  return { accountId: owner.id, profileId, sceneId: profile.defaultSceneId! };
+}
+test("blocks return in position order with every type's friendly summary", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await addBlock(tx, { ...input, type: "project", content: { title: "Site" } });
+  await addBlock(tx, { ...input, type: "booking", content: { url: "cal.com/ana" } });
+  const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
+  expect(edit?.scene).toEqual({ id: input.sceneId, name: "Networking", isDefault: true });
+  expect(edit?.blocks.map(b => b.summary)).toEqual(["Save Contact on", "Other", "A".repeat(60), "Let's connect", "Site", "Book a time"]);
+  const block = edit!.blocks[1];
+  expect(await blockForEditing(tx, input.accountId, input.profileId, block.id)).toMatchObject({ id: block.id, sceneId: input.sceneId, type: "link", content: block.content });
+}));
+test("another account receives no editing data", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
+  const other = await insertAccount(tx);
+  expect(await sceneForEditing(tx, other.id, input.profileId, input.sceneId)).toBeNull();
+  expect(await blockForEditing(tx, other.id, input.profileId, edit!.blocks[0].id)).toBeNull();
+}));
+test("a scene of another profile is not returned", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const { scene } = await insertProfileWithScene(tx, input.accountId);
+  expect(await sceneForEditing(tx, input.accountId, input.profileId, scene.id)).toBeNull();
+}));
