@@ -17,7 +17,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/app/acco
     {error ? <p role="alert" className="text-sm">{error}</p> : null}
     <section className="flex flex-col gap-2"><h2 className="font-semibold">Signed in as</h2><p className="break-all">{viewer.email}</p><h2 className="font-semibold">Sign-in methods</h2><ul className="text-sm"><li>Email code</li>{methods.google ? <li>Google</li> : null}</ul>{methods.google ? <RemoveGoogleForm /> : null}<AccountActions googleLinked={methods.google} /></section>
     <section className="flex flex-col gap-3"><h2 className="font-semibold">Change sign-in email</h2><ChangeEmailForm /></section>
-    <form action={signOutEverywhereAction}><Button size="touch" variant="outline">Sign out everywhere</Button></form>
+    <form action={signOutEverywhereAction}><Button type="submit" size="touch" variant="outline">Sign out everywhere</Button></form>
     <section className="flex flex-col gap-2 border-t pt-4"><h2 className="font-semibold">Delete your account</h2><p className="text-sm text-muted-foreground">To delete your account, please contact Neffi support.</p></section>
   </div></main>;
 }
