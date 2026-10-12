@@ -19,8 +19,25 @@ export async function POST(request: Request, { params }: RouteContext<"/api/form
   if (!(await consumeQuota(db, hmacHex(env.betterAuthSecret, "form-ip", clientIp(request.headers)), SUBMISSIONS_PER_IP))) {
     return json({ error: "rate_limited" }, 429);
   }
-  const raw = await request.text();
-  if (raw.length > MAX_BODY) return json({ error: "too_large" }, 413);
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder();
+  let raw = "";
+  let bytes = 0;
+  if (reader) {
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > MAX_BODY) {
+          await reader.cancel();
+          return json({ error: "too_large" }, 413);
+        }
+        raw += decoder.decode(value, { stream: true });
+      }
+      raw += decoder.decode();
+    } finally { reader.releaseLock(); }
+  }
   let parsed: z.infer<typeof body>;
   try {
     parsed = body.parse(JSON.parse(raw));

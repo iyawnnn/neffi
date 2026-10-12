@@ -126,6 +126,41 @@ try {
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM form_submissions WHERE form_id=$1 AND client_key=$2", [form.id, input.clientKey])).rows[0].n, 1);
   });
 
+  const editor = await connect();
+  for (const change of ["unpublish", "hide", "config"]) {
+    await check(`submission rechecks ${change} after waiting to insert`, async () => {
+      const { rows: [form] } = await admin.query("SELECT id,config FROM form_definitions WHERE profile_id=$1", [profileId]);
+      const input = { formId: form.id, clientKey: randomUUID(), answers: { name: "Synthetic Visitor", email: "visitor@example.test", message: "" } };
+      await admin.query("BEGIN");
+      await admin.query("LOCK TABLE form_submissions IN ACCESS EXCLUSIVE MODE");
+      const pending = settle(submitForm(dbA, input));
+      try {
+        let blocked = false;
+        const deadline = Date.now() + 5000;
+        while (!pending.state.done && !blocked && Date.now() < deadline) {
+          const { rows: [row] } = await admin.query("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE relation='form_submissions'::regclass AND NOT granted) AS blocked");
+          blocked = row.blocked;
+          if (!blocked) await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert(blocked, "submission must finish its read and wait at the insertion boundary");
+        if (change === "unpublish") await editor.query("UPDATE profiles SET status='unpublished' WHERE id=$1", [profileId]);
+        else if (change === "hide") await editor.query("UPDATE scene_blocks SET visible=false WHERE form_id=$1", [form.id]);
+        else await editor.query("UPDATE form_definitions SET config=$1 WHERE id=$2", [{ ...form.config, questions: [{ id: "budget", label: "Budget", required: true }] }, form.id]);
+        await admin.query("COMMIT");
+        await pending.finished;
+        assert(!pending.state.error, "submission must not fail with a database error");
+        assert.deepEqual(pending.state.value, { status: "unavailable" });
+        assert.equal((await admin.query("SELECT count(*)::int AS n FROM form_submissions WHERE form_id=$1 AND client_key=$2", [form.id, input.clientKey])).rows[0].n, 0);
+      } finally {
+        await admin.query("ROLLBACK");
+        await pending.finished;
+        await admin.query("UPDATE profiles SET status='published' WHERE id=$1", [profileId]);
+        await admin.query("UPDATE scene_blocks SET visible=true WHERE form_id=$1", [form.id]);
+        await admin.query("UPDATE form_definitions SET config=$1 WHERE id=$2", [form.config, form.id]);
+      }
+    });
+  }
+
   assert.equal(failures.length, 0, `${failures.length} profile concurrency checks failed`);
   console.log("All profile concurrency checks passed.");
 } finally {

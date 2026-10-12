@@ -7,26 +7,30 @@ import { type Answer, parseFormConfig, validateAnswers } from "./config";
 
 export type SubmitResult = { status: "created"; submissionId: string; replyTo: string | null } | { status: "duplicate"; submissionId: string } | { status: "unavailable" } | { status: "invalid"; fields: string[] };
 
+const acceptsSubmissions = (formId: string) => and(
+  eq(schema.formDefinitions.id, formId), eq(schema.profiles.status, "published"),
+  sql`exists (select 1 from ${schema.sceneBlocks} where ${schema.sceneBlocks.formId} = ${schema.formDefinitions.id} and ${schema.sceneBlocks.visible})`,
+);
+
 export async function submitForm(db: Db, input: { formId: string; clientKey: string; answers: Record<string, unknown> }): Promise<SubmitResult> {
   const [form] = await db
     .select({ id: schema.formDefinitions.id, profileId: schema.formDefinitions.profileId, config: schema.formDefinitions.config })
     .from(schema.formDefinitions)
     .innerJoin(schema.profiles, eq(schema.profiles.id, schema.formDefinitions.profileId))
-    .where(
-      and(
-        eq(schema.formDefinitions.id, input.formId),
-        eq(schema.profiles.status, "published"),
-        // Only a form the owner currently shows somewhere accepts messages (D11).
-        sql`exists (select 1 from ${schema.sceneBlocks} where ${schema.sceneBlocks.formId} = ${schema.formDefinitions.id} and ${schema.sceneBlocks.visible})`,
-      ),
-    );
+    .where(acceptsSubmissions(input.formId));
   const config = form ? parseFormConfig(form.config) : null;
   if (!form || !config?.ok) return { status: "unavailable" };
   const result = validateAnswers(config.config, input.answers);
   if (!result.ok) return { status: "invalid", fields: result.fields };
   const [row] = await db
     .insert(schema.formSubmissions)
-    .values({ formId: form.id, profileId: form.profileId, clientKey: input.clientKey, answers: result.answers })
+    // Recheck eligibility and the validated config at the insertion boundary, without adding locks (D20).
+    .select(db.select({
+      id: sql<string>`gen_random_uuid()`.as("id"), formId: schema.formDefinitions.id, profileId: schema.formDefinitions.profileId,
+      clientKey: sql<string>`${input.clientKey}::uuid`.as("client_key"), answers: sql<Answer[]>`${JSON.stringify(result.answers)}::jsonb`.as("answers"),
+      createdAt: sql<Date>`now()`.as("created_at"), readAt: sql<Date | null>`null::timestamptz`.as("read_at"), notifiedAt: sql<Date | null>`null::timestamptz`.as("notified_at"),
+    }).from(schema.formDefinitions).innerJoin(schema.profiles, eq(schema.profiles.id, schema.formDefinitions.profileId))
+      .where(and(acceptsSubmissions(form.id), eq(schema.formDefinitions.profileId, form.profileId), eq(schema.formDefinitions.config, form.config))))
     .onConflictDoNothing({ target: [schema.formSubmissions.formId, schema.formSubmissions.clientKey] })
     .returning({ id: schema.formSubmissions.id });
   if (row) return { status: "created", submissionId: row.id, replyTo: result.replyTo };
@@ -34,7 +38,7 @@ export async function submitForm(db: Db, input: { formId: string; clientKey: str
     .select({ id: schema.formSubmissions.id })
     .from(schema.formSubmissions)
     .where(and(eq(schema.formSubmissions.formId, form.id), eq(schema.formSubmissions.clientKey, input.clientKey)));
-  return { status: "duplicate", submissionId: existing.id };
+  return existing ? { status: "duplicate", submissionId: existing.id } : { status: "unavailable" };
 }
 
 export type InboxItem = { id: string; profileName: string | null; formTitle: string; preview: string; createdAt: Date; unread: boolean };

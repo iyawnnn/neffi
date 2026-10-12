@@ -22,6 +22,30 @@ test("quota exhaustion uses the HMAC IP key and limit 10", async () => {
   expect(m.quota).toHaveBeenCalledWith({}, hmacHex("synthetic-form-secret", "form-ip", "203.0.113.9"), 10); expect(m.submit).not.toHaveBeenCalled();
 });
 test("oversize bodies are refused", async () => { expect((await call("x".repeat(16_001))).status).toBe(413); expect(m.submit).not.toHaveBeenCalled(); });
+
+test("the body cap counts UTF-8 bytes rather than characters", async () => {
+  const payload = JSON.stringify({ ...valid, answers: { ...valid.answers, a: "界".repeat(1900), b: "界".repeat(1900), c: "界".repeat(1900) } });
+  expect(payload.length).toBeLessThan(16_000);
+  expect(new TextEncoder().encode(payload).byteLength).toBeGreaterThan(16_000);
+  expect((await call(payload)).status).toBe(413);
+  expect(m.submit).not.toHaveBeenCalled();
+});
+
+test("stops reading a chunked body once the byte cap is exceeded", async () => {
+  let cancelled = false;
+  let reads = 0;
+  const stream = new ReadableStream({
+    pull(controller) { reads++; if (reads <= 4) controller.enqueue(new Uint8Array(8001)); else controller.close(); },
+    cancel() { cancelled = true; },
+  });
+  const request = new Request(`http://localhost:3000/api/forms/${FORM}/submissions`, {
+    method: "POST", headers: { origin: "http://localhost:3000" }, body: stream, duplex: "half",
+  } as RequestInit);
+  expect((await POST(request, { params: Promise.resolve({ formId: FORM }) })).status).toBe(413);
+  expect(cancelled).toBe(true);
+  expect(reads).toBeLessThanOrEqual(3);
+  expect(m.submit).not.toHaveBeenCalled();
+});
 test.each(["not json", JSON.stringify({ ...valid, key: "bad" }), JSON.stringify({ ...valid, answers: { name: "x".repeat(2001) } })])("invalid body returns only the generic error", async body => {
   const response = await call(body); expect(response.status).toBe(400); expect(await response.json()).toEqual({ error: "invalid" }); expect(m.submit).not.toHaveBeenCalled();
 });

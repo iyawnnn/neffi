@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import { cards, formDefinitions, formSubmissions, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
@@ -37,6 +37,21 @@ test("invalid answers are refused", () => rollback(db, async tx => {
   const input = await setup(tx);
   expect(await submitForm(tx, { ...submission(input.formId), answers: { email: "vic@e.test" } })).toEqual({ status: "invalid", fields: ["name"] });
   expect(await tx.select().from(formSubmissions)).toHaveLength(0);
+}));
+test.each(["unpublish", "hide", "config"])("refuses a submission when %s changes after its validation read", change => rollback(db, async tx => {
+  const input = await setup(tx);
+  const [form] = await tx.select().from(formDefinitions).where(eq(formDefinitions.id, input.formId));
+  // Return the pre-edit snapshot after the owner change, leaving the insert on the real database.
+  const read = vi.spyOn(tx, "select").mockReturnValueOnce({ from: () => ({ innerJoin: () => ({ where: async () => {
+    if (change === "unpublish") await unpublishProfile(tx, input);
+    else if (change === "hide") await setBlockVisible(tx, { ...input, visible: false });
+    else await tx.update(formDefinitions).set({ config: { ...form.config as object, questions: [{ id: "budget", label: "Budget", required: true }] } }).where(eq(formDefinitions.id, form.id));
+    return [form];
+  } }) }) } as unknown as ReturnType<typeof tx.select>);
+  try {
+    expect(await submitForm(tx, submission(input.formId))).toEqual({ status: "unavailable" });
+    expect(await tx.select().from(formSubmissions)).toHaveLength(0);
+  } finally { read.mockRestore(); }
 }));
 test("only a Published profile's visible form accepts messages", () => rollback(db, async tx => {
   const input = await setup(tx);
