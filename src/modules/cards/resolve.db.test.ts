@@ -1,12 +1,13 @@
-import { eq } from "drizzle-orm";
-import { beforeAll, expect, test } from "vitest";
-import { cards, profiles } from "@/db/schema";
+import { randomUUID } from "node:crypto";
+import { asc, and, eq } from "drizzle-orm";
+import { beforeAll, expect, test, vi } from "vitest";
+import { cards, profiles, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertClaimedCard, insertProvisioningDbc, insertReadyDbc, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter, publishProfile, unpublishProfile } from "../profiles/profiles";
+import { createProfileFromStarter, publishProfile, unpublishProfile, updateIdentity } from "../profiles/profiles";
 import { createScene, showScene } from "../profiles/scenes";
 import { retireCard } from "./card";
-import { setCardDisabled } from "./manage";
+import { connectCardToProfile, setCardDisabled } from "./manage";
 import { resolveCard } from "./resolve";
 
 let db: TestDb;
@@ -53,4 +54,91 @@ test.each([
 ])("an owned card %s is unavailable but keeps its owner for the owner shortcut", (_name, make) => rollback(db, async tx => {
   const { card, accountId } = await make(tx);
   expect(await resolveCard(tx, card.publicToken!)).toEqual({ status: "unavailable", cardId: card.id, ownerAccountId: accountId });
+}));
+
+vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo" } }));
+import { setBlockVisible } from "../profiles/blocks";
+import { submitForm } from "../forms/submissions";
+import { loadPublicSceneView } from "../profiles/view";
+import type { SceneView } from "../profiles/scene-view";
+import { resolvePublicExperience, type ViewLoader } from "./resolve";
+
+// Stands in for "use cache": entries live across "requests" and are only ever looked up by key.
+function cache(tx: TestTx) {
+  const entries = new Map<string, Promise<SceneView | null>>();
+  const misses: string[] = [];
+  const load: ViewLoader = key => {
+    const id = JSON.stringify(key);
+    if (!entries.has(id)) { misses.push(id); entries.set(id, loadPublicSceneView(tx, key)); }
+    return entries.get(id)!;
+  };
+  return { load, misses };
+}
+const name = async (tx: TestTx, token: string, load: ViewLoader) => {
+  const experience = await resolvePublicExperience(tx, token, load);
+  return experience.status === "published" ? experience.view.identity.fullName : "unavailable";
+};
+
+test("a warm cache never hides turning a card off; turning it on reuses the entry", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load, misses } = cache(tx); const token = c.card.publicToken!;
+  expect(await name(tx, token, load)).toBe("Ana");
+  expect(await name(tx, token, load)).toBe("Ana");
+  expect(misses).toHaveLength(1);
+  await setCardDisabled(tx, { accountId: c.accountId, cardId: c.card.id, disabled: true });
+  expect(await name(tx, token, load)).toBe("unavailable");
+  await setCardDisabled(tx, { accountId: c.accountId, cardId: c.card.id, disabled: false });
+  expect(await name(tx, token, load)).toBe("Ana");
+  expect(misses).toHaveLength(1);
+}));
+test("unpublishing hides at once and publishing shows again", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load } = cache(tx); const token = c.card.publicToken!;
+  await name(tx, token, load);
+  await unpublishProfile(tx, { accountId: c.accountId, profileId: c.profileId });
+  expect(await name(tx, token, load)).toBe("unavailable");
+  await publishProfile(tx, { accountId: c.accountId, profileId: c.profileId });
+  expect(await name(tx, token, load)).toBe("Ana");
+}));
+test("edits and scene switches show on the next tap despite a warm cache", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load } = cache(tx); const token = c.card.publicToken!;
+  await name(tx, token, load);
+  await updateIdentity(tx, { accountId: c.accountId, profileId: c.profileId, identity: { fullName: "Ana Cruz", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null } });
+  expect(await name(tx, token, load)).toBe("Ana Cruz");
+  const [booking] = await tx.select().from(sceneBlocks).where(eq(sceneBlocks.sceneId, c.defaultSceneId)).orderBy(asc(sceneBlocks.position));
+  await setBlockVisible(tx, { accountId: c.accountId, profileId: c.profileId, blockId: booking.id, visible: false });
+  const hidden = await resolvePublicExperience(tx, token, load);
+  expect(hidden.status === "published" && hidden.view.blocks.map(b => b.type)).toEqual(["form", "contact"]);
+  const { sceneId } = await createScene(tx, { accountId: c.accountId, profileId: c.profileId, name: "Events", copyFromSceneId: null });
+  await showScene(tx, { accountId: c.accountId, profileId: c.profileId, sceneId });
+  const switched = await resolvePublicExperience(tx, token, load);
+  expect(switched.status === "published" && switched.view.scene.name).toBe("Events");
+}));
+test("two cards on one profile share content; turning one off leaves the other", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load } = cache(tx);
+  const { card: second } = await insertReleasedDbc(tx);
+  await tx.update(cards).set({ ownerAccountId: c.accountId }).where(eq(cards.id, second.id));
+  await connectCardToProfile(tx, { accountId: c.accountId, cardId: second.id, profileId: c.profileId });
+  expect(await name(tx, second.publicToken!, load)).toBe("Ana");
+  await setCardDisabled(tx, { accountId: c.accountId, cardId: c.card.id, disabled: true });
+  expect(await name(tx, c.card.publicToken!, load)).toBe("unavailable");
+  expect(await name(tx, second.publicToken!, load)).toBe("Ana");
+}));
+test("reconnecting a card to another owned profile shows that profile on the next tap", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load } = cache(tx);
+  const other = await publishedCard(tx, c.accountId, "Ben");
+  expect(await name(tx, c.card.publicToken!, load)).toBe("Ana");
+  await connectCardToProfile(tx, { accountId: c.accountId, cardId: c.card.id, profileId: other.profileId });
+  expect(await name(tx, c.card.publicToken!, load)).toBe("Ben");
+}));
+test("a view that cannot be built is unavailable, never a broken page", () => rollback(db, async tx => {
+  const c = await publishedCard(tx);
+  expect(await resolvePublicExperience(tx, c.card.publicToken!, async () => null)).toEqual({ status: "unavailable", cardId: c.card.id, ownerAccountId: c.accountId });
+}));
+test("a form shown on the page stops accepting once its block is hidden", () => rollback(db, async tx => {
+  const c = await publishedCard(tx); const { load } = cache(tx);
+  const shown = await resolvePublicExperience(tx, c.card.publicToken!, load);
+  const form = shown.status === "published" ? shown.view.blocks.find(b => b.type === "form") : undefined;
+  expect(form?.type).toBe("form");
+  const [block] = await tx.select().from(sceneBlocks).where(and(eq(sceneBlocks.sceneId, c.defaultSceneId), eq(sceneBlocks.type, "form")));
+  await setBlockVisible(tx, { accountId: c.accountId, profileId: c.profileId, blockId: block.id, visible: false });
+  expect(await submitForm(tx, { formId: block.formId!, clientKey: randomUUID(), answers: { name: "Vic", email: "vic@e.test", message: "Hi" } })).toEqual({ status: "unavailable" });
 }));

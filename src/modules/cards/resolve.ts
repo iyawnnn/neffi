@@ -2,6 +2,7 @@ import "server-only";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
+import type { SceneView } from "../profiles/scene-view";
 
 const TOKEN = /^[0-9A-Za-z]{1,64}$/;
 export type CardRoute =
@@ -25,4 +26,19 @@ export async function resolveCard(db: Db, token: string): Promise<CardRoute> {
     return { status: "unavailable", cardId, ownerAccountId };
   }
   return { status: "published", cardId, ownerAccountId, profileId, sceneId, version };
+}
+
+export type ViewKey = { profileId: string; sceneId: string; version: number };
+export type ViewLoader = (key: ViewKey) => Promise<SceneView | null>;
+export type PublicExperience =
+  | { status: "unavailable"; cardId: string | null; ownerAccountId: string | null }
+  | { status: "published"; cardId: string; ownerAccountId: string; profileId: string; view: SceneView };
+
+// Card state is always fresh; only the Scene content comes from `loadView`, whose key carries the content version.
+export async function resolvePublicExperience(db: Db, token: string, loadView: ViewLoader): Promise<PublicExperience> {
+  const route = await resolveCard(db, token);
+  if (route.status === "unavailable") return route;
+  const view = await loadView({ profileId: route.profileId, sceneId: route.sceneId, version: route.version });
+  if (!view) return { status: "unavailable", cardId: route.cardId, ownerAccountId: route.ownerAccountId };
+  return { status: "published", cardId: route.cardId, ownerAccountId: route.ownerAccountId, profileId: route.profileId, view };
 }
