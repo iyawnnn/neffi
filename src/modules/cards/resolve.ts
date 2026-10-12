@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import type { SceneView } from "../profiles/scene-view";
+import { loadCurrentPublicSceneView } from "../profiles/view";
 
 const TOKEN = /^[0-9A-Za-z]{1,64}$/;
 export type CardRoute =
@@ -38,7 +39,7 @@ export type PublicExperience =
 export async function resolvePublicExperience(db: Db, token: string, loadView: ViewLoader): Promise<PublicExperience> {
   const route = await resolveCard(db, token);
   if (route.status === "unavailable") return route;
-  const view = await loadView({ profileId: route.profileId, sceneId: route.sceneId, version: route.version });
+  const view = await loadCurrentPublicSceneView(db, { profileId: route.profileId, sceneId: route.sceneId, version: route.version }, loadView);
   if (!view) return { status: "unavailable", cardId: route.cardId, ownerAccountId: route.ownerAccountId };
   return { status: "published", cardId: route.cardId, ownerAccountId: route.ownerAccountId, profileId: route.profileId, view };
 }

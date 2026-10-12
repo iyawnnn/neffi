@@ -4,6 +4,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // The /c-only Proxy must distinguish Flight requests before Next strips their headers.
+  skipProxyUrlNormalize: true,
   turbopack: {
     rules: {
       "*.css": {

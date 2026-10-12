@@ -4,7 +4,7 @@ import { cards, profiles } from "@/db/schema";
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo" } }));
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter } from "./profiles";
+import { createProfileFromStarter, publishProfile, unpublishProfile, updateIdentity } from "./profiles";
 import { loadOwnerSceneView } from "./view";
 
 let db: TestDb;
@@ -45,6 +45,46 @@ import { randomUUID } from "node:crypto";
 import { accounts } from "@/db/schema";
 import { createScene } from "./scenes";
 import { loadPublicSceneView } from "./view";
+import { loadCurrentPublicSceneView, loadVersionedPublicSceneView } from "./view";
+import { deleteScene, showScene } from "./scenes";
+
+test("a changed revision cannot populate an old public cache key", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await publishProfile(tx, input);
+  const [profile] = await tx.select().from(profiles).where(eq(profiles.id, input.profileId));
+  const key = { profileId: input.profileId, sceneId: profile.defaultSceneId!, version: profile.contentVersion };
+  expect(await loadVersionedPublicSceneView(tx, key)).not.toBeNull();
+  await updateIdentity(tx, { ...input, identity: { fullName: "Changed", headline: "Designer", bio: null, phone: null, email: "ana@e.test", website: null, company: null, location: null } });
+  expect(await loadVersionedPublicSceneView(tx, key)).toBeNull();
+}));
+test.each(["unpublish", "delete shown scene"])("%s during cached resolution never returns a stale DTO", change => rollback(db, async tx => {
+  const input = await setup(tx);
+  const { sceneId } = await createScene(tx, { ...input, name: "Private later", copyFromSceneId: null });
+  await showScene(tx, { ...input, sceneId });
+  await publishProfile(tx, input);
+  const [profile] = await tx.select().from(profiles).where(eq(profiles.id, input.profileId));
+  const key = { profileId: input.profileId, sceneId, version: profile.contentVersion };
+  const cached = await loadVersionedPublicSceneView(tx, key);
+  expect(cached).not.toBeNull();
+  const view = await loadCurrentPublicSceneView(tx, key, async () => {
+    if (change === "unpublish") await unpublishProfile(tx, input);
+    else await deleteScene(tx, { ...input, sceneId });
+    return cached;
+  });
+  expect(view).toBeNull();
+}));
+test("unpublishing cannot poison a content cache key reused on republish", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await publishProfile(tx, input);
+  const [profile] = await tx.select().from(profiles).where(eq(profiles.id, input.profileId));
+  const key = { profileId: input.profileId, sceneId: profile.defaultSceneId!, version: profile.contentVersion };
+  await unpublishProfile(tx, input);
+  const content = await loadVersionedPublicSceneView(tx, key);
+  expect(content).not.toBeNull();
+  expect(await loadCurrentPublicSceneView(tx, key, async () => content)).toBeNull();
+  await publishProfile(tx, input);
+  expect(await loadCurrentPublicSceneView(tx, key, async () => content)).not.toBeNull();
+}));
 
 test("public view shows the requested scene and falls back to the Default Scene", () => rollback(db, async tx => {
   const input = await setup(tx);

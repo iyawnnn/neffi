@@ -26,7 +26,7 @@ const walk = (dir: string): string[] =>
     const path = join(dir, entry);
     return statSync(path).isDirectory() ? walk(path) : [path];
   });
-const files = walk("src/app/(customer)").filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"));
+const files = ["src/app/(customer)", "src/app/(public)/c"].flatMap(walk).filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"));
 
 test("the touch size is 44px", () => {
   expect(buttonVariants({ size: "touch" })).toContain("h-11");
