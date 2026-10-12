@@ -11,10 +11,11 @@ import { isOwner, toViewer, type Viewer } from "./policy";
 
 // Reads the session without ever mutating it: a Server Component cannot set the refreshed cookie, so a
 // refresh here would roll the database expiry while the browser cookie quietly ran out (see refreshSession).
-export const getViewer = cache(async (): Promise<Viewer | null> => {
-  const session = await auth.api.getSession({ headers: await headers(), query: { disableRefresh: true } });
+export async function getViewerFromHeaders(requestHeaders: Headers): Promise<Viewer | null> {
+  const session = await auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: true } });
   return toViewer(session);
-});
+}
+export const getViewer = cache(async (): Promise<Viewer | null> => getViewerFromHeaders(await headers()));
 
 export async function requireAccount(area: "/app" | "/admin"): Promise<Viewer> {
   const viewer = await getViewer();

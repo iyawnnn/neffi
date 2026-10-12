@@ -27,6 +27,8 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/forms/notify.ts",
   "src/integrations/email/sender.ts",
   "src/modules/cards/manage.ts",
+  "src/modules/cards/resolve.ts",
+  "src/app/(public)/c/[token]/cached-view.ts",
   "src/modules/activity/record.ts",
   "src/modules/cards/card.ts",
   "src/modules/cards/dbc.ts",

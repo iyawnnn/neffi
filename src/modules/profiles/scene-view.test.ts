@@ -38,3 +38,32 @@ test.each([["Ana Maria Cruz", "AC"], ["ana", "A"], [" ", "N"]])("initials for %j
   const input = base();
   expect(buildSceneView({ ...input, profile: { ...input.profile, fullName } }).identity).toMatchObject({ initials, accent: "#0C0C0D", image: null });
 });
+
+import { ACCENTS } from "./rules";
+import { contrast, onAccent } from "./scene-view";
+
+test("any stored link that is not https is dropped or blanked", () => {
+  const view = buildSceneView({
+    ...base(),
+    profile: { ...base().profile, website: "http://ana.example/" },
+    blocks: [
+      block("l", "link", 0, { kind: "custom", label: null, url: "javascript:alert(1)" }),
+      block("b", "booking", 1, { label: null, url: "data:text/html,hi" }),
+      block("p", "project", 2, { title: "Site", description: null, url: "http://ana.example/" }),
+      block("ok", "link", 3, { kind: "github", label: null, url: "https://github.com/ana" }),
+    ],
+  });
+  expect(view.identity.website).toBeNull();
+  expect(view.blocks).toEqual([
+    { id: "p", type: "project", title: "Site", description: null, url: null },
+    { id: "ok", type: "link", kind: "github", label: "GitHub", url: "https://github.com/ana" },
+  ]);
+});
+test.each(ACCENTS.map(a => a.hex))("text on accent %s meets WCAG AA (4.5:1)", hex => {
+  expect(contrast(hex, onAccent(hex))).toBeGreaterThanOrEqual(4.5);
+});
+test("view identity carries the accent text colour, Ink on Vermilion", () => {
+  const view = buildSceneView({ ...base(), profile: { ...base().profile, accentColor: "#E64A35" } });
+  expect(view.identity.onAccent).toBe("#0C0C0D");
+  expect(buildSceneView(base()).identity.onAccent).toBe("#FFFFFF");
+});

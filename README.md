@@ -174,7 +174,7 @@ Accepted abuse limits: another person can consume an email's send quota or inval
 
 ## Physical card provisioning (M4)
 
-OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. There is no `/c/{token}` page yet: the public card resolver is Milestone 7. Customer activation is described under Activation below.
+OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. `/c/{token}` is the public card page (Milestone 7, below). Customer activation is described under Activation below.
 
 **Configuration.** `CARD_URL_ORIGIN` is a bare origin (no path, query or hash; https outside development). The NFC value written for a DBC is exactly `<CARD_URL_ORIGIN>/c/<token>`. Cards provisioned while it points at a development origin are **engineering test units and must never be sold.** Before any pilot or commercial DBC is provisioned, lock the final long-lived NFC domain and change `CARD_URL_ORIGIN` to it. `ACTIVATION_CODE_SECRET` keys the HMAC stored for each activation code; changing it makes every issued, unclaimed code unverifiable, so treat it like a database credential and do not rotate it casually.
 
@@ -218,7 +218,7 @@ Run `DATABASE_URL=<loopback> pnpm dev` with the process environment overriding `
 
 After claiming a Card, **Ready to set up** leads through a purpose (Network, Get Clients or Show My Work), essentials, owner preview and Publish. A Draft resumes from Home. Profiles hold shared identity and appearance; each has a protected main Scene and may show another Scene. Scenes contain ordered About, Link, Project, Booking, Contact and Form blocks. Limits are 10 Profiles per Account, 5 Scenes per Profile, 20 Blocks per Scene and 5 Forms per Profile. Links are HTTPS; the legacy flat Profile Links table is unused after its migration backfill.
 
-Native Forms have fixed fields and up to 3 custom questions. Same-origin `POST /api/forms/[formId]/submissions` stores a message before a single notification-email attempt; a repeated browser key creates no duplicate. Delivery failure leaves the message in the Inbox, with no automatic retry. Home shows unread counts; opening a message marks it read, and the Inbox supports confirmed deletion. Visitor form rendering, the public `/c/{token}` page, vCard download and public caching belong to M7.
+Native Forms have fixed fields and up to 3 custom questions. Same-origin `POST /api/forms/[formId]/submissions` stores a message before a single notification-email attempt; a repeated browser key creates no duplicate. Delivery failure leaves the message in the Inbox, with no automatic retry. Home shows unread counts; opening a message marks it read, and the Inbox supports confirmed deletion. Visitors use these forms on the public card page.
 
 Images use signed direct uploads to the development Cloudinary account. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` locally and in Vercel Preview; the secret remains server-only. Appearance applies across a Profile's Scenes. Cards can be connected to owned Profiles, turned off/on, and shared using a downloadable Sharing QR encoding their permanent Card URL. This is distinct from the common activation insert QR.
 
@@ -236,3 +236,20 @@ M4 and M5 remain software gate passed with physical acceptance pending. These so
 - Activation codes, OTPs, auth cookies and tokens must never appear in URLs, logs, error messages, analytics, Sentry or browser storage.
 - Sentry runs errors-only with personal-data collection disabled and request scrubbing (`src/lib/sentry-scrub.ts`).
 - Authorization is always enforced server-side. Hiding UI is not authorization.
+
+## Public card page (Milestone 7)
+
+`/c/{token}` is the permanent URL on the NFC chip and in the digital Sharing QR. Every request reads the card fresh (one
+indexed lookup): only a claimed, enabled card showing a Published profile renders; everything else — unknown link,
+unclaimed, turned off, no profile, Draft or Unpublished — gets the same "This Neffi isn't available right now" 404, so the
+page never reveals why. The profile's shown Scene (or its Default Scene) renders with its visible Blocks in order.
+
+Scene content is cached with `"use cache"` under `(profile, scene, content_version)`. Every change a visitor could see calls
+`bumpProfileContentVersion` inside its transaction, so an edit never meets a stale entry; card state, card→profile routing
+and publish status are never cached. Visitors can save a vCard (`/c/{token}/contact`), follow https links, book, call,
+email and send the profile's form. A signed-in owner sees the same page plus Edit / Switch scene (or Manage this card when
+it is unavailable). All public pages are `noindex`; customer search indexing is a later, separately planned feature.
+
+The /c-only Proxy decides Card availability before rendering and forwards an authenticated request-only snapshot.
+Unavailable document requests return a prebuilt generic 404; unavailable Next navigation requests receive an early 404
+and load the same permanent document URL. Profile revision checks fail closed if content changes during resolution.

@@ -3,7 +3,7 @@ import { and, asc, count, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { ProfileError } from "./errors";
-import { lockOwnedProfile } from "./profiles";
+import { bumpProfileContentVersion, lockOwnedProfile } from "./profiles";
 import { LIMITS } from "./rules";
 
 const sceneName = (raw: string) => {
@@ -38,6 +38,7 @@ export async function renameScene(db: Db, input: { accountId: string; profileId:
     const profile = await lockOwnedProfile(tx, input.accountId, input.profileId);
     await ownedScene(tx, profile.id, input.sceneId);
     await tx.update(schema.scenes).set({ name: sceneName(input.name) }).where(eq(schema.scenes.id, input.sceneId));
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }
 
@@ -46,7 +47,10 @@ export async function deleteScene(db: Db, input: { accountId: string; profileId:
     const profile = await lockOwnedProfile(tx, input.accountId, input.profileId);
     if (input.sceneId === profile.defaultSceneId) throw new ProfileError("default_scene");
     await ownedScene(tx, profile.id, input.sceneId);
-    if (profile.activeSceneId === input.sceneId) await tx.update(schema.profiles).set({ activeSceneId: null }).where(eq(schema.profiles.id, profile.id));
+    if (profile.activeSceneId === input.sceneId) {
+      await tx.update(schema.profiles).set({ activeSceneId: null }).where(eq(schema.profiles.id, profile.id));
+      await bumpProfileContentVersion(tx, profile.id);
+    }
     await tx.delete(schema.scenes).where(eq(schema.scenes.id, input.sceneId));
   });
 }
@@ -55,6 +59,10 @@ export async function showScene(db: Db, input: { accountId: string; profileId: s
   await db.transaction(async tx => {
     const profile = await lockOwnedProfile(tx, input.accountId, input.profileId);
     await ownedScene(tx, profile.id, input.sceneId);
-    await tx.update(schema.profiles).set({ activeSceneId: input.sceneId === profile.defaultSceneId ? null : input.sceneId }).where(eq(schema.profiles.id, profile.id));
+    const active = input.sceneId === profile.defaultSceneId ? null : input.sceneId;
+    if (active === profile.activeSceneId) return;
+    await tx.update(schema.profiles).set({ activeSceneId: active }).where(eq(schema.profiles.id, profile.id));
+    await bumpProfileContentVersion(tx, profile.id);
+
   });
 }

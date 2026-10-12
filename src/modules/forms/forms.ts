@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { ProfileError } from "../profiles/errors";
-import { lockOwnedProfile } from "../profiles/profiles";
+import { bumpProfileContentVersion, lockOwnedProfile } from "../profiles/profiles";
 import { parseFormConfig } from "./config";
 
 export async function updateForm(db: Db, input: { accountId: string; profileId: string; formId: string; title: string; config: unknown }): Promise<void> {
@@ -16,5 +16,6 @@ export async function updateForm(db: Db, input: { accountId: string; profileId: 
       .where(and(eq(schema.formDefinitions.id, input.formId), eq(schema.formDefinitions.profileId, input.profileId)))
       .returning({ id: schema.formDefinitions.id });
     if (!row) throw new ProfileError("not_found");
+    await bumpProfileContentVersion(tx, input.profileId);
   });
 }

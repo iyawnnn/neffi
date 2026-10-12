@@ -4,7 +4,7 @@ import { parseFormConfig, visibleFields } from "../forms/config";
 export type ViewIdentity = {
   fullName: string; initials: string; headline: string | null; company: string | null; bio: string | null;
   phone: string | null; email: string | null; website: string | null; location: string | null;
-  accent: string; image: { url: string; isLogo: boolean } | null;
+  accent: string; onAccent: "#0C0C0D" | "#FFFFFF"; image: { url: string; isLogo: boolean } | null;
 };
 export type ViewBlock =
   | { id: string; type: "about"; text: string }
@@ -27,21 +27,39 @@ const initials = (name: string) => {
   return words.length ? (words[0][0] + (words.length > 1 ? words[words.length - 1][0] : "")).toUpperCase() : "N";
 };
 
+// Stored links are validated https on write; this keeps any older or hand-edited row from ever reaching a visitor.
+const https = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  try { return new URL(value).protocol === "https:" ? value : null; } catch { return null; }
+};
+const channel = (c: number) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+const luminance = (hex: string) => { const [r, g, b] = [1, 3, 5].map(i => channel(parseInt(hex.slice(i, i + 2), 16))); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+export const contrast = (a: string, b: string) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+// Text on an accent fill: white unless Ink reads better (Vermilion, Amber), per the design system's "Ink on Vermilion".
+export const onAccent = (accent: string) => (contrast(accent, "#FFFFFF") >= contrast(accent, "#0C0C0D") ? "#FFFFFF" : "#0C0C0D");
+
 // The one mapping from stored rows to what a viewer sees. Owner preview uses it now; M7's public page reuses it.
 export function buildSceneView({ profile, imageUrl, scene, blocks, forms }: SceneViewInput): SceneView {
+  const accent = profile.accentColor ?? "#0C0C0D";
   const identity: ViewIdentity = {
     fullName: profile.fullName ?? "", initials: initials(profile.fullName ?? ""), headline: profile.headline, company: profile.company,
-    bio: profile.bio, phone: profile.phone, email: profile.email, website: profile.website, location: profile.location,
-    accent: profile.accentColor ?? "#0C0C0D", image: imageUrl ? { url: imageUrl, isLogo: profile.imageIsLogo } : null,
+    bio: profile.bio, phone: profile.phone, email: profile.email, website: https(profile.website), location: profile.location,
+    accent, onAccent: onAccent(accent), image: imageUrl ? { url: imageUrl, isLogo: profile.imageIsLogo } : null,
   };
   const view: ViewBlock[] = [];
   for (const block of [...blocks].sort((a, b) => a.position - b.position)) {
     if (!block.visible) continue;
     const c = block.content as Record<string, unknown>;
     if (block.type === "about") view.push({ id: block.id, type: "about", text: String(c.text) });
-    else if (block.type === "project") view.push({ id: block.id, type: "project", title: String(c.title), description: (c.description as string | null) ?? null, url: (c.url as string | null) ?? null });
-    else if (block.type === "link") view.push({ id: block.id, type: "link", kind: c.kind as LinkKind, label: (c.label as string | null) ?? LINK_KIND_LABELS[c.kind as LinkKind], url: String(c.url) });
-    else if (block.type === "booking") view.push({ id: block.id, type: "booking", label: (c.label as string | null) ?? "Book a time", url: String(c.url) });
+    else if (block.type === "project") view.push({ id: block.id, type: "project", title: String(c.title), description: (c.description as string | null) ?? null, url: https(c.url) });
+    else if (block.type === "link") {
+      const url = https(c.url);
+      if (url) view.push({ id: block.id, type: "link", kind: c.kind as LinkKind, label: (c.label as string | null) ?? LINK_KIND_LABELS[c.kind as LinkKind], url });
+    }
+    else if (block.type === "booking") {
+      const url = https(c.url);
+      if (url) view.push({ id: block.id, type: "booking", label: (c.label as string | null) ?? "Book a time", url });
+    }
     else if (block.type === "contact") {
       const { phone, email, website, location } = identity;
       if (c.saveContact || phone || email || website || location) view.push({ id: block.id, type: "contact", saveContact: Boolean(c.saveContact), phone, email, website, location });
