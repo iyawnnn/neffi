@@ -39,3 +39,15 @@ test("Published requests overwrite client snapshots with a private authenticated
   expect(response.headers.get(CARD_REQUEST_HEADER)).toBeNull();
   expect(m.resolve).toHaveBeenCalledTimes(1);
 });
+test.each(["customer", "owner"])("a signed-in non-owner with role %s gets plain visitor semantics", async role => {
+  m.viewer.mockResolvedValue({ accountId: "other", email: "private@example.test", role });
+  m.resolve.mockResolvedValue({ status: "unavailable", cardId: "c1", ownerAccountId: "a1" });
+  expect((await proxy(request())).status).toBe(404);
+});
+test("the authenticated Card owner receives only the management decision", async () => {
+  m.viewer.mockResolvedValue({ accountId: "a1", email: "private@example.test", role: "customer" });
+  m.resolve.mockResolvedValue({ status: "unavailable", cardId: "c1", ownerAccountId: "a1" });
+  const response = await proxy(request());
+  expect(response.status).toBe(200);
+  expect(readCardRequest("TOKEN", response.headers.get(`x-middleware-request-${CARD_REQUEST_HEADER}`))).toEqual({ status: "unavailable", ownerCardId: "c1" });
+});

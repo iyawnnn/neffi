@@ -40,6 +40,15 @@ test("a revision changed during content resolution cannot render stale data", as
   m.load.mockResolvedValue(null);
   await expect(render()).rejects.toThrow("NOT_FOUND");
 });
+test("the signed-in owner sees the same public page with Edit and Switch scene", async () => {
+  m.header.mockReturnValue(signCardRequest("TOKEN", { ...published, owner: true }));
+  const html = await render();
+  expect(html).toContain('data-save="/c/TOKEN/contact"');
+  expect(html).toContain('href="/app/profiles/p1/scenes/s1"');
+  expect(html).toContain('href="/app/profiles/p1"');
+  expect(html).toContain("Only you see this");
+  expect(html).not.toContain("ownerCardId");
+});
 test("only this segment disables prefetch and its metadata carries no profile data", () => {
   expect(prefetch).toBe("force-disabled");
   expect(metadata).toEqual({ title: "Neffi", robots: { index: false, follow: false } });

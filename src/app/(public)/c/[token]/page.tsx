@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { headers } from "next/headers";
@@ -26,6 +27,13 @@ export default async function CardPage({ params }: PageProps<"/c/[token]">) {
   if (!view) notFound();
   return (
     <main className="flex flex-1 flex-col bg-[#F2F0EA] text-[#0C0C0D]">
+      {snapshot.owner ? (
+        <nav aria-label="Manage your Neffi" className="flex flex-wrap items-center justify-center gap-2 border-b border-[#D8D5CE] bg-[#F8F7F3] px-5 py-2 text-sm">
+          <span className="text-[#74736F]">Only you see this</span>
+          <Link href={`/app/profiles/${snapshot.profileId}/scenes/${view.scene.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-[#D8D5CE] px-3 font-medium">Edit</Link>
+          <Link href={`/app/profiles/${snapshot.profileId}`} className="inline-flex min-h-11 items-center rounded-lg border border-[#D8D5CE] px-3 font-medium">Switch scene</Link>
+        </nav>
+      ) : null}
       <SceneViewPreview view={view} visitorActions={{ saveContactHref: `/c/${token}/contact` }} />
     </main>
   );
