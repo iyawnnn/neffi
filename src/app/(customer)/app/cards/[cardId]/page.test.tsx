@@ -1,0 +1,23 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, expect, test, vi } from "vitest";
+const m = vi.hoisted(() => ({ account: vi.fn(), card: vi.fn(), profiles: vi.fn() }));
+vi.mock("@/auth/access", () => ({ requireAccount: m.account }));
+vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/config/env", () => ({ env: { cardUrlOrigin: "https://tap.example.test" } }));
+vi.mock("@/modules/cards/manage", () => ({ getOwnedCard: m.card }));
+vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.profiles }));
+vi.mock("../actions", () => ({ connectCardAction: vi.fn(), setCardDisabledAction: vi.fn() }));
+vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
+import CardPage from "./page";
+const token = "AAAAAAAAAAAAAAAAAAAAAAAAAA";
+const render = async () => renderToStaticMarkup(await CardPage({ params: Promise.resolve({ cardId: "c1" }), searchParams: Promise.resolve({}) }));
+beforeEach(() => { vi.resetAllMocks(); m.account.mockResolvedValue({ accountId: "a1" }); m.card.mockResolvedValue({ id: "c1", suffix: "AAAA", publicToken: token, profileId: "p1", profileName: "Ana", disabled: false }); m.profiles.mockResolvedValue([{ id: "p1", fullName: "Ana" }, { id: "p2", fullName: "Work" }]); });
+test("connected card shows owned profiles, off confirmation and permanent Sharing QR", async () => {
+  const html = await render();
+  expect(html).toContain('name="profileId"'); expect(html).toContain('value="p1" selected=""'); expect(html).toContain("Work");
+  for (const text of ["Shows", "Turn off this card", "When it&#x27;s off, tapping it won&#x27;t show your profile.", "Download QR code", "Anyone who scans this opens the same page as tapping your card."]) expect(html).toContain(text);
+  expect(html).toContain('alt="QR code for your Neffi link"'); expect(html).toContain('src="data:image/svg+xml'); expect(html).toContain('download="neffi-qr.svg"'); expect(html).toContain(`https://tap.example.test/c/${token}`);
+});
+test("unconfigured card offers setup and hides the QR", async () => { m.card.mockResolvedValue({ id: "c1", suffix: "AAAA", publicToken: token, profileId: null, disabled: false }); const html = await render(); expect(html).toContain('href="/app/setup/c1"'); expect(html).not.toContain("data:image/svg+xml"); });
+test("disabled card can be turned on without confirmation", async () => { m.card.mockResolvedValue({ id: "c1", suffix: "AAAA", publicToken: token, profileId: "p1", disabled: true }); const html = await render(); expect(html).toContain("Turn on this card"); expect(html).not.toContain('name="confirm"'); });
+test("unknown card is not found", async () => { m.card.mockResolvedValue(null); await expect(render()).rejects.toThrow("NOT_FOUND"); });

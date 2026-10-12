@@ -2,7 +2,7 @@
 // every id is fixed, so re-running yields the identical dataset. `seed` empties the tables first: it is a
 // reset, guarded here as well as in scripts/seed-dev.ts by the explicit development environment.
 // Activation credentials carry only synthetic lookup values; no activation code exists for any of them.
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { parseSeedEnv } from "../config/env-schema";
 import * as schema from "./schema";
@@ -33,6 +33,10 @@ export const SEED_IDS = {
   itemCancelledDbc: id(53),
   profileAna: id(60),
   profileBenDraft: id(61),
+  sceneAnaMain: id(62),
+  sceneAnaEvents: id(63),
+  sceneBenMain: id(64),
+  formAna: id(65),
   cardBlank: id(70),
   cardProvisioningDbc: id(71),
   cardClaimedDbc: id(72),
@@ -65,6 +69,10 @@ const SEED_TABLES = [
   "activation_credentials",
   "profiles",
   "profile_links",
+  "scenes",
+  "form_definitions",
+  "scene_blocks",
+  "form_submissions",
   "expenses",
   "support_cases",
   "support_case_cards",
@@ -125,13 +133,35 @@ export async function seed(db: SeedDb): Promise<void> {
     ]);
 
     await tx.insert(schema.profiles).values([
-      { id: S.profileAna, accountId: S.customerAna, status: "published", fullName: "Ana Synthetic", headline: "Synthetic Designer", email: "hello@example.test", accentColor: "#2f6fed" },
+      { id: S.profileAna, accountId: S.customerAna, status: "draft", fullName: "Ana Synthetic", headline: "Synthetic Designer", email: "hello@example.test", accentColor: "#2f6fed" },
       { id: S.profileBenDraft, accountId: S.customerBen },
     ]);
     await tx.insert(schema.profileLinks).values([
       { profileId: S.profileAna, type: "linkedin", url: "https://example.test/in/ana", position: 0 },
       { profileId: S.profileAna, type: "custom", label: "Portfolio", url: "https://example.test/ana", position: 1 },
     ]);
+
+    await tx.insert(schema.scenes).values([
+      { id: S.sceneAnaMain, profileId: S.profileAna, name: "Main" },
+      { id: S.sceneAnaEvents, profileId: S.profileAna, name: "Events" },
+      { id: S.sceneBenMain, profileId: S.profileBenDraft, name: "Main" },
+    ]);
+    await tx.insert(schema.formDefinitions).values({
+      id: S.formAna, profileId: S.profileAna, preset: "connect", title: "Let's connect",
+      config: { fields: { name: "required", email: "required", phone: "optional", company: "optional", message: "optional" }, questions: [] },
+    });
+    await tx.insert(schema.sceneBlocks).values([
+      { sceneId: S.sceneAnaMain, type: "link", position: 0, content: { kind: "linkedin", url: "https://example.test/in/ana" } },
+      { sceneId: S.sceneAnaMain, type: "link", position: 1, content: { kind: "custom", label: "Portfolio", url: "https://example.test/ana" } },
+      { sceneId: S.sceneAnaMain, type: "contact", position: 2, content: { saveContact: true } },
+      { sceneId: S.sceneAnaEvents, type: "form", position: 0, formId: S.formAna },
+    ]);
+    await tx.insert(schema.formSubmissions).values({
+      formId: S.formAna, profileId: S.profileAna, clientKey: id(66),
+      answers: [{ label: "Your name", value: "Synthetic Visitor" }, { label: "Email", value: "visitor@example.test" }],
+    });
+    await tx.update(schema.profiles).set({ defaultSceneId: S.sceneAnaMain, status: "published" }).where(eq(schema.profiles.id, S.profileAna));
+    await tx.update(schema.profiles).set({ defaultSceneId: S.sceneBenMain }).where(eq(schema.profiles.id, S.profileBenDraft));
 
     const stock = { stockPurchaseId: S.openingStock };
     const dbc = { ...stock, productId: S.productDbc, kind: "dbc" as const };

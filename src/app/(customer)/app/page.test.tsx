@@ -1,12 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), getLinkedMethods: vi.fn(), ownedCards: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), unreadCount: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
-vi.mock("@/auth/methods", () => ({ getLinkedMethods: m.getLinkedMethods }));
+vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles }));
+vi.mock("@/modules/forms/submissions", () => ({ unreadCount: m.unreadCount }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("./account-actions", () => ({ AccountActions: () => <div data-account-actions="" /> }));
 
 import CustomerHome from "./page";
 
@@ -17,8 +17,31 @@ const render = async (search: Record<string, string> = {}) =>
 beforeEach(() => {
   vi.clearAllMocks();
   m.requireAccount.mockResolvedValue({ accountId: "a1", email: "a@example.test", role: "customer" });
-  m.getLinkedMethods.mockResolvedValue({ google: false });
+  m.ownedProfiles.mockResolvedValue([]);
+  m.unreadCount.mockResolvedValue(0);
   m.ownedCards.mockResolvedValue([]);
+});
+
+test("lists profiles and resumes publishing a draft", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "draft", unread: 0 }, { id: "p2", fullName: "Lee", status: "published", unread: 0 }]);
+  const html = await render();
+  expect(html).toContain("Your profiles");
+  expect(html).toContain('href="/app/profiles/p1"');
+  expect(html).toContain("Ana");
+  expect(html).toContain("Draft");
+  expect(html).toContain("Published");
+  expect(html).toContain("Preview and publish Ana");
+  expect(html).toContain('href="/app/profiles/p1/publish"');
+  expect(html).not.toContain('href="/app/profiles/p2/publish"');
+});
+
+test.each([0, 1, 3])("shows the unread message summary only when nonzero (%s)", async unread => {
+  m.unreadCount.mockResolvedValue(unread);
+  const html = await render();
+  if (unread) {
+    expect(html).toContain(`${unread} new message${unread === 1 ? "" : "s"}`);
+    expect(html).toContain('href="/app/inbox"');
+  } else expect(html).not.toContain('href="/app/inbox"');
 });
 
 test("after a claim, confirms the Neffi was added", async () => {
@@ -34,7 +57,8 @@ test("lists owned cards waiting for setup without exposing the full card address
   ]);
   const html = await render();
   expect(html).toContain("Ready to set up");
-  expect(html).toContain("Neffi ending in WXYZ");
+  expect(html).toContain("Set up Neffi ending in WXYZ");
+  expect(html).toContain('href="/app/setup/c1"');
   expect(html).toContain("Activate another Neffi");
   expect(html).not.toContain(TOKEN);
   expect(html).not.toContain("BBBB");
@@ -43,6 +67,8 @@ test("lists owned cards waiting for setup without exposing the full card address
 
 test("with no cards keeps the empty-state line and offers activation", async () => {
   const html = await render();
+  expect(html).not.toContain("Signed in as");
+  expect(html).not.toContain("Sign-in methods");
   expect(html).toContain("Your cards and profiles will appear here.");
   expect(html).not.toContain("Ready to set up");
   expect(html).toContain('href="/activate"');

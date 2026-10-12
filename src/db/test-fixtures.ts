@@ -1,5 +1,6 @@
 // Test-only builders for the minimum valid rows each invariant test needs. Synthetic values only.
-import { accounts, cards, orderItems, orders, products, profiles, purchasers, stockPurchases } from "./schema";
+import { eq } from "drizzle-orm";
+import { accounts, cards, orderItems, orders, products, profiles, purchasers, scenes, stockPurchases } from "./schema";
 import type { TestTx } from "./testing";
 
 let sequence = 0;
@@ -53,6 +54,14 @@ export async function insertStockPurchase(tx: TestTx) {
 export async function insertProfile(tx: TestTx, accountId: string) {
   const [row] = await tx.insert(profiles).values({ accountId }).returning();
   return row;
+}
+
+// A Draft profile with its Default Scene, as every M6-created profile has.
+export async function insertProfileWithScene(tx: TestTx, accountId: string) {
+  const profile = await insertProfile(tx, accountId);
+  const [scene] = await tx.insert(scenes).values({ profileId: profile.id, name: "Main" }).returning();
+  await tx.update(profiles).set({ defaultSceneId: scene.id }).where(eq(profiles.id, profile.id));
+  return { profile: { ...profile, defaultSceneId: scene.id }, scene };
 }
 
 // A DBC that was sold and claimed: released against an order item, owned, optionally routed to a profile.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { authCodeEmail, createResendSender } from "./resend";
+import { authCodeEmail, changeEmailCodeEmail, createResendSender } from "./resend";
 
 const config = { apiKey: "re_synthetic_key_not_real", from: "Neffi <auth@example.test>" };
 
@@ -12,6 +12,13 @@ function stubFetch(response: Response) {
 }
 
 describe("Resend sender", () => {
+  test("notification mail supplies reply-to and a stable idempotency key", async () => {
+    const fetchMock = stubFetch(new Response("{}", { status: 200 }));
+    await createResendSender(config)({ to: "owner@example.test", subject: "Message", text: "Body", replyTo: "visitor@example.test", idempotencyKey: "form-submission-synthetic" });
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe("form-submission-synthetic");
+    expect(JSON.parse(init.body as string).reply_to).toEqual(["visitor@example.test"]);
+  });
   test("posts plain-text mail with bearer auth and a fresh idempotency key per send", async () => {
     const fetchMock = stubFetch(new Response('{"id":"x"}', { status: 200 }));
     const send = createResendSender(config);
@@ -52,6 +59,14 @@ describe("Resend sender", () => {
 });
 
 describe("auth code email", () => {
+  test("email change explains the new sign-in address, expiry and single use without links", () => {
+    const mail = changeEmailCodeEmail("482913", 5);
+    expect(mail.subject).toBe("Confirm your new Neffi sign-in email");
+    expect(mail.text).toContain("482913");
+    expect(mail.text).toContain("use this address for signing in");
+    expect(mail.text).toContain("5 minutes and works once");
+    expect(mail.text).not.toMatch(/https?:\/\//);
+  });
   test("states the code and its lifetime, with no links", () => {
     const mail = authCodeEmail("482913", 5);
     expect(mail.subject).toBe("Your Neffi sign-in code");

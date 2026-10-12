@@ -15,6 +15,9 @@ export type ServerEnv = {
   authEmailFrom: string;
   activationCodeSecret: string;
   cardUrlOrigin: string;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
 };
 
 // Platforms often set unused variables to "", which should count as missing.
@@ -56,6 +59,9 @@ const serverSchema = z.object({
     z.string({ error: "ACTIVATION_CODE_SECRET is required" }).min(32, { error: "ACTIVATION_CODE_SECRET must be at least 32 characters" }),
   ),
   CARD_URL_ORIGIN: cardUrlOrigin,
+  CLOUDINARY_CLOUD_NAME: required("CLOUDINARY_CLOUD_NAME"),
+  CLOUDINARY_API_KEY: required("CLOUDINARY_API_KEY"),
+  CLOUDINARY_API_SECRET: required("CLOUDINARY_API_SECRET"),
 });
 
 const migrationSchema = z.object({
@@ -99,6 +105,9 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
     authEmailFrom: env.AUTH_EMAIL_FROM,
     activationCodeSecret: env.ACTIVATION_CODE_SECRET,
     cardUrlOrigin: env.CARD_URL_ORIGIN,
+    cloudinaryCloudName: env.CLOUDINARY_CLOUD_NAME,
+    cloudinaryApiKey: env.CLOUDINARY_API_KEY,
+    cloudinaryApiSecret: env.CLOUDINARY_API_SECRET,
   };
 }
 

@@ -14,6 +14,9 @@ const base = {
   AUTH_EMAIL_FROM: "Neffi <auth@example.test>",
   ACTIVATION_CODE_SECRET: "a".repeat(40),
   CARD_URL_ORIGIN: "http://localhost:3000",
+  CLOUDINARY_CLOUD_NAME: "demo",
+  CLOUDINARY_API_KEY: "synthetic-cloudinary-key",
+  CLOUDINARY_API_SECRET: "synthetic-cloudinary-secret",
 };
 
 function errorMessage(fn: () => unknown): string {
@@ -26,6 +29,11 @@ function errorMessage(fn: () => unknown): string {
 }
 
 describe("parseServerEnv", () => {
+  test("requires the Cloudinary secret without echoing values", () => {
+    const message = errorMessage(() => parseServerEnv({ ...base, CLOUDINARY_API_SECRET: undefined }));
+    expect(message).toContain("CLOUDINARY_API_SECRET is required");
+    expect(message).not.toContain(base.CLOUDINARY_API_KEY);
+  });
   test("parses a valid development environment", () => {
     expect(parseServerEnv(base)).toEqual({
       appEnv: "development",
@@ -39,6 +47,9 @@ describe("parseServerEnv", () => {
       authEmailFrom: base.AUTH_EMAIL_FROM,
       activationCodeSecret: "a".repeat(40),
       cardUrlOrigin: "http://localhost:3000",
+      cloudinaryCloudName: base.CLOUDINARY_CLOUD_NAME,
+      cloudinaryApiKey: base.CLOUDINARY_API_KEY,
+      cloudinaryApiSecret: base.CLOUDINARY_API_SECRET,
     });
   });
 

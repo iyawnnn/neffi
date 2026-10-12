@@ -7,6 +7,7 @@ import { consumeQuota, hmacHex } from "@/auth/otp-quota";
 import { auth } from "@/auth/server";
 import { env } from "@/config/env";
 import { db } from "@/db";
+import { clientIp } from "@/lib/client-ip";
 import { checkActivationCode, claimCard } from "@/modules/activation/claim";
 import { clearChallenge, readChallenge, setChallenge } from "./challenge-cookie";
 
@@ -21,8 +22,6 @@ const MESSAGES = {
   tooMany: "Too many tries. Please wait a few minutes and try again.",
 };
 
-// Same trusted headers as Better Auth's limiter (src/auth/options.ts); Vercel overwrites both.
-const clientIp = (h: Headers) => (h.get("x-vercel-forwarded-for") ?? h.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
 const quotaKey = (domain: string, value: string) => hmacHex(env.activationCodeSecret, domain, value);
 
 // The code arrives only in this POST body. It is never echoed back, logged, stored or put in a URL.

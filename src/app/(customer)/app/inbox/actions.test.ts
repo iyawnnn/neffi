@@ -1,0 +1,15 @@
+import { beforeEach, expect, test, vi } from "vitest";
+import { ProfileError } from "@/modules/profiles/errors";
+const m = vi.hoisted(() => ({ authorize: vi.fn(), remove: vi.fn() }));
+vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
+vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/modules/forms/submissions", () => ({ deleteSubmission: m.remove }));
+vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
+import { deleteSubmissionAction } from "./actions";
+const ID = "11111111-1111-4111-8111-111111111111";
+const data = (confirm = false) => { const form = new FormData(); form.set("submissionId", ID); if (confirm) form.set("confirm", "on"); return form; };
+beforeEach(() => { vi.resetAllMocks(); m.authorize.mockResolvedValue({ ok: true, viewer: { accountId: "a1" } }); });
+test("deletion needs explicit confirmation", async () => { expect(await deleteSubmissionAction(undefined, data())).toEqual({ error: "Tick the box to confirm." }); expect(m.remove).not.toHaveBeenCalled(); });
+test("owned delete redirects to inbox", async () => { await expect(deleteSubmissionAction(undefined, data(true))).rejects.toThrow("REDIRECT:/app/inbox"); expect(m.remove).toHaveBeenCalledWith({}, { accountId: "a1", submissionId: ID }); });
+test("unowned message is not found", async () => { m.remove.mockRejectedValue(new ProfileError("not_found")); await expect(deleteSubmissionAction(undefined, data(true))).rejects.toThrow("NOT_FOUND"); });
+test("signed-out deletion requires authentication", async () => { m.authorize.mockResolvedValue({ ok: false }); await expect(deleteSubmissionAction(undefined, data(true))).rejects.toThrow("REDIRECT:/sign-in?next=/app"); expect(m.remove).not.toHaveBeenCalled(); });

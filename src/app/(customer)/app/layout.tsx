@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAccount } from "@/auth/access";
 import { SessionKeepAlive } from "@/components/session-keep-alive";
+import { AppNav } from "./app-nav";
 
 // Customer surface (/app/*). Private and never indexed.
 export const metadata: Metadata = {
@@ -15,7 +16,8 @@ export default async function CustomerLayout({ children }: LayoutProps<"/app">) 
   await requireAccount("/app");
   return (
     <>
-      {children}
+      <div className="flex flex-1 flex-col pb-24">{children}</div>
+      <AppNav />
       <SessionKeepAlive />
     </>
   );

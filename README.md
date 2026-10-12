@@ -214,6 +214,22 @@ An accepted code sets the 15-minute `neffi_activation` cookie (`HttpOnly`, `Same
 
 Run `DATABASE_URL=<loopback> pnpm dev` with the process environment overriding `.env.local` so browser acceptance uses the disposable local database. Google requires the registered localhost OAuth callback and email sign-in requires a real controlled inbox. Do not copy codes, OTPs or cookies into logs or acceptance records. Real packaged-card acceptance remains deferred until M4's physical gate passes; M5 is not fully complete until its real packaged-card test passes.
 
+## Customer experience (Milestone 6)
+
+After claiming a Card, **Ready to set up** leads through a purpose (Network, Get Clients or Show My Work), essentials, owner preview and Publish. A Draft resumes from Home. Profiles hold shared identity and appearance; each has a protected main Scene and may show another Scene. Scenes contain ordered About, Link, Project, Booking, Contact and Form blocks. Limits are 10 Profiles per Account, 5 Scenes per Profile, 20 Blocks per Scene and 5 Forms per Profile. Links are HTTPS; the legacy flat Profile Links table is unused after its migration backfill.
+
+Native Forms have fixed fields and up to 3 custom questions. Same-origin `POST /api/forms/[formId]/submissions` stores a message before a single notification-email attempt; a repeated browser key creates no duplicate. Delivery failure leaves the message in the Inbox, with no automatic retry. Home shows unread counts; opening a message marks it read, and the Inbox supports confirmed deletion. Visitor form rendering, the public `/c/{token}` page, vCard download and public caching belong to M7.
+
+Images use signed direct uploads to the development Cloudinary account. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` locally and in Vercel Preview; the secret remains server-only. Appearance applies across a Profile's Scenes. Cards can be connected to owned Profiles, turned off/on, and shared using a downloadable Sharing QR encoding their permanent Card URL. This is distinct from the common activation insert QR.
+
+Account supports deliberate Google linking/removal, verified sign-in email changes and sign out everywhere. Account deletion remains support-only until M9.
+
+`pnpm check:profile-concurrency` proves duplicate-safe setup, dense block ordering and submission deduplication against the disposable `DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test` only. It applies migrations and creates synthetic fixtures; never run it against Neon.
+
+With a local dev server using a loopback database and a Published Profile showing a Form, run `DATABASE_URL=<loopback> pnpm dev:form-submission`. It never loads `.env.local`, refuses non-loopback database/app hosts and Neon, and prints only HTTP status codes. `APP_ORIGIN` defaults to `http://localhost:3000`; `VISITOR_EMAIL` can be a controlled reply address. It sends synthetic name/message/question answers and a fixed synthetic phone so Required Phone works. `--repeat-key` submits the same message twice: expect `201 201` and one new Inbox message. Notification delivery uses the dev server's email configuration; real inbox acceptance is manual.
+
+M4 and M5 remain software gate passed with physical acceptance pending. These software fixtures do not provide hardware or packaged-card evidence.
+
 ## Security rules
 
 - Never commit secrets. `.env*` is ignored except `.env.example`, which holds names only.

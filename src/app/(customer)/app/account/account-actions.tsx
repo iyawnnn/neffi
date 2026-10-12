@@ -11,7 +11,7 @@ export function AccountActions({ googleLinked }: { googleLinked: boolean }) {
   async function connectGoogle() {
     setBusy(true);
     // Better Auth links only when Google's verified email equals this Account's email.
-    const { error } = await authClient.linkSocial({ provider: "google", callbackURL: "/app", errorCallbackURL: "/app" });
+    const { error } = await authClient.linkSocial({ provider: "google", callbackURL: "/app/account", errorCallbackURL: "/app/account" });
     if (error) setBusy(false);
   }
 

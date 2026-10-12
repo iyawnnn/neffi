@@ -71,6 +71,13 @@
       "when": 1791636931984,
       "tag": "0009_card_provisioning",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791717118019,
+      "tag": "0010_ancient_thor_girl",
+      "breakpoints": true
     }
   ]
 }
