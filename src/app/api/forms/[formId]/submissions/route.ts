@@ -8,14 +8,15 @@ import { db } from "@/db";
 import { clientIp } from "@/lib/client-ip";
 import { submitForm } from "@/modules/forms/submissions";
 
+const ORIGINS = new Set([new URL(env.authBaseUrl).origin, new URL(env.cardUrlOrigin).origin]);
 const MAX_BODY = 16_000;
 const SUBMISSIONS_PER_IP = 10;
 const body = z.object({ key: z.uuid(), answers: z.record(z.string(), z.string().max(2000)), website: z.string().max(200).optional() });
 const json = (data: object, status: number) => Response.json(data, { status });
 
-// Public, unauthenticated endpoint for Neffi Forms (M7 renders the form). Same-origin only; nothing is echoed back.
+// Public, unauthenticated endpoint for Neffi Forms on /c/{token}. Only Neffi's own app and card origins; nothing is echoed back.
 export async function POST(request: Request, { params }: RouteContext<"/api/forms/[formId]/submissions">) {
-  if (request.headers.get("origin") !== new URL(env.authBaseUrl).origin) return json({ error: "forbidden" }, 403);
+  if (!ORIGINS.has(request.headers.get("origin") ?? "")) return json({ error: "forbidden" }, 403);
   if (!(await consumeQuota(db, hmacHex(env.betterAuthSecret, "form-ip", clientIp(request.headers)), SUBMISSIONS_PER_IP))) {
     return json({ error: "rate_limited" }, 429);
   }

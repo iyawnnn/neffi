@@ -5,7 +5,7 @@ vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/server", () => ({ after: m.after }));
 vi.mock("@/modules/forms/notify", () => ({ notifySubmission: m.notify }));
 vi.mock("@/integrations/email/sender", () => ({ sendEmail: m.send }));
-vi.mock("@/config/env", () => ({ env: { authBaseUrl: "http://localhost:3000", betterAuthSecret: "synthetic-form-secret" } }));
+vi.mock("@/config/env", () => ({ env: { authBaseUrl: "http://localhost:3000/", cardUrlOrigin: "https://tap.example.test/", betterAuthSecret: "synthetic-form-secret" } }));
 vi.mock("@/auth/otp-quota", async original => ({ ...await original<typeof import("@/auth/otp-quota")>(), consumeQuota: m.quota }));
 vi.mock("@/modules/forms/submissions", () => ({ submitForm: m.submit }));
 import { POST } from "./route";
@@ -68,4 +68,12 @@ test("created schedules notification after the response; duplicate never schedul
   expect(m.notify).toHaveBeenCalledWith({}, m.send, { submissionId: "s1", appOrigin: "http://localhost:3000", replyTo: "vic@e.test" });
   m.after.mockClear(); m.submit.mockResolvedValue({ status: "duplicate", submissionId: "s1" });
   await call(); expect(m.after).not.toHaveBeenCalled();
+});
+
+test("accepts Neffi's card origin as well as the app origin, compared as normalized origins", async () => {
+  expect((await call(undefined, "https://tap.example.test")).status).toBe(201);
+  expect(m.submit).toHaveBeenCalled();
+});
+test("a look-alike of the card origin is still refused", async () => {
+  expect((await call(undefined, "https://tap.example.test.evil.example")).status).toBe(403);
 });
