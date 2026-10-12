@@ -40,3 +40,25 @@ test.each([false, true])("owned preview uses the fixed image transformation (log
   const view = await loadOwnerSceneView(tx, input);
   expect(view?.identity.image).toEqual({ url: `https://res.cloudinary.com/demo/image/upload/${isLogo ? "c_fit" : "c_fill,g_face"},w_256,h_256,f_auto,q_auto/a/b`, isLogo });
 }));
+
+import { randomUUID } from "node:crypto";
+import { accounts } from "@/db/schema";
+import { createScene } from "./scenes";
+import { loadPublicSceneView } from "./view";
+
+test("public view shows the requested scene and falls back to the Default Scene", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const { sceneId } = await createScene(tx, { ...input, name: "Events", copyFromSceneId: null });
+  expect((await loadPublicSceneView(tx, { profileId: input.profileId, sceneId }))?.scene.name).toBe("Events");
+  expect((await loadPublicSceneView(tx, { profileId: input.profileId, sceneId: randomUUID() }))?.scene.name).toBe("Clients");
+}));
+test("public view of a missing profile is null", () => rollback(db, async tx => {
+  expect(await loadPublicSceneView(tx, { profileId: randomUUID(), sceneId: randomUUID() })).toBeNull();
+}));
+test("public view carries no account, card or sign-in data", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const [account] = await tx.select().from(accounts).where(eq(accounts.id, input.accountId));
+  const [card] = await tx.select().from(cards).where(eq(cards.profileId, input.profileId));
+  const json = JSON.stringify(await loadPublicSceneView(tx, { profileId: input.profileId, sceneId: randomUUID() }));
+  for (const secret of [input.accountId, input.profileId, account.email, card.id, card.publicToken!]) expect(json).not.toContain(secret);
+}));
