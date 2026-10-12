@@ -26,6 +26,20 @@ test("profile image ids cannot be borrowed from another profile or path", () => 
   for (const id of [`neffi/profiles/${PROFILE}/../x`, `neffi/profiles/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d`, "sample"]) expect(isProfileImageId(PROFILE, id)).toBe(false);
 });
 
+test("Dynamic Folders placement is profile-scoped and signed without changing the public id", () => {
+  const ticket = signImageUpload(CONFIG, { profileId: PROFILE });
+  expect(ticket.fields.asset_folder).toBe(`neffi/profiles/${PROFILE}`);
+  expect(ticket.fields.public_id).toMatch(new RegExp(`^neffi/profiles/${PROFILE}/[0-9a-f-]{36}$`));
+  expect(isProfileImageId(PROFILE, ticket.fields.public_id)).toBe(true);
+  const { signature, api_key, ...params } = ticket.fields;
+  expect(api_key).toBe(CONFIG.apiKey);
+  expect(signature).toBe(sign(params, CONFIG.apiSecret));
+  expect(signature).not.toBe(sign({ ...params, asset_folder: "another-folder" }, CONFIG.apiSecret));
+  expect(params).not.toHaveProperty("folder");
+  expect(params).not.toHaveProperty("public_id_prefix");
+  expect(params).not.toHaveProperty("use_asset_folder_as_public_id_prefix");
+});
+
 test("uploaded images must be small, raster and at most 2048px", () => {
   expect(checkImage({ bytes: 1_000_000, width: 800, height: 800, format: "jpg" })).toBe(true);
   for (const bad of [{ bytes: 5_000_001 }, { width: 2049 }, { format: "svg" }, { format: "gif" }]) {

@@ -20,6 +20,7 @@ export type ImageUploadTicket = { url: string; fields: Record<string, string> };
 export function signImageUpload(config: CloudinaryConfig, { profileId, now = new Date() }: { profileId: string; now?: Date }): ImageUploadTicket {
   const params = {
     allowed_formats: IMAGE_FORMATS.join(","),
+    asset_folder: `neffi/profiles/${profileId}`,
     public_id: `neffi/profiles/${profileId}/${randomUUID()}`,
     timestamp: String(Math.floor(now.getTime() / 1000)),
     transformation: INCOMING,
