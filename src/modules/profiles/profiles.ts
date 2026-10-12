@@ -20,6 +20,13 @@ export async function lockOwnedProfile(tx: Db, accountId: string, profileId: str
   return profile;
 }
 
+// Call inside the transaction of every successful change a visitor could see: identity, appearance, image, a Scene's name,
+// its Blocks, a Form, or which Scene is shown. The public Scene cache is keyed by this version, so a missed call serves stale
+// content. Card state, Card→Profile routing and publish status are read fresh on every tap and need no bump.
+export async function bumpProfileContentVersion(tx: Db, profileId: string): Promise<void> {
+  await tx.update(schema.profiles).set({ contentVersion: sql`${schema.profiles.contentVersion} + 1` }).where(eq(schema.profiles.id, profileId));
+}
+
 export async function visibleBlockCount(tx: Db, sceneId: string | null): Promise<number> {
   if (!sceneId) return 0;
   const [row] = await tx
@@ -166,6 +173,7 @@ export async function updateIdentity(db: Db, input: { accountId: string; profile
       if (gaps.length) throw new ProfileError("not_ready", gaps);
     }
     await tx.update(schema.profiles).set(input.identity).where(eq(schema.profiles.id, p.id));
+    await bumpProfileContentVersion(tx, p.id);
   });
 }
 
@@ -174,13 +182,17 @@ export async function updateAppearance(db: Db, input: { accountId: string; profi
   await db.transaction(async (tx) => {
     const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
     await tx.update(schema.profiles).set({ accentColor: input.accentColor, imageIsLogo: input.imageIsLogo }).where(eq(schema.profiles.id, p.id));
+    await bumpProfileContentVersion(tx, p.id);
   });
 }
 
 export async function setProfileImage(db: Db, input: { accountId: string; profileId: string; assetId: string | null }) {
   return db.transaction(async (tx) => {
     const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
-    await tx.update(schema.profiles).set({ imageAssetId: input.assetId }).where(eq(schema.profiles.id, p.id));
+    if (p.imageAssetId !== input.assetId) {
+      await tx.update(schema.profiles).set({ imageAssetId: input.assetId }).where(eq(schema.profiles.id, p.id));
+      await bumpProfileContentVersion(tx, p.id);
+    }
     return { previousAssetId: p.imageAssetId === input.assetId ? null : p.imageAssetId };
   });
 }

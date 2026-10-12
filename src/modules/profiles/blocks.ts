@@ -5,7 +5,7 @@ import type { Db } from "../db";
 import { PRESETS } from "../forms/config";
 import { parseBlockContent, type BlockType } from "./block-content";
 import { ProfileError } from "./errors";
-import { lockOwnedProfile, visibleBlockCount } from "./profiles";
+import { bumpProfileContentVersion, lockOwnedProfile, visibleBlockCount } from "./profiles";
 import { LIMITS } from "./rules";
 import { ownedScene } from "./scenes";
 
@@ -51,6 +51,7 @@ export async function addBlock(db: Db, input: { accountId: string; profileId: st
       formId = form.id;
     }
     const [block] = await tx.insert(schema.sceneBlocks).values({ sceneId: input.sceneId, type: input.type, position: n, content: parsed.content, formId }).returning({ id: schema.sceneBlocks.id });
+    await bumpProfileContentVersion(tx, profile.id);
     return { blockId: block.id };
   });
 }
@@ -63,6 +64,7 @@ export async function updateBlock(db: Db, input: { accountId: string; profileId:
     const parsed = parseBlockContent(block.type, input.content);
     if (!parsed.ok) throw new ProfileError("invalid");
     await tx.update(schema.sceneBlocks).set({ content: parsed.content }).where(eq(schema.sceneBlocks.id, block.id));
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }
 
@@ -76,6 +78,7 @@ export async function moveBlock(db: Db, input: { accountId: string; profileId: s
     if (j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j], ids[i]];
     await writeOrder(tx, ids);
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }
 
@@ -85,6 +88,7 @@ export async function setBlockVisible(db: Db, input: { accountId: string; profil
     const block = await ownedBlock(tx, profile.id, input.blockId);
     if (!input.visible) await guardLastVisible(tx, profile, block);
     await tx.update(schema.sceneBlocks).set({ visible: input.visible }).where(eq(schema.sceneBlocks.id, block.id));
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }
 
@@ -95,5 +99,6 @@ export async function deleteBlock(db: Db, input: { accountId: string; profileId:
     await guardLastVisible(tx, profile, block);
     await tx.delete(schema.sceneBlocks).where(eq(schema.sceneBlocks.id, block.id));
     await writeOrder(tx, await orderedIds(tx, block.sceneId));
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }

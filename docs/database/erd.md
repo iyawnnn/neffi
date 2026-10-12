@@ -211,6 +211,7 @@ erDiagram
     uuid default_scene_id FK "nullable"
     uuid active_scene_id FK "nullable"
     boolean image_is_logo "required"
+    integer content_version "required"
   }
   purchasers {
     uuid id PK "required"
@@ -883,6 +884,7 @@ Foreign keys without an explicit delete action use PostgreSQL's `NO ACTION` defa
 | `default_scene_id` | `uuid` | yes | — |
 | `active_scene_id` | `uuid` | yes | — |
 | `image_is_logo` | `boolean` | no | `false` |
+| `content_version` | `integer` | no | `0` |
 
 | Constraint | Kind | Definition |
 |---|---|---|

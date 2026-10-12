@@ -32,6 +32,8 @@ export const profiles = pgTable(
     activeSceneId: uuid(),
     // The single image is shown uncropped when it is a logo, otherwise as a round photo.
     imageIsLogo: boolean().notNull().default(false),
+    // Moves on visitor-visible changes; the public Scene cache is keyed by this version.
+    contentVersion: integer().notNull().default(0),
     ...timestamps(),
   },
   (t) => [
