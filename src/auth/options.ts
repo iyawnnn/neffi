@@ -133,6 +133,13 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
     disabledPaths: DISABLED_PATHS,
     onAPIError: { errorURL: "/sign-in" },
     telemetry: { enabled: false },
+    // Adapter errors include SQL parameters, which can contain live session tokens or OTPs.
+    logger: {
+      log: (level) => {
+        if (level === "error") console.error("Authentication error");
+        else if (level === "warn") console.warn("Authentication warning");
+      },
+    },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path?.startsWith("/reset-password")) throw new APIError("NOT_FOUND", { message: "Not Found" });

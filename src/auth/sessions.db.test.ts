@@ -32,6 +32,27 @@ async function signInResponse(test: TestAuth) {
 }
 
 describe("sessions", () => {
+  test("a failed session read logs an error without leaking its token or SQL parameters", async () => {
+    const client = await signedIn();
+    const token = tokenOf(client);
+    const context = await t.auth.$context;
+    const failure = new Error(`Failed query: select token from auth_sessions; params: ${token}`, {
+      cause: new Error("Client network socket disconnected before secure TLS connection was established"),
+    });
+    const readSession = vi.spyOn(context.internalAdapter, "findSession").mockRejectedValueOnce(failure);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(t.auth.api.getSession({ headers: new Headers({ cookie: client.cookieHeader() }) })).rejects.toMatchObject({ status: "INTERNAL_SERVER_ERROR" });
+      expect(logged).toHaveBeenCalled();
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(token);
+      expect(logged.mock.calls.flat().map(String).join(" ")).not.toContain(token);
+      expect(logged.mock.calls.flat().map(String).join(" ")).not.toContain("select token");
+    } finally {
+      readSession.mockRestore();
+      logged.mockRestore();
+    }
+  });
+
   test("the cookie is HttpOnly and SameSite=Lax; on http it is not Secure", async () => {
     const cookie = (await signInResponse(t)).headers.getSetCookie().find((c) => c.includes("session_token"))!;
     expect(cookie).toMatch(/^better-auth\.session_token=/);
