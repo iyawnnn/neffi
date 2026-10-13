@@ -8,6 +8,8 @@ import { parsePesos } from "@/lib/money";
 import { OrderError } from "@/modules/orders/errors";
 import { addOrderNote, assignOrder, updateOrderDetails } from "@/modules/orders/order";
 import { addOrderItem, removeOrderItem, updateOrderItem } from "@/modules/orders/items";
+import { recordPayment, recordRefund } from "@/modules/payments/record";
+import { voidPayment, voidRefund } from "@/modules/payments/void";
 import type { ActionState } from "../../inventory/actions";
 
 const id = z.uuid();
@@ -24,6 +26,9 @@ async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: 
     return { ok: "Saved." };
   } catch (error) {
     if (error instanceof RangeError) return { error: "Check the amount. Use pesos with at most two decimal places." };
+    if (error instanceof OrderError && error.code === "balance_exceeded") return { error: "Payment exceeds the current balance. Reload the order and check the amount." };
+    if (error instanceof OrderError && error.code === "refund_exceeded") return { error: "Refund exceeds the net amount paid. Reload the order and check the amount." };
+    if (error instanceof OrderError && error.code === "already_voided") return { error: "That entry was already voided. Reload the order." };
     if (error instanceof OrderError) return { error: error.code === "delivery_locked" ? "Delivery method is locked after release or delivery." : error.code === "items_delivered" ? "Delivered GRC quantities cannot change. You can still edit prices and references." : error.code === "item_full" ? "Quantity cannot be below the reserved or released DBC count." : error.code === "item_has_cards" ? "This item has linked Card history and cannot be removed." : error.code === "last_item" ? "An order must keep at least one item." : error.code === "no_product" ? "Set up this product in Settings first." : error.code === "wrong_status" ? "This action isn't available for the order's current status. Reload the order." : "Check the order details and try again." };
     throw error;
   }
@@ -57,4 +62,23 @@ export async function updateOrderItemAction(_previous: ActionState | undefined, 
 
 export async function removeOrderItemAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ orderId: id, orderItemId: id, confirm: z.literal("on") }), data, (input, actorId) => removeOrderItem(db, { ...input, actorId }));
+}
+
+const optionalDate = z.preprocess((value) => value === "" ? undefined : value, z.iso.date().optional());
+const method = z.enum(["gcash", "bank_transfer", "cash"]);
+
+export async function recordPaymentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, amount: z.string().trim().max(30), method, paidOn: optionalDate, reference: z.string().trim().max(100).optional() }), data, (input, actorId) => recordPayment(db, { ...input, actorId, amount: input.amount ? parsePesos(input.amount) : undefined }));
+}
+
+export async function recordRefundAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, amount: z.string().trim().min(1).max(30), method, refundedOn: optionalDate, reason: z.string().trim().max(500).optional(), confirm: z.literal("on") }), data, (input, actorId) => recordRefund(db, { ...input, actorId, amount: parsePesos(input.amount) }));
+}
+
+export async function voidPaymentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, paymentId: id, reason: z.string().trim().min(1).max(200), confirm: z.literal("on") }), data, (input, actorId) => voidPayment(db, { ...input, actorId }));
+}
+
+export async function voidRefundAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, refundId: id, reason: z.string().trim().min(1).max(200), confirm: z.literal("on") }), data, (input, actorId) => voidRefund(db, { ...input, actorId }));
 }

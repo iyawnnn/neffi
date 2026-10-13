@@ -11,6 +11,9 @@ import { getOrderDetail } from "@/modules/orders/queries";
 import { effectiveItemTotal } from "@/modules/orders/totals";
 import { ActionForm } from "../../inventory/forms";
 import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
+import { recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction } from "./actions";
+import { ActionSheet } from "./action-sheet";
+import { MoneyFields } from "./money-fields";
 
 export const instant = false;
 
@@ -22,6 +25,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   const order = await getOrderDetail(db, orderId);
   if (!order) notFound();
   const hidden = <input type="hidden" name="orderId" value={order.id} />;
+  const correction = (kind: "payment" | "refund", rowId: string) => <ActionSheet title={`Void ${kind}`}><ActionForm action={kind === "payment" ? voidPaymentAction : voidRefundAction} submit={`Void ${kind}`} variant="destructive">{hidden}<input type="hidden" name={kind === "payment" ? "paymentId" : "refundId"} value={rowId} /><p className="text-sm">The original entry is kept. A void is final and excludes it from totals.</p><label className="flex flex-col gap-1 text-sm">Reason<Input name="reason" required maxLength={200} /></label><label className="flex min-h-11 items-center gap-2 text-sm"><input name="confirm" type="checkbox" required />Confirm this correction.</label></ActionForm></ActionSheet>;
   return <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-4 sm:p-8">
     <header className="space-y-2"><Link className="inline-flex min-h-11 items-center underline" href="/admin/orders">Orders</Link><h1 className="text-2xl font-semibold">Order {order.number}</h1><p>{order.status.replaceAll("_", " ")} · {order.totals.paymentState}</p><Link className="underline" href={`/admin/customers/purchasers/${order.purchaserId}`}>{order.purchaser.name}</Link>{order.purchaser.contactNumber ? <p>{order.purchaser.contactNumber}</p> : null}</header>
     <dl className="grid grid-cols-2 gap-4 tabular-nums sm:grid-cols-4">{[["Order total", order.totals.orderTotal], ["Net paid", order.totals.netPaid], ["Balance", order.totals.balance], ["Refund due", order.totals.refundDue]].map(([label, value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="text-lg font-semibold">{formatPeso(value as number)}</dd></div>)}</dl>
@@ -45,9 +49,13 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
       </div> : null}
     </section>
     <section className="space-y-4"><h2 className="text-xl font-semibold">Payments &amp; refunds</h2>
-      {order.payments.map((payment) => <div key={payment.id} className={payment.voidedAt ? "text-muted-foreground" : ""}><p className={payment.voidedAt ? "line-through" : ""}>Payment {formatPeso(payment.amount)} · {payment.method} · {payment.paidOn}</p>{payment.voidedAt ? <p className="text-sm">Voided: {payment.voidReason}</p> : null}</div>)}
-      {order.refunds.map((refund) => <div key={refund.id}><p className={refund.voidedAt ? "line-through text-muted-foreground" : ""}>Refund {formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p>{refund.voidedAt ? <p className="text-sm">Voided: {refund.voidReason}</p> : null}</div>)}
+      {order.payments.map((payment) => <div key={payment.id} className={payment.voidedAt ? "text-muted-foreground" : ""}><p className={payment.voidedAt ? "line-through" : ""}>Payment {formatPeso(payment.amount)} · {payment.method} · {payment.paidOn}</p>{payment.reference ? <p className="text-sm">{payment.reference}</p> : null}{payment.voidedAt ? <p className="text-sm">Voided: {payment.voidReason}</p> : order.status === "in_progress" ? correction("payment", payment.id) : null}</div>)}
+      {order.refunds.map((refund) => <div key={refund.id}><p className={refund.voidedAt ? "line-through text-muted-foreground" : ""}>Refund {formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p>{refund.reason ? <p className="text-sm">{refund.reason}</p> : null}{refund.voidedAt ? <p className="text-sm">Voided: {refund.voidReason}</p> : order.status !== "completed" && !refund.supportCaseId ? correction("refund", refund.id) : null}</div>)}
       {!order.payments.length && !order.refunds.length ? <p>No money recorded.</p> : null}
+      <div className="flex flex-wrap gap-3">
+        {order.status === "in_progress" && order.totals.balance > 0 ? <ActionSheet title="Record payment"><ActionForm action={recordPaymentAction} submit="Record payment">{hidden}<MoneyFields kind="payment" amount={order.totals.balance} /></ActionForm></ActionSheet> : null}
+        {order.status !== "completed" && order.totals.netPaid > 0 ? <ActionSheet title="Record refund"><ActionForm action={recordRefundAction} submit="Record refund" variant="destructive">{hidden}<MoneyFields kind="refund" amount={order.totals.refundDue || order.totals.netPaid} /><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="confirm" required />Confirm this money was returned to the purchaser.</label></ActionForm></ActionSheet> : null}
+      </div>
     </section>
     <section className="space-y-4"><h2 className="text-xl font-semibold">Delivery</h2><p>{order.deliveryMethod?.replaceAll("_", " ") ?? "Not selected"} · Fee {formatPeso(order.shippingFee)}</p>{order.shipments.map((shipment) => <div key={shipment.id}><p>{shipment.status} · {shipment.courier} · {shipment.trackingNumber}</p><p>{shipment.shippedOn} {shipment.courierCost !== null ? `· Cost ${formatPeso(shipment.courierCost)}` : ""}</p></div>)}</section>
     {order.status === "in_progress" ? <section className="space-y-3"><h2 className="text-xl font-semibold">Order details</h2><ActionForm action={updateOrderDetailsAction} submit="Save order details">{hidden}
