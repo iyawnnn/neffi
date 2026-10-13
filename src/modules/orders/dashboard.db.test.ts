@@ -1,0 +1,20 @@
+import { beforeAll, expect, test } from "vitest";
+import { eq } from "drizzle-orm";
+import { payments, refunds, expenses, orders } from "@/db/schema";
+import { insertOrderItem, insertProvisioningDbc } from "@/db/test-fixtures";
+import { createTestDb, rollback, type TestDb } from "@/db/testing";
+import { dashboard } from "./dashboard";
+let db: TestDb;
+beforeAll(async () => { db = await createTestDb(); });
+test("dashboard derives balances, dated nonvoid collections, expenses and stock", () => rollback(db, async (tx) => {
+  const { order, owner } = await insertOrderItem(tx, "dbc", 2);
+  await tx.insert(payments).values([{ orderId: order.id, amount: 20000, method: "cash", paidOn: "2026-10-02", recordedByAccountId: owner.id }, { orderId: order.id, amount: 10000, method: "cash", paidOn: "2026-09-30", recordedByAccountId: owner.id }, { orderId: order.id, amount: 999, method: "cash", paidOn: "2026-10-02", recordedByAccountId: owner.id, voidedAt: new Date(), voidedByAccountId: owner.id, voidReason: "Typo" }]);
+  await tx.insert(refunds).values({ orderId: order.id, amount: 5000, method: "cash", refundedOn: "2026-10-03", recordedByAccountId: owner.id });
+  await tx.insert(expenses).values({ amount: 700, category: "other", spentOn: "2026-10-01", createdByAccountId: owner.id });
+  await insertProvisioningDbc(tx);
+  const result = await dashboard(tx, "2026-10");
+  expect(result).toMatchObject({ inProgress: 1, outstanding: 75000, collected: 15000, expenses: 700, stock: { inProvisioning: 1 } });
+  expect(await tx.select().from(orders)).toHaveLength(1);
+  await tx.update(orders).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(orders.id, order.id));
+  expect(await dashboard(tx, "2026-10")).toMatchObject({ inProgress: 0, outstanding: 0, collected: 15000 });
+}));

@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { activityEvents, cards, stockPurchases } from "@/db/schema";
 import { insertAccount, insertProduct } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
-import { CardError } from "../cards/card";
 import { receiveStock } from "./stock-intake";
 
 let db: TestDb;
@@ -40,13 +39,10 @@ describe("receiveStock", () => {
       ]);
     }));
 
-  test("no active product, or two, of the intended kind writes nothing", async () => {
+  test("no active product of the intended kind writes nothing", async () => {
     await rollback(db, async (tx) => {
       const owner = await insertAccount(tx, "owner");
       await expect(receiveStock(tx, { actorId: owner.id, quantity: 1, intendedKind: "grc", ...input })).rejects.toMatchObject({ code: "no_product" });
-      await insertProduct(tx, "grc");
-      await insertProduct(tx, "grc");
-      await expect(receiveStock(tx, { actorId: owner.id, quantity: 1, intendedKind: "grc", ...input })).rejects.toBeInstanceOf(CardError);
       expect(await tx.select().from(stockPurchases)).toHaveLength(0);
       expect(await tx.select().from(cards)).toHaveLength(0);
     });

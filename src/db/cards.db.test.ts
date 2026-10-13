@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, test } from "vitest";
-import { accounts, cards, profiles } from "./schema";
+import { accounts, cards, orderItems, products, profiles } from "./schema";
 import {
   insertAccount,
   insertClaimedCard,
@@ -104,6 +104,8 @@ describe("Fulfillment links", () => {
     rollback(db, async (tx) => {
       const { card } = await insertReadyDbc(tx);
       const { item: otherProductItem } = await insertOrderItem(tx, "dbc");
+      const [historical] = await tx.insert(products).values({ kind: "dbc", name: "Historical DBC", price: 100, active: false }).returning();
+      await tx.update(orderItems).set({ productId: historical.id }).where(eq(orderItems.id, otherProductItem.id));
       await expectPgError(
         tx,
         (s) => s.update(cards).set({ state: "reserved", orderItemId: otherProductItem.id }).where(eq(cards.id, card.id)),

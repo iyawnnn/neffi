@@ -105,8 +105,7 @@ describe("history_guard", () => {
         .insert(payments)
         .values({ orderId: order.id, amount: 100, method: "cash", paidOn: today, recordedByAccountId: owner.id })
         .returning();
-      await tx.execute(sql`alter table payments add column voided_at timestamptz`);
-      await tx.execute(sql`update payments set voided_at = now() where id = ${payment.id}`);
+      await tx.execute(sql`update payments set voided_at = now(), voided_by_account_id = ${owner.id}, void_reason = 'Mis-keyed' where id = ${payment.id}`);
       const { rows } = await tx.execute<{ voided: boolean }>(
         sql`select voided_at is not null as voided from payments where id = ${payment.id}`,
       );

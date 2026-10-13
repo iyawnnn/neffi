@@ -3,6 +3,7 @@ import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
 import { activeProductId } from "../cards/card";
 import type { Db } from "../db";
+import { validateStockCosts } from "./stock-purchases";
 
 export type ReceiveStockInput = {
   actorId: string;
@@ -12,10 +13,12 @@ export type ReceiveStockInput = {
   reference?: string;
   notes?: string;
   intendedKind?: "dbc" | "grc";
+  purchaseCost?: number | null;
+  inboundShippingCost?: number | null;
 };
 
-// The minimum intake that makes real tracked Blank cards: costs stay unrecorded here (Milestone 8 owns them).
 export async function receiveStock(db: Db, input: ReceiveStockInput): Promise<{ stockPurchaseId: string }> {
+  validateStockCosts(input);
   if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 500) {
     throw new RangeError("quantity must be a whole number from 1 to 500");
   }
@@ -29,6 +32,8 @@ export async function receiveStock(db: Db, input: ReceiveStockInput): Promise<{ 
         supplier: input.supplier,
         reference: input.reference,
         notes: input.notes,
+        purchaseCost: input.purchaseCost,
+        inboundShippingCost: input.inboundShippingCost,
         createdByAccountId: input.actorId,
       })
       .returning({ id: schema.stockPurchases.id });

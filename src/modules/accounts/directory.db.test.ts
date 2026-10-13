@@ -1,0 +1,22 @@
+import { eq } from "drizzle-orm";
+import { beforeAll, expect, test } from "vitest";
+import { authIdentities, profiles } from "@/db/schema";
+import { insertClaimedCard } from "@/db/test-fixtures";
+import { createTestDb, rollback, type TestDb } from "@/db/testing";
+import { accountDirectoryDetail, listAccounts } from "./directory";
+let db: TestDb;
+beforeAll(async () => { db = await createTestDb(); });
+test("Account DTO exactly matches A3 and excludes identity secrets/profile content", () => rollback(db, async (tx) => {
+  const { owner, card, profile } = await insertClaimedCard(tx);
+  await tx.insert(authIdentities).values({ userId: owner.id, providerId: "google", accountId: "PRIVATE_SUBJECT", accessToken: "PRIVATE_TOKEN" });
+  await tx.update(profiles).set({ fullName: "Display name", bio: "PRIVATE_BIO", phone: "PRIVATE_PHONE" }).where(eq(profiles.id, profile.id));
+  const dto = await accountDirectoryDetail(tx, owner.id);
+  expect(Object.keys(dto!).sort()).toEqual(["cards", "createdAt", "email", "methods", "profiles", "role"]);
+  expect(dto?.methods).toEqual(["email", "google"]);
+  expect(dto?.cards).toEqual([{ state: "released", disabled: false, tokenSuffix: card.publicToken!.slice(-4), profileName: "Display name", profileStatus: "draft" }]);
+  expect(dto?.profiles).toEqual([{ name: "Display name", status: "draft" }]);
+  const serialized = JSON.stringify(dto);
+  for (const secret of ["PRIVATE_SUBJECT", "PRIVATE_TOKEN", "PRIVATE_BIO", "PRIVATE_PHONE", card.publicToken!]) expect(serialized).not.toContain(secret);
+  expect((await listAccounts(tx, owner.email)).map((r) => r.id)).toContain(owner.id);
+  expect(await accountDirectoryDetail(tx, crypto.randomUUID())).toBeNull();
+}));

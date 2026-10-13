@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useLayoutEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CardUrl } from "./card-url";
 import {
@@ -11,10 +12,11 @@ import {
   reserveGrcAction,
   replaceCredentialAction,
   retireCardAction,
+  updateStockPurchaseAction,
   type ActionState,
 } from "./actions";
 
-const field = "h-10 w-full rounded-lg border border-input bg-background px-3 text-base";
+const field = "h-11 w-full rounded-lg border border-input bg-background px-3 text-base";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const check = "flex items-start gap-2 text-sm";
 
@@ -50,7 +52,7 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
 
 type ActionFormProps = { action: Action; submit: string; variant?: "default" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean };
 
-function ActionForm(props: ActionFormProps) {
+export function ActionForm(props: ActionFormProps) {
   const [visit, setVisit] = useState(0);
   // Next's Activity preserves hidden pages. Reset the response holder on navigation so codes cannot return with Back.
   useLayoutEffect(() => () => setVisit((value) => value + 1), []);
@@ -66,7 +68,7 @@ function ActionFormContent({ action, submit, variant = "default", children, avai
       {available && !(provisioning && state?.reveal) ? (
         <>
           {children}
-          <Button type="submit" variant={variant} size="lg" className="h-10 w-full" disabled={pending}>
+          <Button type="submit" variant={variant} size="touch" className="w-full" disabled={pending}>
             {pending ? "Working…" : submit}
           </Button>
         </>
@@ -77,6 +79,7 @@ function ActionFormContent({ action, submit, variant = "default", children, avai
         </p>
       ) : null}
       {state?.ok ? <p role="status" className="text-sm text-muted-foreground">{state.ok}</p> : null}
+      {state?.href ? <Link className="flex min-h-11 items-center underline" href={state.href}>View stock purchase</Link> : null}
       {state?.reveal ? <Reveal reveal={state.reveal} /> : null}
     </form>
   );
@@ -128,8 +131,24 @@ export function StockForm() {
         Notes (optional)
         <textarea name="notes" maxLength={500} rows={3} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base" />
       </label>
+      <StockCosts />
     </ActionForm>
   );
+}
+
+function StockCosts({ purchaseCost, inboundShippingCost }: { purchaseCost?: number | null; inboundShippingCost?: number | null }) {
+  return <>{[["purchaseCost", "Purchase cost", purchaseCost], ["inboundShippingCost", "Inbound shipping cost", inboundShippingCost]].map(([name, title, value]) => <label key={String(name)} className={label}>{title} (optional, pesos)<input name={String(name)} inputMode="decimal" defaultValue={typeof value === "number" ? (value / 100).toFixed(2) : ""} className={field} /></label>)}</>;
+}
+
+export function StockPurchaseForm({ purchase }: { purchase: { id: string; receivedOn: string; supplier: string | null; reference: string | null; notes: string | null; purchaseCost: number | null; inboundShippingCost: number | null } }) {
+  return <ActionForm action={updateStockPurchaseAction} submit="Save stock purchase">
+    <input type="hidden" name="stockPurchaseId" value={purchase.id} />
+    <label className={label}>Received on<input name="receivedOn" type="date" defaultValue={purchase.receivedOn} required className={field} /></label>
+    <label className={label}>Supplier<input name="supplier" maxLength={100} defaultValue={purchase.supplier ?? ""} className={field} /></label>
+    <label className={label}>Reference<input name="reference" maxLength={100} defaultValue={purchase.reference ?? ""} className={field} /></label>
+    <label className={label}>Notes<textarea name="notes" maxLength={500} defaultValue={purchase.notes ?? ""} className="rounded-lg border p-3" /></label>
+    <StockCosts {...purchase} />
+  </ActionForm>;
 }
 
 export function ProvisionForm({ cardId, available }: { cardId: string; available: boolean }) {

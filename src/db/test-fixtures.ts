@@ -1,5 +1,5 @@
 // Test-only builders for the minimum valid rows each invariant test needs. Synthetic values only.
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { accounts, cards, orderItems, orders, products, profiles, purchasers, scenes, stockPurchases } from "./schema";
 import type { TestTx } from "./testing";
 
@@ -20,6 +20,11 @@ export async function insertProduct(tx: TestTx, kind: "dbc" | "grc", price = 50_
   return row;
 }
 
+async function catalogProduct(tx: TestTx, kind: "dbc" | "grc") {
+  const [product] = await tx.select().from(products).where(and(eq(products.kind, kind), eq(products.active, true)));
+  return product ?? insertProduct(tx, kind);
+}
+
 export async function insertOrder(tx: TestTx) {
   const owner = await insertAccount(tx, "owner");
   const [purchaser] = await tx.insert(purchasers).values({ name: `Synthetic Purchaser ${next()}` }).returning();
@@ -32,7 +37,7 @@ export async function insertOrder(tx: TestTx) {
 
 export async function insertOrderItem(tx: TestTx, kind: "dbc" | "grc", quantity = 1) {
   const { order, owner } = await insertOrder(tx);
-  const product = await insertProduct(tx, kind);
+  const product = await catalogProduct(tx, kind);
   const [item] = await tx
     .insert(orderItems)
     .values({ orderId: order.id, productId: product.id, productKind: kind, quantity, unitPrice: product.price })
@@ -88,7 +93,7 @@ export async function insertClaimedCard(tx: TestTx) {
 
 export async function insertReadyDbc(tx: TestTx) {
   const stock = await insertStockPurchase(tx);
-  const product = await insertProduct(tx, "dbc");
+  const product = await catalogProduct(tx, "dbc");
   const [card] = await tx
     .insert(cards)
     .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "ready", publicToken: syntheticToken(), nfcVerifiedAt: new Date(), packageMatchedAt: new Date() })
@@ -100,7 +105,7 @@ export async function insertReadyDbc(tx: TestTx) {
 // hold a usable credential before the package match.
 export async function insertProvisioningDbc(tx: TestTx) {
   const stock = await insertStockPurchase(tx);
-  const product = await insertProduct(tx, "dbc");
+  const product = await catalogProduct(tx, "dbc");
   const [card] = await tx
     .insert(cards)
     .values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", publicToken: syntheticToken() })

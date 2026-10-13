@@ -6,7 +6,7 @@ import type { Db } from "../db";
 import { CardError, lockCard } from "./card";
 
 // Cards that count against an item's quantity. Retired cards (failed or replaced) do not, but stay linked as history.
-const COUNTED_STATES = ["reserved", "released"] as const;
+export const COUNTED_STATES = ["reserved", "released"] as const;
 
 // An item that can still take a card: GRC, open order, a verified destination, and capacity left.
 export async function eligibleGrcItems(db: Db) {
