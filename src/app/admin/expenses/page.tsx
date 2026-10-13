@@ -28,7 +28,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/admin/e
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const month = typeof params.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(params.month) ? params.month : today.slice(0, 7);
   const report = await expenseReport(db, month);
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-8">
+  return <main data-admin-section="expenses" className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-8">
     <h1 className="text-2xl font-semibold">Expenses</h1><form className="flex gap-2"><label>Month<input className={inputClass} type="month" name="month" defaultValue={month} /></label><button className="min-h-11 self-end rounded-lg border px-4">View</button></form>
     <p className="text-xl font-semibold">Total {formatPeso(report.total)}</p><dl className="grid gap-2 sm:grid-cols-2">{Object.entries(report.categories).map(([category, amount]) => <div key={category}><dt>{category.replaceAll("_", " ")}</dt><dd>{formatPeso(amount)}</dd></div>)}</dl>
     <section id="add" className="rounded-lg border p-4"><h2 className="mb-3 font-semibold">Add expense</h2><ActionForm action={saveExpenseAction} submit="Add expense"><ExpenseFields today={today} /></ActionForm></section>

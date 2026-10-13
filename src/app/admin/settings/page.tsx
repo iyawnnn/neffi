@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   await requireOwner();
   await connection();
   const [products, owners] = await Promise.all([listProducts(db), listOwnerAccess(db)]);
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 sm:p-8">
+  return <main data-admin-section="settings" className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 sm:p-8">
     <h1 className="text-2xl font-semibold">Settings</h1>
     <section className="space-y-5">
       <h2 className="text-xl font-semibold">Products &amp; Pricing</h2>

@@ -26,7 +26,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
   const countOf = (kind: (typeof kinds)[number], state: string) => counts.rows.find((row) => row.kind === kind && row.state === state)?.count ?? 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
+    <main data-admin-section="inventory" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
       <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
       <nav className="flex gap-4"><Link className="min-h-11 py-2 underline" href="/admin/inventory">Cards</Link><Link className="min-h-11 py-2 underline" href="/admin/inventory?view=stock">Stock Purchases</Link></nav>
       {params.view === "stock" ? <section className="flex flex-col gap-3"><h2 className="font-semibold">Stock Purchases</h2>{purchases.map((purchase) => <Link key={purchase.id} className="rounded-lg border p-4" href={`/admin/inventory/stock/${purchase.id}`}><p>{purchase.receivedOn} · {purchase.supplier ?? "No supplier"}</p><p className="text-sm">{purchase.quantity} cards · Purchase {purchase.purchaseCost == null ? "Not recorded" : formatPeso(purchase.purchaseCost)} · Inbound {purchase.inboundShippingCost == null ? "Not recorded" : formatPeso(purchase.inboundShippingCost)}</p></Link>)}{!purchases.length ? <p>No stock purchases yet.</p> : null}</section> : null}

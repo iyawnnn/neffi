@@ -21,7 +21,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
     if (!purchaser) notFound();
   }
   const products = await listProducts(db);
-  return <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 sm:p-8"><h1 className="text-2xl font-semibold">New order</h1>
+  return <main data-admin-section="orders" className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 sm:p-8"><h1 className="text-2xl font-semibold">New order</h1>
     {!products.length ? <p>Set up <Link className="underline" href="/admin/settings">Products &amp; Pricing</Link> before taking an order.</p> : <OrderForm products={products} purchaser={purchaser} />}
   </main>;
 }

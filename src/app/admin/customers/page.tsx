@@ -12,7 +12,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
   const query = typeof params.q === "string" ? params.q.slice(0, 100) : "";
   const accounts = params.view === "accounts";
   const rows = accounts ? await listAccounts(db, query) : await listPurchasers(db, query);
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-8">
+  return <main data-admin-section="customers" className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-8">
     <h1 className="text-2xl font-semibold">Customers</h1><nav className="flex gap-4"><Link className="min-h-11 py-2 underline" href="/admin/customers">Purchasers</Link><Link className="min-h-11 py-2 underline" href="/admin/customers?view=accounts">Neffi Accounts</Link></nav>
     <p className="text-sm text-muted-foreground">Purchasers are commercial buyers. Neffi Accounts are separate and read-only.</p>
     <form className="flex gap-2"><input type="hidden" name="view" value={accounts ? "accounts" : "purchasers"} /><label className="flex-1">{accounts ? "Account email" : "Purchaser name or contact"}<input className={inputClass} name="q" defaultValue={query} maxLength={100} /></label><button className="min-h-11 self-end rounded-lg border px-4">Search</button></form>

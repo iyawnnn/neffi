@@ -21,7 +21,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
   if (page.next) next.set("before", page.next);
   if (filters.status) next.set("status", filters.status);
   if (filters.assigneeId) next.set("assigneeId", filters.assigneeId);
-  return <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
+  return <main data-admin-section="orders" className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
     <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Orders</h1><Link className="flex min-h-11 items-center rounded-lg bg-primary px-4 text-primary-foreground" href="/admin/orders/new">New order</Link></div>
     <form className="grid gap-3 sm:grid-cols-3">
       <label className="flex flex-col gap-1 text-sm">Status<select className={inputClass} name="status" defaultValue={filters.status ?? ""}><option value="">All statuses</option><option value="in_progress">In Progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>

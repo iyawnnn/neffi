@@ -1,0 +1,23 @@
+import { eq } from "drizzle-orm";
+import { beforeAll, expect, test } from "vitest";
+import { shipments, purchasers, orders } from "@/db/schema";
+import { insertClaimedCard } from "@/db/test-fixtures";
+import { createTestDb, rollback, type TestDb } from "@/db/testing";
+import { search } from "./search";
+let db: TestDb;
+beforeAll(async () => { db = await createTestDb(); });
+test("search groups exact orders/cards, buyer/contact/email/tracking and escapes wildcards", () => rollback(db, async (tx) => {
+  const { card, owner, item } = await insertClaimedCard(tx);
+  const [order] = await tx.select().from(orders).where(eq(orders.id, item.orderId));
+  await tx.update(purchasers).set({ name: "Buyer%_", contactNumber: "091234" }).where(eq(purchasers.id, order.purchaserId));
+  await tx.insert(shipments).values({ orderId: item.orderId, trackingNumber: "TRACK-123" });
+  expect((await search(tx, String(order.number))).orders.map((r) => r.id)).toContain(item.orderId);
+  expect((await search(tx, card.publicToken!)).cards.map((r) => r.id)).toEqual([card.id]);
+  expect((await search(tx, card.id)).cards.map((r) => r.id)).toEqual([card.id]);
+  expect((await search(tx, "%_")).purchasers).toMatchObject([{ name: "Buyer%_" }]);
+  expect((await search(tx, "091234")).purchasers).toHaveLength(1);
+  expect((await search(tx, "TRACK-123")).shipments).toHaveLength(1);
+  const accounts = (await search(tx, owner.email)).accounts;
+  expect(Object.keys(accounts[0]).sort()).toEqual(["email", "id"]);
+  expect(await search(tx, "")).toEqual({ orders: [], purchasers: [], accounts: [], cards: [], shipments: [] });
+}));
