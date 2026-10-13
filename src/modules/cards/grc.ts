@@ -6,7 +6,7 @@ import type { Db } from "../db";
 import { CardError, lockCard } from "./card";
 
 // Cards that count against an item's quantity. Retired cards (failed or replaced) do not, but stay linked as history.
-const COUNTED_STATES = ["reserved", "released"] as const;
+export const COUNTED_STATES = ["reserved", "released"] as const;
 
 // An item that can still take a card: GRC, open order, a verified destination, and capacity left.
 export async function eligibleGrcItems(db: Db) {
@@ -31,10 +31,13 @@ export async function eligibleGrcItems(db: Db) {
     .limit(100);
 }
 
-// Blank -> Reserved against an existing eligible Order Item. Locks the item, then the card (never the reverse), so
+// Blank -> Reserved against an existing eligible Order Item. Locks the order, item, then card, so
 // two owners racing for the last slot serialize and exactly one wins.
 export async function reserveGrc(db: Db, input: { actorId: string; cardId: string; orderItemId: string }): Promise<void> {
   await db.transaction(async (tx) => {
+    await tx.select({ id: schema.orders.id }).from(schema.orders)
+      .innerJoin(schema.orderItems, eq(schema.orderItems.orderId, schema.orders.id))
+      .where(eq(schema.orderItems.id, input.orderItemId)).for("update", { of: schema.orders });
     const [item] = await tx
       .select({
         id: schema.orderItems.id,

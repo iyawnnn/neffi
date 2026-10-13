@@ -34,14 +34,18 @@ export async function lockCard(tx: Db, cardId: string) {
 }
 
 // Orders and stock refer to the one active catalog product of a kind; anything else is ambiguous.
-export async function activeProductId(tx: Db, kind: "dbc" | "grc"): Promise<string> {
+export async function activeProduct(tx: Db, kind: "dbc" | "grc") {
   const products = await tx
-    .select({ id: schema.products.id })
+    .select({ id: schema.products.id, name: schema.products.name, price: schema.products.price })
     .from(schema.products)
     .where(and(eq(schema.products.kind, kind), eq(schema.products.active, true)))
     .limit(2);
   if (products.length !== 1) throw new CardError("no_product");
-  return products[0].id;
+  return products[0];
+}
+
+export async function activeProductId(tx: Db, kind: "dbc" | "grc"): Promise<string> {
+  return (await activeProduct(tx, kind)).id;
 }
 
 export type NfcCheckInput = {
@@ -62,7 +66,14 @@ export async function recordNfcCheck(db: Db, input: NfcCheckInput): Promise<void
   if (!input.readBackMatched || !input.phoneOpenedUri || !input.tagLeftWritable) throw new CardError("checks_incomplete");
 
   await db.transaction(async (tx) => {
+    const [snapshot] = await tx.select({ kind: schema.cards.kind, orderItemId: schema.cards.orderItemId }).from(schema.cards).where(eq(schema.cards.id, input.cardId));
+    if (snapshot?.kind === "grc" && snapshot.orderItemId) {
+      await tx.select({ orderId: schema.orders.id }).from(schema.orders)
+        .innerJoin(schema.orderItems, eq(schema.orderItems.orderId, schema.orders.id))
+        .where(eq(schema.orderItems.id, snapshot.orderItemId)).for("update", { of: schema.orders });
+    }
     const card = await lockCard(tx, input.cardId);
+    if (card.kind === "grc" && card.orderItemId !== snapshot?.orderItemId) throw new CardError("item_ineligible");
     let expectedUri: string;
     let orderId: string | undefined;
 
