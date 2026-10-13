@@ -7,6 +7,11 @@ import { saveExpense, deleteExpense } from "./manual";
 import { expenseReport } from "./report";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
+test("unknown optional Order is a domain refusal and writes no expense", () => rollback(db, async (tx) => {
+  const { owner } = await insertOrder(tx);
+  await expect(saveExpense(tx, { actorId: owner.id, spentOn: "2026-10-13", amount: 500, category: "other", orderId: crypto.randomUUID() })).rejects.toMatchObject({ code: "not_found" });
+  expect(await tx.select().from(expenses)).toEqual([]);
+}));
 test("manual entries create, edit and delete without altering derived costs", () => rollback(db, async (tx) => {
   const { owner, order } = await insertOrder(tx);
   const id = await saveExpense(tx, { actorId: owner.id, spentOn: "2026-10-13", amount: 500, category: "other", orderId: order.id });

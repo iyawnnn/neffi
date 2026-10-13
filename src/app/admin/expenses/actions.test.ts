@@ -5,6 +5,7 @@ vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/modules/expenses/manual", () => ({ saveExpense, deleteExpense }));
 import { saveExpenseAction, deleteExpenseAction } from "./actions";
+import { OrderError } from "@/modules/orders/errors";
 const id = "11111111-1111-4111-8111-111111111111";
 const data = (fields: Record<string, string>) => { const f = new FormData(); for (const [k, v] of Object.entries(fields)) f.set(k, v); return f; };
 beforeEach(() => { vi.clearAllMocks(); authorize.mockResolvedValue({ ok: true, viewer: { accountId: id } }); });
@@ -26,4 +27,8 @@ test("manual deletion requires confirmation", async () => {
   expect(deleteExpense).not.toHaveBeenCalled();
   await deleteExpenseAction(undefined, data({ id, confirm: "on" }));
   expect(deleteExpense).toHaveBeenCalledWith({}, id);
+});
+test("unknown linked order returns form feedback", async () => {
+  saveExpense.mockRejectedValueOnce(new OrderError("not_found"));
+  expect(await saveExpenseAction(undefined, data({ spentOn: "2026-10-13", amount: "5", category: "other", orderId: id }))).toMatchObject({ error: expect.stringContaining("Order ID") });
 });

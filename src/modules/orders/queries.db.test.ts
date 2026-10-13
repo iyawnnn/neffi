@@ -1,13 +1,24 @@
 import { eq } from "drizzle-orm";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
 import { insertAccount, insertOrderItem, insertStockPurchase, syntheticToken } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { addOrderNote, assignOrder, updateOrderDetails } from "./order";
+import * as orderCore from "./order";
 import { getOrderDetail, listOrders } from "./queries";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
+
+test("detail item counts remain available when the earlier facts snapshot lacks a newly added item", () => rollback(db, async (tx) => {
+  const { order, item, product } = await insertOrderItem(tx, "dbc");
+  const stock = await insertStockPurchase(tx);
+  await tx.insert(s.cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", state: "released", publicToken: syntheticToken(), orderItemId: item.id });
+  const facts = await orderCore.loadOrderFacts(tx, order.id);
+  const snapshot = vi.spyOn(orderCore, "loadOrderFacts").mockResolvedValueOnce({ ...facts, items: [] });
+  try { expect((await getOrderDetail(tx, order.id))?.items).toMatchObject([{ id: item.id, activeCount: 1, releasedCount: 1 }]); }
+  finally { snapshot.mockRestore(); }
+}));
 
 test("order list keysets without duplicates and filters by status and assignee", () => rollback(db, async (tx) => {
   const actor = await insertAccount(tx, "owner");

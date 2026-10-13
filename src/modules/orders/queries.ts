@@ -31,7 +31,10 @@ export async function getOrderDetail(db: Db, id: string) {
   const [facts, purchaser, items, payments, refunds, cards, shipments, timeline, assignees, readyDbcCards] = await Promise.all([
     loadOrderFacts(db, id),
     db.select().from(schema.purchasers).where(eq(schema.purchasers.id, order.purchaserId)),
-    db.select({ id: schema.orderItems.id, productId: schema.orderItems.productId, productKind: schema.orderItems.productKind, name: schema.products.name, quantity: schema.orderItems.quantity, unitPrice: schema.orderItems.unitPrice, agreedTotal: schema.orderItems.agreedTotal, label: schema.orderItems.label, reviewUrl: schema.orderItems.reviewUrl }).from(schema.orderItems).innerJoin(schema.products, eq(schema.products.id, schema.orderItems.productId)).where(eq(schema.orderItems.orderId, id)).orderBy(asc(schema.orderItems.createdAt), asc(schema.orderItems.id)),
+    db.select({ id: schema.orderItems.id, productId: schema.orderItems.productId, productKind: schema.orderItems.productKind, name: schema.products.name, quantity: schema.orderItems.quantity, unitPrice: schema.orderItems.unitPrice, agreedTotal: schema.orderItems.agreedTotal, label: schema.orderItems.label, reviewUrl: schema.orderItems.reviewUrl,
+      activeCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state IN ('reserved', 'released'))`,
+      releasedCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state = 'released')`,
+    }).from(schema.orderItems).innerJoin(schema.products, eq(schema.products.id, schema.orderItems.productId)).where(eq(schema.orderItems.orderId, id)).orderBy(asc(schema.orderItems.createdAt), asc(schema.orderItems.id)),
     db.select().from(schema.payments).where(eq(schema.payments.orderId, id)).orderBy(desc(schema.payments.createdAt), desc(schema.payments.id)),
     db.select().from(schema.refunds).where(eq(schema.refunds.orderId, id)).orderBy(desc(schema.refunds.createdAt), desc(schema.refunds.id)),
     db.select({ id: schema.cards.id, orderItemId: schema.cards.orderItemId, kind: schema.cards.kind, state: schema.cards.state, suffix: sql<string>`right(${schema.cards.publicToken}, 4)`, nfcVerifiedAt: schema.cards.nfcVerifiedAt, packageMatchedAt: schema.cards.packageMatchedAt }).from(schema.cards).innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId)).where(and(eq(schema.orderItems.orderId, id), eq(schema.cards.kind, "dbc"))),
@@ -42,6 +45,6 @@ export async function getOrderDetail(db: Db, id: string) {
       .where(and(eq(schema.cards.kind, "dbc"), eq(schema.cards.state, "ready"), sql`exists(select 1 from order_items where order_id = ${id} and product_kind = 'dbc' and product_id = ${schema.cards.productId})`)).orderBy(asc(schema.cards.createdAt), asc(schema.cards.id)),
   ]);
   return { ...order, purchaser: purchaser[0], totals: facts.totals, anyReleased: facts.anyReleased, hasCommercialDelivery: facts.hasCommercialDelivery,
-    items: items.map((item) => ({ ...item, activeCount: facts.items.find((f) => f.id === item.id)!.activeCount, releasedCount: facts.items.find((f) => f.id === item.id)!.releasedCount })),
+    items,
     payments, refunds, cards, shipments, timeline, assignees, readyDbcCards };
 }

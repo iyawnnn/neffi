@@ -23,7 +23,7 @@ export async function saveExpenseAction(_previous: ActionState | undefined, data
     revalidatePath("/admin/expenses"); revalidatePath("/admin");
     return { ok: "Expense saved." };
   } catch (error) {
-    if (error instanceof OrderError) return { error: "That expense was not found." };
+    if (error instanceof OrderError) return { error: "That expense or linked order was not found. Check the Order ID." };
     throw error;
   }
 }
