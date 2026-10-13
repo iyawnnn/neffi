@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { accounts } from "./auth";
@@ -33,6 +34,7 @@ export const products = pgTable(
   (t) => [
     check("products_price_nonnegative", sql`${t.price} >= 0`),
     unique("products_id_kind_unique").on(t.id, t.kind),
+    uniqueIndex("products_one_active_per_kind").on(t.kind).where(sql`${t.active}`),
   ],
 );
 
@@ -132,12 +134,19 @@ export const payments = pgTable(
     method: paymentMethod().notNull(),
     paidOn: date({ mode: "string" }).notNull(),
     reference: text(),
+    voidedAt: timestamp({ withTimezone: true }),
+    voidedByAccountId: uuid().references(() => accounts.id),
+    voidReason: text(),
     recordedByAccountId: uuid()
       .notNull()
       .references(() => accounts.id),
     createdAt: createdAt(),
   },
-  (t) => [check("payments_amount_positive", sql`${t.amount} > 0`), index("payments_order_id_idx").on(t.orderId)],
+  (t) => [
+    check("payments_amount_positive", sql`${t.amount} > 0`),
+    check("payments_void_all_or_none", sql`(${t.voidedAt} IS NULL AND ${t.voidedByAccountId} IS NULL AND ${t.voidReason} IS NULL) OR (${t.voidedAt} IS NOT NULL AND ${t.voidedByAccountId} IS NOT NULL AND ${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason})) > 0)`),
+    index("payments_order_id_idx").on(t.orderId),
+  ],
 );
 
 // Money returned; never an edit of the original Payment.
@@ -152,6 +161,9 @@ export const refunds = pgTable(
     method: paymentMethod().notNull(),
     refundedOn: date({ mode: "string" }).notNull(),
     reason: text(),
+    voidedAt: timestamp({ withTimezone: true }),
+    voidedByAccountId: uuid().references(() => accounts.id),
+    voidReason: text(),
     // Set when the refund came out of a Support Case.
     supportCaseId: uuid().references(() => supportCases.id),
     recordedByAccountId: uuid()
@@ -159,7 +171,11 @@ export const refunds = pgTable(
       .references(() => accounts.id),
     createdAt: createdAt(),
   },
-  (t) => [check("refunds_amount_positive", sql`${t.amount} > 0`), index("refunds_order_id_idx").on(t.orderId)],
+  (t) => [
+    check("refunds_amount_positive", sql`${t.amount} > 0`),
+    check("refunds_void_all_or_none", sql`(${t.voidedAt} IS NULL AND ${t.voidedByAccountId} IS NULL AND ${t.voidReason} IS NULL) OR (${t.voidedAt} IS NOT NULL AND ${t.voidedByAccountId} IS NOT NULL AND ${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason})) > 0)`),
+    index("refunds_order_id_idx").on(t.orderId),
+  ],
 );
 
 // Courier fulfillment. Pickup and local handoff need no shipment row.
