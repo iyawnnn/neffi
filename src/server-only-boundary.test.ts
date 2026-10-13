@@ -9,6 +9,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/orders/products.ts",
   "src/modules/orders/purchasers.ts",
   "src/modules/orders/create.ts",
+  "src/modules/orders/queries.ts",
   "src/modules/payments/record.ts",
   "src/config/env.ts",
   "src/db/index.ts",

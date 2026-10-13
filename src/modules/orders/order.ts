@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
@@ -58,5 +58,28 @@ export async function mutateOrder<T>(db: Db, input: { orderId: string; actorId: 
     await tx.update(schema.orders).set({ updatedByAccountId: input.actorId }).where(eq(schema.orders.id, order.id));
     await settleOrderCompletion(tx, order.id, input.actorId);
     return result;
+  });
+}
+
+const ALL_STATUSES: Order["status"][] = ["in_progress", "completed", "cancelled"];
+
+export async function assignOrder(db: Db, input: { orderId: string; actorId: string; assignedToAccountId: string }) {
+  return mutateOrder(db, { ...input, allow: ALL_STATUSES }, async (tx) => {
+    const [owner] = await tx.select({ id: schema.accounts.id }).from(schema.accounts).where(and(eq(schema.accounts.id, input.assignedToAccountId), eq(schema.accounts.role, "owner")));
+    if (!owner) throw new OrderError("invalid_input");
+    await tx.update(schema.orders).set({ assignedToAccountId: owner.id }).where(eq(schema.orders.id, input.orderId));
+    await recordActivity(tx, { type: "order_assigned", actorAccountId: input.actorId, orderId: input.orderId });
+  });
+}
+
+export async function addOrderNote(db: Db, input: { orderId: string; actorId: string; note: string }) {
+  if (!input.note.trim() || input.note.length > 500) throw new OrderError("invalid_input");
+  return mutateOrder(db, { ...input, allow: ALL_STATUSES }, (tx) => recordActivity(tx, { type: "note", actorAccountId: input.actorId, orderId: input.orderId, note: input.note.trim() }));
+}
+
+export async function updateOrderDetails(db: Db, input: { orderId: string; actorId: string; deliveryMethod: Order["deliveryMethod"]; shippingFee: number; notes: string }) {
+  return mutateOrder(db, input, async (tx, order) => {
+    if (input.deliveryMethod !== order.deliveryMethod && (await loadOrderFacts(tx, order.id)).anyReleased) throw new OrderError("delivery_locked");
+    await tx.update(schema.orders).set({ deliveryMethod: input.deliveryMethod, shippingFee: input.shippingFee, notes: input.notes }).where(eq(schema.orders.id, order.id));
   });
 }
