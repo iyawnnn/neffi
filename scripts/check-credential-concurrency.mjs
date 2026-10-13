@@ -25,7 +25,7 @@ try {
   await migrate(drizzle({ client: admin }), { migrationsFolder: "drizzle" });
   const account = randomUUID(), product = randomUUID(), stock = randomUUID();
   await admin.query("INSERT INTO accounts(id,name,email) VALUES ($1,'Synthetic concurrency owner',$2)", [account, `${account}@example.test`]);
-  await admin.query("INSERT INTO products(id,kind,name,price) VALUES ($1,'dbc','Synthetic concurrency DBC',100)", [product]);
+  await admin.query("INSERT INTO products(id,kind,name,price,active) VALUES ($1,'dbc','Synthetic concurrency DBC',100,false)", [product]);
   await admin.query("INSERT INTO stock_purchases(id,received_on,created_by_account_id) VALUES ($1,'2026-10-10',$2)", [stock, account]);
   const first = await connect(), second = await connect(); clients.push(first, second);
   const { rows: [{ pid: secondPid }] } = await second.query("SELECT pg_backend_pid() AS pid");

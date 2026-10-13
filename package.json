@@ -21,6 +21,7 @@
     "check:provisioning-concurrency": "node --conditions=react-server --import tsx scripts/check-provisioning-concurrency.mts",
     "check:claim-concurrency": "node --conditions=react-server --import tsx scripts/check-claim-concurrency.mts",
     "check:profile-concurrency": "node --conditions=react-server --import tsx scripts/check-profile-concurrency.mts",
+    "check:orders-concurrency": "node --conditions=react-server --import tsx scripts/check-orders-concurrency.mts",
     "check:bundle": "node scripts/check-client-bundle.mjs"
   },
   "dependencies": {
