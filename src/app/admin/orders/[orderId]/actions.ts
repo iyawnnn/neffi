@@ -10,6 +10,7 @@ import { addOrderNote, assignOrder, updateOrderDetails } from "@/modules/orders/
 import { addOrderItem, removeOrderItem, updateOrderItem } from "@/modules/orders/items";
 import { recordPayment, recordRefund } from "@/modules/payments/record";
 import { voidPayment, voidRefund } from "@/modules/payments/void";
+import { reserveDbcCards, returnCardToStock, handOverOrder, shipOrder, updateShipment } from "@/modules/orders/fulfillment";
 import type { ActionState } from "../../inventory/actions";
 
 const id = z.uuid();
@@ -29,6 +30,10 @@ async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: 
     if (error instanceof OrderError && error.code === "balance_exceeded") return { error: "Payment exceeds the current balance. Reload the order and check the amount." };
     if (error instanceof OrderError && error.code === "refund_exceeded") return { error: "Refund exceeds the net amount paid. Reload the order and check the amount." };
     if (error instanceof OrderError && error.code === "already_voided") return { error: "That entry was already voided. Reload the order." };
+    if (error instanceof OrderError && error.code === "card_unavailable") return { error: "A selected DBC is no longer available for this action. Reload the order." };
+    if (error instanceof OrderError && error.code === "checks_incomplete") return { error: "Every DBC needs its package match and an unused credential before release." };
+    if (error instanceof OrderError && error.code === "nothing_reserved") return { error: "Reserve a DBC first, or confirm an undelivered GRC sale." };
+    if (error instanceof OrderError && error.code === "wrong_delivery") return { error: "Choose the matching delivery method before handing over or shipping." };
     if (error instanceof OrderError) return { error: error.code === "delivery_locked" ? "Delivery method is locked after release or delivery." : error.code === "items_delivered" ? "Delivered GRC quantities cannot change. You can still edit prices and references." : error.code === "item_full" ? "Quantity cannot be below the reserved or released DBC count." : error.code === "item_has_cards" ? "This item has linked Card history and cannot be removed." : error.code === "last_item" ? "An order must keep at least one item." : error.code === "no_product" ? "Set up this product in Settings first." : error.code === "wrong_status" ? "This action isn't available for the order's current status. Reload the order." : "Check the order details and try again." };
     throw error;
   }
@@ -81,4 +86,26 @@ export async function voidPaymentAction(_previous: ActionState | undefined, data
 
 export async function voidRefundAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ orderId: id, refundId: id, reason: z.string().trim().min(1).max(200), confirm: z.literal("on") }), data, (input, actorId) => voidRefund(db, { ...input, actorId }));
+}
+
+export async function reserveDbcCardsAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, orderItemId: id, cardIds: z.preprocess(() => data.getAll("cardId"), z.array(id).min(1).max(500)) }), data, (input, actorId) => reserveDbcCards(db, { ...input, actorId }));
+}
+
+export async function returnCardToStockAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, cardId: id, confirm: z.literal("on") }), data, (input, actorId) => returnCardToStock(db, { ...input, actorId }));
+}
+
+export async function handOverOrderAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, confirm: z.literal("on") }), data, (input, actorId) => handOverOrder(db, { ...input, actorId }));
+}
+
+const shippingFields = { orderId: id, courier: z.string().trim().max(100), trackingNumber: z.string().trim().max(100), courierCost: z.string().trim().max(30) };
+
+export async function shipOrderAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ ...shippingFields, shippedOn: optionalDate, recipientName: z.string().trim().max(100), recipientContact: z.string().trim().max(100), address: z.string().trim().max(500), confirm: z.literal("on") }), data, (input, actorId) => shipOrder(db, { ...input, actorId, courierCost: input.courierCost ? parsePesos(input.courierCost) : undefined }));
+}
+
+export async function updateShipmentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ ...shippingFields, shipmentId: id, status: z.enum(["in_transit", "delivered", "failed", "returned", "lost"]) }), data, (input, actorId) => updateShipment(db, { ...input, actorId, courierCost: input.courierCost ? parsePesos(input.courierCost) : null }));
 }

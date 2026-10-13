@@ -12,6 +12,7 @@ import { effectiveItemTotal } from "@/modules/orders/totals";
 import { ActionForm } from "../../inventory/forms";
 import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
 import { recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction } from "./actions";
+import { reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction } from "./actions";
 import { ActionSheet } from "./action-sheet";
 import { MoneyFields } from "./money-fields";
 
@@ -25,6 +26,8 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   const order = await getOrderDetail(db, orderId);
   if (!order) notFound();
   const hidden = <input type="hidden" name="orderId" value={order.id} />;
+  const canDeliver = order.cards.some((card) => card.state === "reserved") || (order.items.some((item) => item.productKind === "grc") && !order.hasCommercialDelivery);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
   const correction = (kind: "payment" | "refund", rowId: string) => <ActionSheet title={`Void ${kind}`}><ActionForm action={kind === "payment" ? voidPaymentAction : voidRefundAction} submit={`Void ${kind}`} variant="destructive">{hidden}<input type="hidden" name={kind === "payment" ? "paymentId" : "refundId"} value={rowId} /><p className="text-sm">The original entry is kept. A void is final and excludes it from totals.</p><label className="flex flex-col gap-1 text-sm">Reason<Input name="reason" required maxLength={200} /></label><label className="flex min-h-11 items-center gap-2 text-sm"><input name="confirm" type="checkbox" required />Confirm this correction.</label></ActionForm></ActionSheet>;
   return <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-4 sm:p-8">
     <header className="space-y-2"><Link className="inline-flex min-h-11 items-center underline" href="/admin/orders">Orders</Link><h1 className="text-2xl font-semibold">Order {order.number}</h1><p>{order.status.replaceAll("_", " ")} · {order.totals.paymentState}</p><Link className="underline" href={`/admin/customers/purchasers/${order.purchaserId}`}>{order.purchaser.name}</Link>{order.purchaser.contactNumber ? <p>{order.purchaser.contactNumber}</p> : null}</header>
@@ -32,6 +35,15 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
     <section className="space-y-4"><h2 className="text-xl font-semibold">Items &amp; fulfillment</h2>
       {order.items.map((item) => <div key={item.id} className="space-y-2 border-b pb-4"><h3 className="font-medium">{item.name}{item.label ? ` · ${item.label}` : ""}</h3><p className="tabular-nums">{item.quantity} × {formatPeso(item.unitPrice)} · Total {formatPeso(effectiveItemTotal(item))}</p>{item.agreedTotal !== null ? <p className="text-sm">Adjustment: {formatPeso(item.quantity * item.unitPrice - item.agreedTotal)}</p> : null}{item.productKind === "dbc" ? <p className="text-sm">{item.activeCount} reserved or released · {item.releasedCount} released</p> : <p className="text-sm text-muted-foreground">Manual programming · Commercial delivery {order.hasCommercialDelivery ? "recorded" : "pending"}</p>}{item.reviewUrl ? <a className="block break-all underline" href={item.reviewUrl}>{item.reviewUrl}</a> : null}</div>)}
       {order.cards.map((card) => <Link className="flex min-h-11 items-center gap-3 underline" key={card.id} href={`/admin/inventory/cards/${card.id}`}>{card.kind?.toUpperCase()} {card.suffix ?? card.id.slice(-4)} · {card.state}</Link>)}
+      {order.status === "in_progress" ? <div className="flex flex-wrap gap-3">
+        {order.items.filter((item) => item.productKind === "dbc" && item.activeCount < item.quantity).map((item) => <ActionSheet key={item.id} title={`Reserve DBC cards · ${item.name}`}>
+          <p>{item.quantity - item.activeCount} card(s) remaining on this line.</p>
+          {order.readyDbcCards.some((card) => card.productId === item.productId) ? <ActionForm action={reserveDbcCardsAction} submit="Reserve selected DBCs">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
+            {order.readyDbcCards.filter((card) => card.productId === item.productId).map((card) => <label key={card.id} className="flex min-h-11 items-center gap-3 border-b py-3"><input type="checkbox" name="cardId" value={card.id} /><span>DBC {card.suffix} · Received {card.receivedOn}</span></label>)}
+          </ActionForm> : <p>No Ready DBCs for this product. <Link className="underline" href="/admin/inventory">Open Inventory</Link></p>}
+        </ActionSheet>)}
+        {order.cards.filter((card) => card.state === "reserved").map((card) => <ActionSheet key={card.id} title={`Return DBC ${card.suffix ?? ""} to stock`}><ActionForm action={returnCardToStockAction} submit="Return to stock">{hidden}<input type="hidden" name="cardId" value={card.id} /><p className="text-sm">Returns this DBC to Ready stock. For a lost package, replace its credential from Inventory afterward.</p><label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="confirm" required />Confirm this card is back in stock.</label></ActionForm></ActionSheet>)}
+      </div> : null}
       {order.status === "in_progress" ? <div className="space-y-4">
         {order.items.map((item) => <details key={item.id} className="border-b pb-4"><summary className="min-h-11 cursor-pointer py-3">Edit {item.name}{item.label ? ` · ${item.label}` : ""}</summary>
           <ActionForm action={updateOrderItemAction} submit="Save item">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
@@ -57,7 +69,28 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
         {order.status !== "completed" && order.totals.netPaid > 0 ? <ActionSheet title="Record refund"><ActionForm action={recordRefundAction} submit="Record refund" variant="destructive">{hidden}<MoneyFields kind="refund" amount={order.totals.refundDue || order.totals.netPaid} /><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="confirm" required />Confirm this money was returned to the purchaser.</label></ActionForm></ActionSheet> : null}
       </div>
     </section>
-    <section className="space-y-4"><h2 className="text-xl font-semibold">Delivery</h2><p>{order.deliveryMethod?.replaceAll("_", " ") ?? "Not selected"} · Fee {formatPeso(order.shippingFee)}</p>{order.shipments.map((shipment) => <div key={shipment.id}><p>{shipment.status} · {shipment.courier} · {shipment.trackingNumber}</p><p>{shipment.shippedOn} {shipment.courierCost !== null ? `· Cost ${formatPeso(shipment.courierCost)}` : ""}</p></div>)}</section>
+    <section className="space-y-4"><h2 className="text-xl font-semibold">Delivery</h2><p>{order.deliveryMethod?.replaceAll("_", " ") ?? "Not selected"} · Fee {formatPeso(order.shippingFee)}</p>
+      {order.status === "in_progress" && canDeliver && (order.deliveryMethod === "pickup" || order.deliveryMethod === "local_handoff") ? <ActionSheet title="Hand over"><ActionForm action={handOverOrderAction} submit="Record handover">{hidden}<p>Releases all Reserved DBCs and records commercial delivery of the GRC goods, if present.</p><label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="confirm" required />Confirm these goods were handed to the purchaser.</label></ActionForm></ActionSheet> : null}
+      {order.status === "in_progress" && canDeliver && order.deliveryMethod === "courier" ? <ActionSheet title="Ship"><ActionForm action={shipOrderAction} submit="Record shipment">{hidden}
+        <label className="flex flex-col gap-1 text-sm">Shipped on<Input name="shippedOn" type="date" defaultValue={today} /></label>
+        <label className="flex flex-col gap-1 text-sm">Courier (optional)<Input name="courier" maxLength={100} /></label>
+        <label className="flex flex-col gap-1 text-sm">Tracking number (optional)<Input name="trackingNumber" maxLength={100} /></label>
+        <label className="flex flex-col gap-1 text-sm">Recipient (optional)<Input name="recipientName" maxLength={100} defaultValue={order.purchaser.name} /></label>
+        <label className="flex flex-col gap-1 text-sm">Recipient contact (optional)<Input name="recipientContact" maxLength={100} defaultValue={order.purchaser.contactNumber ?? ""} /></label>
+        <label className="flex flex-col gap-1 text-sm">Address (optional)<Textarea name="address" maxLength={500} /></label>
+        <label className="flex flex-col gap-1 text-sm">Courier cost (pesos, optional)<Input name="courierCost" inputMode="decimal" maxLength={30} /></label>
+        <label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="confirm" required />Confirm these goods were handed to the courier.</label>
+      </ActionForm></ActionSheet> : null}
+      {order.shipments.map((shipment) => <div key={shipment.id} className="space-y-2 border-b pb-4"><p>{shipment.status} · {shipment.courier} · {shipment.trackingNumber}</p><p>{shipment.shippedOn} {shipment.courierCost !== null ? `· Cost ${formatPeso(shipment.courierCost)}` : ""}</p><p>{shipment.recipientName} {shipment.recipientContact}</p>{shipment.address ? <p className="whitespace-pre-wrap">{shipment.address}</p> : null}
+        {order.status !== "cancelled" ? <ActionSheet title="Update shipment"><ActionForm action={updateShipmentAction} submit="Save shipment">{hidden}<input type="hidden" name="shipmentId" value={shipment.id} />
+          <label className="flex flex-col gap-1 text-sm">Status<select name="status" className={inputClass} defaultValue={shipment.status}>{["in_transit", "delivered", "failed", "returned", "lost"].map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select></label>
+          <label className="flex flex-col gap-1 text-sm">Courier<Input name="courier" maxLength={100} defaultValue={shipment.courier ?? ""} /></label>
+          <label className="flex flex-col gap-1 text-sm">Tracking number<Input name="trackingNumber" maxLength={100} defaultValue={shipment.trackingNumber ?? ""} /></label>
+          <label className="flex flex-col gap-1 text-sm">Courier cost (pesos, optional)<Input name="courierCost" inputMode="decimal" maxLength={30} defaultValue={shipment.courierCost !== null ? (shipment.courierCost / 100).toFixed(2) : ""} /></label>
+          <p className="text-sm text-muted-foreground">Recording a delivery issue does not reopen the order.</p>
+        </ActionForm></ActionSheet> : null}
+      </div>)}
+    </section>
     {order.status === "in_progress" ? <section className="space-y-3"><h2 className="text-xl font-semibold">Order details</h2><ActionForm action={updateOrderDetailsAction} submit="Save order details">{hidden}
       <label className="flex flex-col gap-1 text-sm">Delivery method<select name="deliveryMethod" className={inputClass} defaultValue={order.deliveryMethod ?? "pickup"} disabled={order.anyReleased || order.hasCommercialDelivery}><option value="pickup">Pickup</option><option value="local_handoff">Local handoff</option><option value="courier">Courier</option></select></label>
       {order.anyReleased || order.hasCommercialDelivery ? <input type="hidden" name="deliveryMethod" value={order.deliveryMethod ?? ""} /> : null}

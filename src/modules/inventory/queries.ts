@@ -67,6 +67,7 @@ export async function getCardDetail(db: Db, cardId: string) {
       packageMatchedAt: schema.cards.packageMatchedAt,
       createdAt: schema.cards.createdAt,
       orderNumber: schema.orders.number,
+      orderId: schema.orders.id,
       label: schema.orderItems.label,
       reviewUrl: schema.orderItems.reviewUrl,
     })
@@ -87,12 +88,12 @@ export async function getCardDetail(db: Db, cardId: string) {
     .orderBy(desc(schema.activityEvents.createdAt), desc(schema.activityEvents.id))
     .limit(20);
 
-  const { orderNumber, label, reviewUrl, ...rest } = card;
+  const { orderNumber, orderId, label, reviewUrl, ...rest } = card;
   return {
     ...rest,
     usableCredentialId: credentials.find((credential) => !credential.usedAt && !credential.revokedAt)?.id ?? null,
     credentialCount: credentials.length,
-    orderContext: orderNumber === null ? null : { orderNumber, label, reviewUrl },
+    orderContext: orderNumber === null ? null : { orderId, orderNumber, label, reviewUrl },
     activity,
   };
 }

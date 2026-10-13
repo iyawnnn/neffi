@@ -94,7 +94,7 @@ describe("getCardDetail", () => {
         .returning();
 
       const detail = await getCardDetail(tx, card.id);
-      expect(detail?.orderContext).toEqual({ orderNumber: order.number, label: "Branch A", reviewUrl: "https://g.page/r/x/review" });
+      expect(detail?.orderContext).toEqual({ orderId: order.id, orderNumber: order.number, label: "Branch A", reviewUrl: "https://g.page/r/x/review" });
       expect(detail?.usableCredentialId).toBeNull();
       expect(await getCardDetail(tx, crypto.randomUUID())).toBeNull();
     }));

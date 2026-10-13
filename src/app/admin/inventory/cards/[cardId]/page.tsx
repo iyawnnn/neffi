@@ -121,7 +121,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
             <>
               <dt className="text-muted-foreground">Order</dt>
               <dd>
-                {card.orderContext.orderNumber}
+                {card.orderContext.orderId ? <Link className="underline" href={`/admin/orders/${card.orderContext.orderId}`}>{card.orderContext.orderNumber}</Link> : card.orderContext.orderNumber}
                 {card.orderContext.label ? ` · ${card.orderContext.label}` : ""}
               </dd>
               <dt className="text-muted-foreground">Review URL</dt>
