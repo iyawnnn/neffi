@@ -92,3 +92,4 @@ test("replacement response reveals independently of the initial provisioning res
   responses.clear();
   expect(renderToStaticMarkup(await page())).not.toContain("PQRS-JKMN-EFGH-ABCD");
 });
+vi.mock("next/server", () => ({ connection: vi.fn() }));

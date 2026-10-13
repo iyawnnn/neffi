@@ -1,5 +1,5 @@
 import "server-only";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 
@@ -23,7 +23,7 @@ export async function cardStateCounts(db: Db) {
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 // `before` comes from the URL, so anything that is not a cursor this function issued is ignored.
-export async function listCards(db: Db, { before, limit }: { before?: string; limit: number }) {
+export async function listCards(db: Db, { before, limit, kind, state }: { before?: string; limit: number; kind?: "dbc" | "grc" | "none"; state?: typeof schema.cards.$inferSelect.state }) {
   const cursor = before ? CURSOR.exec(before) : null;
   const [cursorAt, cursorId] = cursor ? [cursor[1], cursor[4]] : [];
   const rows = await db
@@ -38,7 +38,11 @@ export async function listCards(db: Db, { before, limit }: { before?: string; li
       cursor: sql<string>`${schema.cards.createdAt}::text || '|' || ${schema.cards.id}::text`,
     })
     .from(schema.cards)
-    .where(cursor ? sql`(${schema.cards.createdAt}, ${schema.cards.id}) < (${cursorAt}::timestamptz, ${cursorId}::uuid)` : undefined)
+    .where(and(
+      cursor ? sql`(${schema.cards.createdAt}, ${schema.cards.id}) < (${cursorAt}::timestamptz, ${cursorId}::uuid)` : undefined,
+      kind === "none" ? isNull(schema.cards.kind) : kind ? eq(schema.cards.kind, kind) : undefined,
+      state ? eq(schema.cards.state, state) : undefined,
+    ))
     .orderBy(desc(schema.cards.createdAt), desc(schema.cards.id))
     .limit(limit + 1);
   const page = rows.slice(0, limit);
@@ -70,10 +74,14 @@ export async function getCardDetail(db: Db, cardId: string) {
       orderId: schema.orders.id,
       label: schema.orderItems.label,
       reviewUrl: schema.orderItems.reviewUrl,
+      purchaserId: schema.purchasers.id,
+      purchaserName: schema.purchasers.name,
+      ownerAccountId: schema.cards.ownerAccountId,
     })
     .from(schema.cards)
     .leftJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
     .leftJoin(schema.orders, eq(schema.orders.id, schema.orderItems.orderId))
+    .leftJoin(schema.purchasers, eq(schema.purchasers.id, schema.orders.purchaserId))
     .where(eq(schema.cards.id, cardId));
   if (!card) return null;
 
@@ -88,9 +96,13 @@ export async function getCardDetail(db: Db, cardId: string) {
     .orderBy(desc(schema.activityEvents.createdAt), desc(schema.activityEvents.id))
     .limit(20);
 
-  const { orderNumber, orderId, label, reviewUrl, ...rest } = card;
+  const { orderNumber, orderId, label, reviewUrl, purchaserId, purchaserName, ownerAccountId, ...rest } = card;
+  const [owningAccount] = ownerAccountId ? await db.select({ email: schema.accounts.email, role: schema.accounts.role, createdAt: schema.accounts.createdAt }).from(schema.accounts).where(eq(schema.accounts.id, ownerAccountId)) : [];
   return {
     ...rest,
+    owningAccount: owningAccount ?? null,
+    owningAccountId: ownerAccountId,
+    purchaser: purchaserId ? { id: purchaserId, name: purchaserName } : null,
     usableCredentialId: credentials.find((credential) => !credential.usedAt && !credential.revokedAt)?.id ?? null,
     credentialCount: credentials.length,
     orderContext: orderNumber === null ? null : { orderId, orderNumber, label, reviewUrl },

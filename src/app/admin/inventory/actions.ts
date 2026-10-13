@@ -11,10 +11,13 @@ import { matchPackage, provisionDbc, replaceProvisioningCredential } from "@/mod
 import { reserveGrc } from "@/modules/cards/grc";
 import { cardUrl } from "@/modules/cards/token";
 import { receiveStock } from "@/modules/inventory/stock-intake";
+import { updateStockPurchase } from "@/modules/inventory/stock-purchases";
+import { parsePesos } from "@/lib/money";
+import { OrderError } from "@/modules/orders/errors";
 
 // Every action is a public endpoint: authorize as OWNER first, then validate, then call the domain service.
 // A raw activation code appears only in the `reveal` of the response that issued it.
-export type ActionState = { error?: string; ok?: string; reveal?: { code: string; url?: string } };
+export type ActionState = { error?: string; ok?: string; href?: string; reveal?: { code: string; url?: string } };
 
 const MESSAGES: Record<CardErrorCode, string> = {
   not_found: "That card was not found.",
@@ -53,11 +56,25 @@ async function run<S extends z.ZodType>(
     return result;
   } catch (error) {
     if (error instanceof CardError) return { error: MESSAGES[error.code] };
+    if (error instanceof OrderError) return { error: "That stock purchase could not be saved. Reload and check the fields." };
     throw error;
   }
 }
 
 const cardPage = ({ cardId }: { cardId: string }) => [`/admin/inventory/cards/${cardId}`];
+
+const optionalCost = z.preprocess((value) => value == null || value === "" ? null : value, z.string().max(30).nullable().transform((value, ctx) => {
+  if (value === null) return null;
+  try { return parsePesos(value); } catch { ctx.addIssue({ code: "custom", message: "Invalid amount" }); return z.NEVER; }
+}));
+const stockFields = z.object({ receivedOn: z.iso.date(), supplier: optionalText(100), reference: optionalText(100), notes: optionalText(500), purchaseCost: optionalCost, inboundShippingCost: optionalCost });
+
+export async function updateStockPurchaseAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(stockFields.extend({ stockPurchaseId: id }), data, async (input) => {
+    await updateStockPurchase(db, { ...input, supplier: input.supplier ?? null, reference: input.reference ?? null, notes: input.notes ?? null });
+    return { ok: "Stock purchase saved." };
+  }, ({ stockPurchaseId }) => [`/admin/inventory/stock/${stockPurchaseId}`, "/admin/expenses", "/admin"]);
+}
 
 export async function receiveStockAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   const schema = z.object({
@@ -67,10 +84,12 @@ export async function receiveStockAction(_previous: ActionState | undefined, dat
     reference: optionalText(100),
     notes: optionalText(500),
     intendedKind: z.preprocess((value) => (value === "" ? undefined : value), z.enum(["dbc", "grc"]).optional()),
+    purchaseCost: optionalCost,
+    inboundShippingCost: optionalCost,
   });
   return run(schema, data, async (input, actorId) => {
-    await receiveStock(db, { actorId, ...input });
-    return { ok: `Received ${input.quantity} cards.` };
+    const { stockPurchaseId } = await receiveStock(db, { actorId, ...input });
+    return { ok: `Received ${input.quantity} cards.`, href: `/admin/inventory/stock/${stockPurchaseId}` };
   });
 }
 

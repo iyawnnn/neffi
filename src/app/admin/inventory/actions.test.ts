@@ -6,6 +6,7 @@ const { authorize, revalidatePath, services } = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
   services: {
     receiveStock: vi.fn(),
+    updateStockPurchase: vi.fn(),
     provisionDbc: vi.fn(),
     recordNfcCheck: vi.fn(),
     matchPackage: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("@/db", () => ({ db: { sentinel: true } }));
 vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "s".repeat(40), cardUrlOrigin: "https://tap.example.test" } }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/modules/inventory/stock-intake", () => ({ receiveStock: services.receiveStock }));
+vi.mock("@/modules/inventory/stock-purchases", () => ({ updateStockPurchase: services.updateStockPurchase }));
 vi.mock("@/modules/cards/dbc", () => ({
   provisionDbc: services.provisionDbc,
   matchPackage: services.matchPackage,
@@ -59,6 +61,7 @@ const RETIRE = { cardId: CARD, reason: "failed", confirm: "on" };
 const STOCK = { receivedOn: "2026-10-10", quantity: "3", intendedKind: "dbc" };
 
 const CASES: Case[] = [
+  { name: "updateStockPurchaseAction", service: "updateStockPurchase", fields: { stockPurchaseId: ITEM, receivedOn: "2026-10-13", purchaseCost: "1,000.50" }, bad: [{ stockPurchaseId: ITEM, receivedOn: "2026-10-13", purchaseCost: "-1" }, { stockPurchaseId: "x", receivedOn: "2026-10-13" }], reveal: null },
   {
     name: "receiveStockAction",
     service: "receiveStock",
@@ -132,7 +135,7 @@ describe.each(CASES)("$name", ({ name, service, fields, bad, reveal }) => {
   test("runs the service as the signed-in owner", async () => {
     const result = await run(form(fields));
     expect(result.error).toBeUndefined();
-    expect(services[service]).toHaveBeenCalledWith({ sentinel: true }, expect.objectContaining({ actorId: OWNER.viewer.accountId }));
+    expect(services[service]).toHaveBeenCalledWith({ sentinel: true }, expect.objectContaining(service === "updateStockPurchase" ? { stockPurchaseId: ITEM, purchaseCost: 100050 } : { actorId: OWNER.viewer.accountId }));
     expect(revalidatePath).toHaveBeenCalled();
   });
 

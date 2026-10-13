@@ -4,6 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 const { requireOwner, getCardDetail } = vi.hoisted(() => ({ requireOwner: vi.fn(), getCardDetail: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireOwner }));
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("next/server", () => ({ connection: vi.fn() }));
 vi.mock("@/config/env", () => ({ env: { cardUrlOrigin: "http://localhost:3000" } }));
 vi.mock("@/modules/inventory/queries", () => ({ getCardDetail }));
 vi.mock("@/modules/cards/grc", () => ({ eligibleGrcItems: vi.fn().mockResolvedValue([]) }));

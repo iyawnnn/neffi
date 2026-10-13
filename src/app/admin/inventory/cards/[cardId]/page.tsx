@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireOwner } from "@/auth/access";
@@ -23,6 +24,7 @@ function Section({ title, children, tone }: { title: string; children: React.Rea
 
 export default async function CardPage({ params }: PageProps<"/admin/inventory/cards/[cardId]">) {
   await requireOwner();
+  await connection();
   const { cardId } = await params;
   if (!z.uuid().safeParse(cardId).success) notFound();
   const card = await getCardDetail(db, cardId);
@@ -111,6 +113,8 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted-foreground">Added</dt>
           <dd>{dateTime(card.createdAt)}</dd>
+          {card.purchaser ? <><dt className="text-muted-foreground">Purchaser</dt><dd><Link className="underline" href={`/admin/customers/purchasers/${card.purchaser.id}`}>{card.purchaser.name}</Link></dd></> : null}
+          {card.owningAccount ? <><dt className="text-muted-foreground">Owning Account</dt><dd className="break-all"><Link className="underline" href={`/admin/customers/accounts/${card.owningAccountId}`}>{card.owningAccount.email}</Link></dd></> : null}
           {dbcUri ? (
             <>
               <dt className="text-muted-foreground">Card URL</dt>
