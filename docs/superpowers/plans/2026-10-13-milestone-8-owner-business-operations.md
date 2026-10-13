@@ -22,7 +22,7 @@
 - Step 9;
 - Page Inventory §7.
 
-Precedence: Locked Plan → Steps 3/5/6/7 → Step 8 → Step 9. The user's 2026-10-13 decisions A1–A6 (end of this file) are newer direct instructions. Step 9's progress record still shows M7 "Not started". That is Notion drift, and it does not affect scope.
+Precedence: Locked Plan → Steps 3/5/6/7 → Step 8 → Step 9. The user's decisions A1–A6 and subsequent GRC workflow correction A7 (end of this file) are newer direct instructions. A7 supersedes the original GRC order-fulfillment design. Step 9's progress record still shows M7 "Not started". That is Notion drift, and it does not affect scope.
 
 **Baseline:** `main` @ `9ca1cd6`.
 - M7 is merged with physical acceptance passed.
@@ -112,7 +112,7 @@ Precedence: Locked Plan → Steps 3/5/6/7 → Step 8 → Step 9. The user's 2026
 | OWNER auth | `requireOwner()`, `authorize("owner")`: `src/auth/access.ts` |
 | Action pattern | `run()`/Zod/error-code→copy/`revalidatePath`: `src/app/admin/inventory/actions.ts`; `ActionForm`: `.../inventory/forms.tsx` |
 | Card lock / retire / NFC check / active product | `lockCard`, `retireCard`, `recordNfcCheck`, `activeProductId`: `src/modules/cards/card.ts` |
-| GRC reserve / eligible items | `reserveGrc`, `eligibleGrcItems`, `COUNTED_STATES`: `src/modules/cards/grc.ts` |
+| Existing manual GRC tools (not M8 fulfillment dependencies) | `reserveGrc`, `eligibleGrcItems`, `recordNfcCheck`: keep available in M4 inventory; no Order-workspace integration. `COUNTED_STATES` also defines DBC capacity. |
 | DBC credential replacement | `replaceProvisioningCredential`: `src/modules/cards/dbc.ts` |
 | Stock intake / counts / card list / detail | `src/modules/inventory/{stock-intake,queries}.ts` |
 | Claim (integration proof) | `claimCard`: `src/modules/activation/claim.ts` |
@@ -127,7 +127,7 @@ Precedence: Locked Plan → Steps 3/5/6/7 → Step 8 → Step 9. The user's 2026
 - a money formatter;
 - an admin shell/nav.
 
-Codebase transactions use explicit `FOR UPDATE` lock-first patterns and no serialization-retry helper; M8 does the same.
+Codebase transactions use explicit lock-first patterns and no serialization-retry helper. M8 uses `FOR NO KEY UPDATE` on the parent Order (whose keys it never changes) and `FOR UPDATE` on mutable DBC items/cards. This still serializes Order writers while allowing foreign-key `KEY SHARE` reads from independent manual M4 tools.
 
 **Invariants:**
 1. Purchaser ≠ Account; they are never auto-linked.
@@ -154,14 +154,14 @@ Codebase transactions use explicit `FOR UPDATE` lock-first patterns and no seria
    - Assigned To, Last updated by/at, internal notes;
    - item edits while In Progress.
 3. **Payments/Refunds in Order context,** including the void correction (A1).
-4. **Card fulfilment:**
+4. **Commercial delivery and DBC fulfilment:**
    - reserve specific Ready DBCs;
-   - GRC reserve/encode via M4 services from the order;
-   - return a reserved card to stock;
+   - return a Reserved DBC to stock;
    - release via **Hand over** (pickup/local) or **Ship** (courier shipment);
+   - GRC lines are ordinary sales with optional branch label/direct review URL; Hand over or Ship records commercial delivery without any GRC Card row;
    - shipment status, tracking and cost updates.
 5. **System completion,** settled in every input-changing transaction.
-6. **Cancellation:** before any release, with safe card return and the refund due shown.
+6. **Cancellation:** before any DBC release or recorded commercial delivery, with Reserved DBC return and the refund due shown. GRC inventory is untouched.
 7. **Inventory:**
    - Cards / Stock Purchases views;
    - cost entry at intake and edit later;
@@ -182,6 +182,7 @@ Codebase transactions use explicit `FOR UPDATE` lock-first patterns and no seria
 13. **Admin shell:** nav (Dashboard, Orders, Inventory, Customers, Expenses, Settings) plus search; responsive and phone-usable.
 
 **Out:**
+- **GRC operational automation:** Place ID lookup, Google Maps/Places APIs, ReviewJet integration, NFC encoding/testing automation, and an M8 GRC Card reservation/encode/return/retire/release workflow. Owners use Google tooling and ReviewJet manually, write the direct review URL to the tag, and optionally test it. Existing M4 utilities remain available independently.
 - **M9:**
   - Support nav and cases;
   - the "Open Support Case" action;
@@ -236,15 +237,16 @@ The SQL aggregate `loadOrderFacts` and the pure functions must agree, and a test
 - `unit_price` is copied from the active product inside the creating transaction; the client never supplies a price.
 - `assigned_to` defaults to the creator.
 - Every order mutation sets `updated_by_account_id`.
-- Delivery method and shipping fee are editable while In Progress. **Delivery method is locked once any card on the order is Released.**
+- Delivery method and shipping fee are editable while In Progress. **Delivery method is locked once a DBC is Released or commercial delivery is recorded.**
 - Allowed actions by status are in §4.3.
 
 **R-ITEM (items):**
-- Quantity is at least 1 and never below the item's active cards (Reserved + Released, per `COUNTED_STATES`).
-- An item with active cards cannot be removed, and the last item cannot be removed.
+- Quantity is at least 1; DBC quantity is never below its active DBC cards (Reserved + Released, per `COUNTED_STATES`). GRC quantity has no M8 Card-count dependency.
+- A DBC item with active cards cannot be removed, and the last item cannot be removed. Existing linked Card history (including optional legacy M4 GRC links) must not be deleted or detached merely to remove an item; return a domain refusal where the existing FK prevents removal.
+- Once the GRC goods are commercially handed over/shipped, GRC lines cannot be added/removed or have their quantities changed on that order. Prices/agreed totals and optional references remain editable while In Progress. This avoids marking newly added goods delivered by an earlier whole-GRC delivery confirmation, without per-item status columns or a workflow engine.
 - `agreed_total` can be set or cleared.
 - `label`/`review_url` are GRC-only; the URL must be https.
-- Changing `review_url` clears `nfc_verified_at` on that item's **Reserved** cards in the same transaction.
+- `label` and `review_url` are operational references only; editing them never mutates Card rows or NFC-check history. Neither is required for completion.
 - New items copy the current active price. Existing items keep their snapshot.
 
 **R-PRICE (products):**
@@ -278,40 +280,41 @@ The SQL aggregate `loadOrderFacts` and the pure functions must agree, and a test
 - **DBC:** pick specific Ready DBCs of the item's product. The count must be ≤ remaining capacity (`quantity − active cards`).
   - Lock order → item, then run `UPDATE cards … WHERE id = ANY($ids) AND state='ready' AND kind='dbc' AND product_id = item.product_id`.
   - The affected row count must equal the number of ids; otherwise throw and roll back.
-- **GRC:** the existing `reserveGrc` then `recordNfcCheck`, reached from the order item. No new GRC reserve logic.
-- **Return to stock** (card Reserved, order In Progress; one shared routine also used by cancel):
+- **GRC:** M8 never reserves a specific Card, invokes `reserveGrc`/`recordNfcCheck`, or connects manual programming to the Order lifecycle.
+- **Return to stock** (DBC Reserved, order In Progress; one shared routine also used by cancel):
   - DBC → `ready` with `order_item_id` cleared (its NFC check and package match remain);
-  - GRC with `nfc_verified_at` → retire through the existing `retireCard` (encoded for a specific business);
-  - unencoded GRC → `blank` with `order_item_id` cleared.
+  - a GRC is refused by this M8 service; no GRC return/retirement on cancellation.
 - **Lost DBC package while Reserved:** return to stock, then use the existing M4 `replaceProvisioningCredential`. No new service.
 
 **R-REL (release):**
-- Releases all currently Reserved cards of the order; at least one is required.
-- Card rows are locked first, then preconditions are checked per card:
-  - DBC: `package_matched_at` set **and** a usable credential exists;
-  - GRC: `nfc_verified_at` set.
-- **Hand over** requires delivery method pickup or local_handoff.
+- Releases all currently Reserved **DBC** cards of the order. Only DBC rows are locked, then each requires `package_matched_at` and a usable credential. GRC Card rows are never selected for mutation.
+- A delivery action requires either a Reserved DBC or an as-yet-undelivered GRC portion. Thus GRC-only delivery works with zero Card rows; an empty/repeated action with neither is refused.
+- **Hand over** requires pickup or local_handoff. On its first successful use it records one `order_handed_over` activity event (also for DBC-only orders); this confirms delivery of the whole current GRC portion, if present, alongside any DBC release. The event is ordinary commercial history, not an NFC/encoding state. Partial DBC releases remain possible without duplicating the event.
 - **Ship** requires courier and inserts a `shipments` row in the same transaction: `shipped_on` (default today), status `in_transit`, and optional courier, tracking, recipient, contact, address and courier cost.
-- Multiple partial releases are allowed.
+- **Ship** confirms delivery of the whole current GRC portion, if present, through the non-support shipment row; later partial DBC shipments remain possible.
+- Multiple partial DBC releases are allowed. GRC goods have one whole-portion commercial delivery confirmation; no per-card/per-line fulfillment states.
 - Each released card gets a `card_released` event with `cardId` and `orderId`.
 
 **R-SHIP (shipments):**
 - Update tracking, courier cost and status (in_transit, delivered, failed, returned, lost).
-- Allowed on In Progress and Completed orders. A Cancelled order cannot have shipments, because shipping releases cards and cancel requires none released.
+- Allowed on In Progress and Completed orders. A Cancelled order cannot have shipments, because cancel refuses a recorded commercial shipment even when it contains only GRC goods.
 - Recording failed/returned/lost does not reopen or alter the order; follow-up is M9.
 
 **R-DONE (completion; system-only, exactly once).** Eligible ⇔ all of:
 - `status = 'in_progress'`;
 - at least one item;
-- every item's Released count equals its quantity;
-- a delivery method is set, and if it is courier, at least one shipment exists with `shipped_on` set and `support_case_id` null;
+- every **DBC** item's Released DBC count equals its quantity;
+- a delivery method is set; courier requires at least one shipment with `shipped_on` set and `support_case_id` null;
+- if any **GRC** lines exist: pickup/local requires an `order_handed_over` event, and courier uses the shipment above. No GRC Card count/state, Place ID, review URL or NFC evidence is consulted;
 - `netPaid = orderTotal`. An overpaid order must refund first.
 
 `settleOrderCompletion` runs at the end of every `mutateOrder` transaction while holding the order lock. When eligible it writes `completed`/`completed_at` plus one `order_completed` event. Customer activation never affects it.
 
+DBC-only: released quantities + exact payment + the existing delivery requirement. GRC-only: exact payment + Hand over/Ship commercial history, without Card rows. Mixed: both rules together. Merely choosing a delivery method or paying at creation does not deliver a GRC sale. No new schema/status columns are needed: `order_handed_over` uses existing append-only activity history, and courier uses existing shipments.
+
 **R-CAN (cancellation):**
-- In Progress with no Released card on any item.
-- Every Reserved card goes through the shared return-to-stock routine.
+- In Progress with no Released DBC, no `order_handed_over` event and no non-support shipped shipment.
+- Every Reserved DBC goes through the shared return-to-stock routine. Manual/legacy GRC Card rows are untouched, even if linked to an item.
 - `cancellation_reason` is optional.
 - Payments and refunds are kept; `refundDue = netPaid` is shown with **Record refund**.
 
@@ -334,27 +337,26 @@ The SQL aggregate `loadOrderFacts` and the pure functions must agree, and a test
 
 | Action | In Progress | Completed | Cancelled |
 |---|---|---|---|
-| Edit items / price / delivery / fee / notes | ✓ (delivery locked after first release) | ✗ | ✗ |
+| Edit items / price / delivery / fee / notes | ✓ (delivery locked after DBC release/commercial delivery; GRC quantities fixed after GRC delivery) | ✗ | ✗ |
 | Assign, internal note | ✓ | ✓ | ✓ |
-| Reserve / return to stock / release / ship | ✓ | ✗ | ✗ |
+| Reserve / return to stock (DBC only), Hand over / Ship | ✓ | ✗ | ✗ |
 | Update shipment | ✓ | ✓ | n/a |
 | Record payment | ✓ | ✗ | ✗ |
 | Void payment | ✓ | ✗ (M9) | ✗ |
 | Record refund | ✓ | ✗ (M9) | ✓ |
 | Void refund | ✓ | ✗ (M9) | ✓ |
-| Cancel | ✓ if none released | ✗ | ✗ |
+| Cancel | ✓ before DBC release or commercial delivery | ✗ | ✗ |
 | Settle completion | runs | no-op | no-op |
 
 ### 4.4 State transitions
 
 ```
 Order:   in_progress ──settle(eligible, system)──▶ completed (final)
-         in_progress ──cancel(no released card)──▶ cancelled (final)
+         in_progress ──cancel(no DBC release/commercial delivery)──▶ cancelled (final)
 DBC:     ready ──reserve──▶ reserved ──release──▶ released ──(M5 claim)
          reserved ──return/cancel──▶ ready
-GRC:     blank ──reserveGrc──▶ reserved ──recordNfcCheck──▶ reserved✓ ──release──▶ released
-         reserved ──return/cancel──▶ blank ;  reserved✓ ──return/cancel──▶ retired
-         reserved✓ ──review_url changed──▶ reserved (check cleared)
+GRC sale: Order Item + optional branch/review URL ──Hand over/Ship──▶ commercial delivery history
+          Manual Place ID lookup, ReviewJet generation, NFC writing/testing remain outside M8.
 Payment: recorded ──void(reason; order in_progress)──▶ voided (final)
 Refund:  recorded ──void(reason; order in_progress|cancelled)──▶ voided (final)
 Shipment: created in_transit ⇄ delivered | failed | returned | lost (status only)
@@ -366,7 +368,7 @@ Shipment: created in_transit ⇄ delivered | failed | returned | lost (status on
 |---|---|
 | **New order** | 1. Name (+ contact), or arrive from Purchaser "New order".<br>2. Add DBC/GRC lines with the price pre-filled; **Adjust price** reveals the agreed total; GRC lines show branch label and review URL.<br>3. Delivery method (courier fields appear only when Courier is chosen) and shipping fee.<br>4. Notes.<br>5. **Paid now** (method; reference unless Cash; amount = total) or **Not yet paid**.<br>6. Land on the order detail. |
 | **DBC fulfilment** | Item **Reserve cards**: a checklist of Ready DBCs showing the last 4 of the token and the stock date. Then **Hand over** or **Ship**. The order completes automatically when paid. |
-| **GRC fulfilment** | Set the review URL → reserve a blank GRC (M4 form, linked from the item) → NFC check (M4) → release. |
+| **GRC sale** | Record product, quantity, purchaser and price; optional business/branch label and direct review URL. Owner uses Google Place ID/Maps tooling + ReviewJet manually, writes/tests the tag manually, then records ordinary **Hand over** or **Ship**. No M8 Card selection or NFC gate. |
 | **Later payment** | **Record payment** (defaults to the balance). |
 | **Cancel** | **Cancel order** (confirm; reason optional) → **Record refund** if money was received. A mis-keyed refund → **Void refund**. |
 | **Stock** | **Receive stock** (+ costs) → stock purchase detail. |
@@ -436,12 +438,12 @@ Modular monolith. New domain folders: `orders`, `payments`, `expenses`, plus `ac
 ### 5.1 Order core: the one justified new abstraction
 
 `src/modules/orders/order.ts`:
-- `lockOrder(tx, id)`: `SELECT … FOR UPDATE`; throws `not_found` if absent.
+- `lockOrder(tx, id)`: `SELECT … FOR NO KEY UPDATE`; throws `not_found` if absent. All Order-changing services acquire this same exclusive-writer lock; Order id/number keys never change.
 - `loadOrderFacts(tx, id)`: one aggregate returning:
-  - items with active and released counts;
+  - items with product kind and DBC-only active/released counts (GRC counts are irrelevant/zero);
   - non-voided money sums;
-  - a shipped-shipment flag (non-support);
-  - an any-released flag.
+  - shipped-shipment (non-support) and `order_handed_over` activity flags;
+  - an any-released-DBC flag and a derived commercial-delivery flag for cancellation/delivery editing.
 - `settleOrderCompletion(tx, id, actorId)`.
 - `mutateOrder(db, { orderId, actorId, allow = ["in_progress"] }, fn)`:
   1. open a transaction;
@@ -452,15 +454,16 @@ Modular monolith. New domain folders: `orders`, `payments`, `expenses`, plus `ac
 
 The M2 design requires completion to be re-derived in every input-changing transaction. One wrapper makes that impossible to forget.
 
-**Global lock order:** `orders` → `order_items` → `cards` → `activation_credentials`.
+**M8 global lock order:** `orders` → `order_items` → **DBC** `cards` → `activation_credentials`. M8 never locks or mutates a GRC Card row, including rows linked by optional legacy M4 tools.
 
 | M4 service | Change | Why |
 |---|---|---|
-| `reserveGrc` | Lock the parent `orders` row before the item | Otherwise a concurrent cancel can leave a card reserved on a cancelled order |
-| `recordNfcCheck`, GRC path | Read the card's `order_item_id`, lock the order, then `lockCard`, then re-verify the card's item is unchanged before reading `review_url` | Otherwise a concurrent `review_url` change can be overwritten by a stale verification |
+| `reserveGrc` (manual M4 only) | Remove T3's GRC parent-Order lock addition; restore its original item → card path | No M8 reserve/cancel coordination is required. Parent Order `NO KEY UPDATE` remains compatible with the utility's activity-event FK, so item editing can wait for the manual utility without a reverse Order wait. |
+| `recordNfcCheck`, GRC path (manual M4 only) | Remove T3's GRC parent-Order lock/association snapshot addition; preserve original manual checks | M8 no longer invalidates/locks GRC Card rows on URL edits. Restore baseline behavior and remove the obsolete new lock-path unit test; keep original M4 tests. |
 
-- The DBC path of `recordNfcCheck`, `retireCard`, the M5 claim (credential → card) and M6 card actions are unchanged. None of them touch orders, and release never touches credentials beyond a read under the card lock, so no cycle is possible.
-- Calling `retireCard(tx, …)` from inside `mutateOrder` nests as a savepoint. Its card lock comes after the order lock, which keeps the lock order consistent.
+- `retireCard` remains unchanged and is never called by M8 fulfillment/cancel/item edits. The confirmed old GRC cycle (card lock → activity Order FK vs Order lock → same GRC card) is removed from M8 by eliminating the latter edge, not by changing retirement.
+- M4's manual `retireCard` references Orders through an activity FK, so do not claim it never touches Orders. `NO KEY UPDATE` allows that FK's `KEY SHARE` lock. M8 may wait on DBC cards only and must refuse deletion of items with linked Card history before attempting a delete; it must not detach/lock GRC rows to bypass the FK.
+- DBC NFC behavior, existing M5 `claimCard` (card → credential), M6 actions and all M2–M7 guards stay intact. Release reads credentials while holding the DBC card lock.
 
 ### 5.2 Capabilities
 
@@ -471,7 +474,7 @@ The M2 design requires completion to be re-derived in every input-changing trans
 | Purchasers | new `orders/purchasers.ts` | — |
 | Order create/edit | new `orders/create.ts` (own transaction; nothing can be eligible at creation), `orders/items.ts` (via `mutateOrder`) | — |
 | Payments/refunds/voids | new `payments/{record,void}.ts` via `mutateOrder` with the §4.3 `allow` sets | void columns + guard |
-| Fulfilment | new `orders/fulfillment.ts` (`reserveDbcCards`, `returnCardToStock`, `handOverOrder`, `shipOrder`, `updateShipment`); reuses `reserveGrc`, `recordNfcCheck`, `retireCard` | — |
+| Fulfilment | new `orders/fulfillment.ts` (`reserveDbcCards`, DBC-only `returnCardToStock`, `handOverOrder`, `shipOrder`, `updateShipment`); GRC uses commercial activity/shipment history only, no M4 GRC/retirement calls | — |
 | Cancellation | new `orders/cancel.ts` (reuses `returnCardToStock`) | — |
 | Read models | new `orders/queries.ts` (`listOrders` keyset `(created_at,id)` with status/assignee filters, 25/page, LATERAL aggregates; `getOrderDetail`) | existing `orders_status_created_at_idx` |
 | Inventory | extend `inventory/stock-intake.ts` (costs) and `inventory/queries.ts` (filters, stock purchases); new `inventory/stock-purchases.ts` (update) | — |
@@ -479,7 +482,7 @@ The M2 design requires completion to be re-derived in every input-changing trans
 | Customers | purchaser queries in `orders/purchasers.ts`; new `accounts/directory.ts` (A3 DTO) | — |
 | Dashboard | new `orders/dashboard.ts` (PostgreSQL aggregates only; no profit) | — |
 | Search | new `src/modules/search.ts`: grouped `ILIKE` with escaped `%`/`_`, `LIMIT 8` per group; exact match for order number, uuid and token | — (M10 tunes) |
-| Activity | add to `ActivityType`: `order_assigned`, `order_items_changed`, `order_completed`, `order_cancelled`, `payment_recorded`, `payment_voided`, `refund_recorded`, `refund_voided`, `card_returned`, `shipment_recorded`, `shipment_updated`; reuse `order_created`, `card_reserved`, `card_released`, `card_retired`, `note`. Notes carry amounts or labels only | — |
+| Activity | add to `ActivityType`: `order_assigned`, `order_items_changed`, `order_handed_over`, `order_completed`, `order_cancelled`, `payment_recorded`, `payment_voided`, `refund_recorded`, `refund_voided`, `card_returned`, `shipment_recorded`, `shipment_updated`; reuse `order_created`, DBC `card_reserved`/`card_released`, `note`. M4 `card_retired` remains manual. Notes carry amounts or labels only | — |
 | Shell | `src/app/admin/layout.tsx` + `admin-nav.tsx` (server, CSS-responsive) + `search-box.tsx` (GET form to `/admin/search`) | — |
 
 **Routes:**
@@ -525,7 +528,7 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
   - peso parse/format, including rejecting 0, negatives, more than 2 decimals and amounts over the cap;
   - effective total with and without an override;
   - balance / refundDue / Paid-Unpaid for partial, overpaid and cancelled orders;
-  - `isCompletionEligible` truth table (pickup vs courier, unreleased, overpaid, zero items, support-only shipment).
+  - `isCompletionEligible` truth table for DBC-only, GRC-only and mixed orders (pickup/local handover vs courier shipment, unreleased DBC, overpaid, zero items, support-only shipment); GRC needs no Card rows.
 - Commit: `feat(orders): derived order money and completion eligibility`.
 
 **T2 — Migration 0012.**
@@ -539,13 +542,13 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Commit: `feat(db): payment and refund voids, one active product per kind`.
 
 **T3 — Order core and lock-order fixes.**
-- Files: `orders/{order,errors}.ts`, `activity/record.ts` (types), `cards/card.ts` (`activeProduct` refactor; GRC lock path in `recordNfcCheck`), `cards/grc.ts` (order lock).
+- Files: `orders/{order,errors}.ts`, `activity/record.ts` (types), `cards/card.ts` (`activeProduct` refactor). A7 restores manual GRC lock paths from before T3 and uses `NO KEY UPDATE` for the parent Order.
 - Tests:
   - `mutateOrder` honours `allow` and sets updated-by;
   - settle is exactly-once (a repeat is a no-op) and never completes an ineligible order;
   - `loadOrderFacts` equals the pure totals (voided rows excluded);
   - `reserveGrc` refuses a cancelled order;
-  - `recordNfcCheck` rejects when the card's item changed;
+  - original manual M4 NFC/reservation behavior stays green without an M8 fulfillment dependency;
   - existing M4 tests stay green.
 - Commit: `feat(orders): order lock, facts and system completion`.
 
@@ -576,9 +579,9 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Files: `orders/queries.ts`, `src/app/admin/orders/{page,[orderId]/page,[orderId]/actions}.tsx`.
 - Tests:
   - keyset paging; status and assignee filters;
-  - detail DTO (items with counts, totals, payments/refunds including voided, cards, shipments, timeline);
+  - detail DTO (DBC items with counts; GRC commercial lines with optional label/reference; totals, money including voided, DBC cards, shipments, timeline);
   - assign and note work in every status;
-  - notes, delivery and fee edits only while In Progress; delivery is locked after a release; a fee change re-settles;
+  - notes, delivery and fee edits only while In Progress; delivery is locked after a DBC release or commercial delivery; a fee change re-settles;
   - render tests.
 - Commit: `feat(orders): order list and workspace`.
 
@@ -586,9 +589,10 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Files: `orders/items.ts`, detail actions.
 - Tests:
   - add or remove a line;
-  - quantity below active cards refused; removing a line with cards refused; removing the last line refused;
+  - DBC quantity below active DBC cards refused; removing a line with linked Card history refused; removing the last line refused;
+  - GRC quantities need no Card rows; adding/removing/changing GRC quantities after commercial delivery refused; pricing/reference edits still allowed while In Progress;
   - set or clear the agreed total;
-  - a `review_url` change clears the check only on that item's Reserved cards;
+  - optional GRC label/review URL edits do not mutate any Card/NFC history;
   - a lower total shows refundDue and blocks completion until a refund;
   - `order_items_changed`.
 - Commit: `feat(orders): edit order items while in progress`.
@@ -609,19 +613,20 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Files: `orders/fulfillment.ts`, detail actions/forms, card-detail link back to the order.
 - Tests:
   - DBC reserve: capacity limit; wrong product or kind refused; one stale id rolls back the whole set;
-  - return-to-stock: DBC→ready, encoded GRC→retired via `retireCard`, unencoded GRC→blank;
-  - hand over: requires pickup/local; the DBC needs a package match and a usable credential; the GRC needs its check;
+  - return-to-stock: DBC→ready; GRC refused and never retired/returned by M8;
+  - hand over: requires pickup/local; DBC requires package match and usable credential; GRC-only creates commercial handover history with no Card/NFC/URL requirement;
   - ship: creates the shipment and releases; courier cost needs `shipped_on`;
   - shipment update allowed on Completed orders;
-  - DBC, GRC and mixed orders complete via pickup, local and courier once paid (**locked**); an unpaid order stays In Progress;
+  - DBC, GRC and mixed orders complete via pickup, local and courier once paid (**locked**); GRC-only tests create zero Card rows; mixed tests release only DBC cards; paid-but-undelivered GRC and unpaid-delivered orders stay In Progress;
+  - no M8 `reserveGrc`, `recordNfcCheck` or `retireCard` call or GRC Card mutation; manual legacy Card states are untouched;
   - **integration:** an M8-released DBC is claimed by the existing `claimCard`.
 - Commit: `feat(orders): reserve, hand over and ship cards`.
 
 **T10 — Cancellation.**
 - Files: `orders/cancel.ts`, detail action.
 - Tests:
-  - before release: cards are returned per R-RES (**locked**);
-  - with any card released: refused (**locked**);
+  - before DBC release/commercial delivery: Reserved DBCs returned per R-RES (**locked**); GRC-only cancellation needs no Card rows and leaves any optional legacy M4 GRC cards untouched;
+  - with any DBC released, Hand over event or shipped commercial shipment: refused (**locked**);
   - payments are kept and refundDue = netPaid;
   - refund, then refund void, after cancel;
   - the reason is optional;
@@ -634,11 +639,10 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Scenarios:
   - two final payments → exactly one succeeds;
   - two orders reserving the same Ready DBC → one wins;
-  - cancel vs release → one outcome with consistent card states;
-  - cancel vs `reserveGrc` → no reserved card on a cancelled order;
-  - `review_url` change vs `recordNfcCheck` → no stale verification survives;
-  - payment vs release racing to completion → exactly one `order_completed`;
+  - cancel vs DBC release (and GRC commercial handover variant) → one consistent outcome; no GRC Card mutation;
+  - payment vs DBC release (and GRC commercial handover variant) racing to completion → exactly one `order_completed`;
   - refund void vs refund record on a cancelled order → totals consistent.
+- Removed, not replaced: `cancel vs reserveGrc` and `review_url change vs recordNfcCheck`; neither is an M8 fulfillment path. The GRC handover variants above exercise the remaining shared order/payment/delivery transaction boundaries, not a GRC inventory engine. Existing M4 concurrency checks stay authoritative for manual utilities.
 - Commit: `test(orders): two-session fulfillment and payment races`.
 
 **T12 — Inventory and Stock Purchases.**
@@ -682,7 +686,7 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 - Commit: `feat(admin): dashboard, navigation and global search`.
 
 **T16 — Plan-required docs.**
-- README: "Owner business operations (M8)" runbook covering the rules summary, completion, voids, lock order, the `0012` entry and the isolated-Preview procedure.
+- README: "Owner business operations (M8)" runbook covering the rules summary, DBC versus manual GRC workflow/commercial completion, voids, DBC lock order, the `0012` entry and the isolated-Preview procedure. Document Google tooling + ReviewJet as manual steps only.
 - `src/modules/README.md`: M8 modules and lock order.
 - Fresh ERD.
 - No broader documentation consolidation.
@@ -691,7 +695,7 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 **T17 — Software gate (verification only).**
 - `lint`, `typecheck`, `test`, `db:check`, generate-diff clean, `build`, `check:bundle`.
 - All five concurrency scripts on loopback.
-- An independent code-review pass of `main..HEAD` against this plan. Fixes go in separate commits.
+- An independent code-review pass of `main..HEAD` against this amended plan. In particular prove no M8 GRC Card mutation/retirement/NFC completion requirement or Google/ReviewJet integration. Fixes go in separate commits.
 
 **T18 — Local production-like acceptance.** STOP: needs the user.
 - `next build && next start` against the loopback database, seeded via the existing seed or fixture plus an owner role set with `accounts:set-role` on loopback only.
@@ -701,7 +705,7 @@ The migration is generated, then hand-edited with SQL separated by `--> statemen
 1. Create a temporary Neon branch from the current `neffi-dev` development baseline.
 2. Run the pre-check query.
 3. Apply committed migrations through `0011` + `0012` **to that branch only**. Migrate twice; the second run is a no-op.
-4. Seed only the minimum synthetic fixtures (active products, a few Ready DBC/blank GRC cards). Grant the OWNER role to the user's account on that branch only.
+4. Seed only the minimum synthetic fixtures (active DBC/GRC products and a few Ready DBC cards; GRC sales require no Card fixtures). Grant the OWNER role to the user's account on that branch only.
 5. Push the M8 branch. Point a branch-scoped Vercel Preview at the temporary branch only. Keep Vercel Authentication on.
 6. Smoke test: `/api/health`, owner sign-in, create → pay → reserve → ship/hand over → complete on real Neon pooled transactions, cancel + refund, dashboard.
 7. Record evidence. Delete the temporary Vercel env vars/Preview resources and the Neon branch, and record the teardown.
@@ -729,10 +733,10 @@ The PR is opened only after explicit approval.
 
 **T18 matrix** (each scenario ends with an SQL check of order status, card states and money sums):
 1. DBC pickup, paid now.
-2. GRC with two branches, local handoff, payment in two parts.
-3. Mixed order with an agreed total, courier with tracking and courier cost.
+2. GRC with two optional branch/reference lines, local Hand over, payment in two parts; completes with no GRC Card rows/NFC gate. Google Place ID + ReviewJet + tag writing/testing are manual, separate evidence.
+3. Mixed order with an agreed total, courier with tracking/cost; reserve/release DBC cards only; GRC uses shipment history.
 4. Cancel before release → refund → void that refund as mis-keyed → re-record the correct refund.
-5. Cancel after release (refused).
+5. Cancel after DBC release or GRC commercial Hand over/Ship (refused).
 6. Mis-keyed payment void on an In Progress order.
 7. Price change → a new order uses the new price; the old order is unchanged.
 8. Stock received with cost → it appears once in the expense report.
@@ -745,7 +749,7 @@ Automated, user-performed and physical evidence are recorded separately in the l
 ## 9. Stop conditions (Codex stops and asks)
 
 - **Architecture conflict:** a plan vs code or Notion contradiction. Log it as `Blocked`.
-- **Guard changes:** any change to M2–M7 guards, CHECKs or `/c` behaviour beyond the two §5.1 lock fixes.
+- **Guard changes:** any change to M2–M7 guards, CHECKs or `/c` behaviour. A7's directly-related lock corrections are specified in §5.1; no `retireCard` amendment is approved or needed for M8.
 - **Destructive operations:** row or branch deletion outside the approved T19 teardown, `db:seed` anywhere but loopback, `TRUNCATE`, force-push.
 - **Any Neon action:** creating the T19 branch, migrating it, seeding it, any write. Also read-only inspection without approval.
 - **Migrating the existing `neffi-dev`:** always a separate approval, never implied by T19.
@@ -784,5 +788,15 @@ Automated, user-performed and physical evidence are recorded separately in the l
 | **A4** | **Approved, non-gating.** T20 is recommended evidence. The automated M8 → Reserved → Released → `claimCard` chain is required (T9). |
 | **A5** | **Changed.** Isolated temporary Neon branch + isolated Vercel Preview (T19), torn down afterwards. Migrating `neffi-dev` is a separate later decision. |
 | **A6** | **Approved.** Settings = Products & Pricing + read-only Owner Access. Business and Communications deferred. |
+| **A7** | **User correction after T6.** GRC is a simple commercial Order Item; Google Place ID lookup, ReviewJet link generation and physical NFC writing/testing are manual/external. Optional label/review URL are references only. No M8 GRC Card reservation, encode, NFC-check, return/retire, release or Card-state completion dependency. DBC lifecycle/claim guarantees remain. Completion uses ordinary Hand over activity or courier shipment plus exact payment; mixed orders additionally require all DBC quantities Released. No new schema/status engine, dependency or API integration. |
+
+### A7 execution amendment (before T7)
+
+- Preserve T0–T6 commits. T2/0012, products, money, purchasers and creation/payment logic remain valid.
+- Before resuming T7, correct T1/T3 completion facts: include item product kind and commercial handover flag; count only DBC fulfillment; keep GRC-only creation unpaid/undelivered until commercial delivery even when Paid now.
+- Correct T6 read model/workspace: DBC counts/cards only, simple GRC commercial references/delivery state, delivery editing locked after commercial delivery too. No NFC/provisioning controls from Orders.
+- Remove T3's obsolete GRC parent-order lock/snapshot additions and their new lock-path regression, restoring baseline M4 behavior. Use `NO KEY UPDATE` for M8 parent Orders: still exclusive between Order writers, compatible with manual-utility Order FKs. Cancel-driven GRC inventory coordination and URL/NFC invalidation are obsolete. `retireCard` stays unchanged; old `FOR UPDATE` reproduction remains historical evidence. Verify manual retirement can finish while M8 holds the revised parent lock, with no M8 GRC Card mutation.
+- T7–T17 retain their numbering/order and original commit boundaries. T7 drops NFC invalidation, T9 drops GRC inventory workflow, T10 returns DBCs only, T11 drops the two obsolete races and covers commercial-delivery variants, T16 documents the correction and T17 verifies the amended boundary. T8/T12–T15 otherwise unchanged.
+- This is the user's newer product ruling, not permission to change A1–A6 or pull future work forward. No T18/remote/release step is authorized.
 
 No architecture decision remains unresolved.
