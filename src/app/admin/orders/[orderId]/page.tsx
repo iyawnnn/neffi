@@ -10,7 +10,7 @@ import { formatPeso } from "@/lib/money";
 import { getOrderDetail } from "@/modules/orders/queries";
 import { effectiveItemTotal } from "@/modules/orders/totals";
 import { ActionForm } from "../../inventory/forms";
-import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction } from "./actions";
+import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
 
 export const instant = false;
 
@@ -28,6 +28,21 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
     <section className="space-y-4"><h2 className="text-xl font-semibold">Items &amp; fulfillment</h2>
       {order.items.map((item) => <div key={item.id} className="space-y-2 border-b pb-4"><h3 className="font-medium">{item.name}{item.label ? ` · ${item.label}` : ""}</h3><p className="tabular-nums">{item.quantity} × {formatPeso(item.unitPrice)} · Total {formatPeso(effectiveItemTotal(item))}</p>{item.agreedTotal !== null ? <p className="text-sm">Adjustment: {formatPeso(item.quantity * item.unitPrice - item.agreedTotal)}</p> : null}{item.productKind === "dbc" ? <p className="text-sm">{item.activeCount} reserved or released · {item.releasedCount} released</p> : <p className="text-sm text-muted-foreground">Manual programming · Commercial delivery {order.hasCommercialDelivery ? "recorded" : "pending"}</p>}{item.reviewUrl ? <a className="block break-all underline" href={item.reviewUrl}>{item.reviewUrl}</a> : null}</div>)}
       {order.cards.map((card) => <Link className="flex min-h-11 items-center gap-3 underline" key={card.id} href={`/admin/inventory/cards/${card.id}`}>{card.kind?.toUpperCase()} {card.suffix ?? card.id.slice(-4)} · {card.state}</Link>)}
+      {order.status === "in_progress" ? <div className="space-y-4">
+        {order.items.map((item) => <details key={item.id} className="border-b pb-4"><summary className="min-h-11 cursor-pointer py-3">Edit {item.name}{item.label ? ` · ${item.label}` : ""}</summary>
+          <ActionForm action={updateOrderItemAction} submit="Save item">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
+            <label className="flex flex-col gap-1 text-sm">Quantity<Input name="quantity" type="number" inputMode="numeric" min={1} max={500} required defaultValue={item.quantity} readOnly={item.productKind === "grc" && order.hasCommercialDelivery} /></label>
+            <label className="flex flex-col gap-1 text-sm">Agreed line total (pesos, blank for catalog total)<Input name="agreedTotal" inputMode="decimal" maxLength={30} defaultValue={item.agreedTotal !== null ? (item.agreedTotal / 100).toFixed(2) : ""} /></label>
+            {item.productKind === "grc" ? <><label className="flex flex-col gap-1 text-sm">Branch label (optional)<Input name="label" maxLength={100} defaultValue={item.label ?? ""} /></label><label className="flex flex-col gap-1 text-sm">Direct review URL (optional)<Input name="reviewUrl" type="url" maxLength={2048} defaultValue={item.reviewUrl ?? ""} /></label></> : null}
+          </ActionForm>
+          {order.items.length > 1 && !(item.productKind === "grc" && order.hasCommercialDelivery) ? <div className="mt-4"><ActionForm action={removeOrderItemAction} submit="Remove item" variant="destructive">{hidden}<input type="hidden" name="orderItemId" value={item.id} /><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="confirm" required />Remove this line from the order.</label></ActionForm></div> : null}
+        </details>)}
+        {(["dbc", "grc"] as const).filter((kind) => kind === "dbc" || !order.hasCommercialDelivery).map((kind) => <details key={kind}><summary className="min-h-11 cursor-pointer py-3">Add {kind.toUpperCase()} line</summary><ActionForm action={addOrderItemAction} submit="Add item">{hidden}<input type="hidden" name="kind" value={kind} />
+          <label className="flex flex-col gap-1 text-sm">Quantity<Input name="quantity" type="number" inputMode="numeric" min={1} max={500} defaultValue={1} required /></label>
+          <label className="flex flex-col gap-1 text-sm">Agreed line total (pesos, optional)<Input name="agreedTotal" inputMode="decimal" maxLength={30} /></label>
+          {kind === "grc" ? <><label className="flex flex-col gap-1 text-sm">Branch label (optional)<Input name="label" maxLength={100} /></label><label className="flex flex-col gap-1 text-sm">Direct review URL (optional)<Input name="reviewUrl" type="url" maxLength={2048} /></label></> : null}
+        </ActionForm></details>)}
+      </div> : null}
     </section>
     <section className="space-y-4"><h2 className="text-xl font-semibold">Payments &amp; refunds</h2>
       {order.payments.map((payment) => <div key={payment.id} className={payment.voidedAt ? "text-muted-foreground" : ""}><p className={payment.voidedAt ? "line-through" : ""}>Payment {formatPeso(payment.amount)} · {payment.method} · {payment.paidOn}</p>{payment.voidedAt ? <p className="text-sm">Voided: {payment.voidReason}</p> : null}</div>)}
