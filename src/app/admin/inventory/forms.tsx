@@ -50,7 +50,7 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
 
 type ActionFormProps = { action: Action; submit: string; variant?: "default" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean };
 
-function ActionForm(props: ActionFormProps) {
+export function ActionForm(props: ActionFormProps) {
   const [visit, setVisit] = useState(0);
   // Next's Activity preserves hidden pages. Reset the response holder on navigation so codes cannot return with Back.
   useLayoutEffect(() => () => setVisit((value) => value + 1), []);
@@ -66,7 +66,7 @@ function ActionFormContent({ action, submit, variant = "default", children, avai
       {available && !(provisioning && state?.reveal) ? (
         <>
           {children}
-          <Button type="submit" variant={variant} size="lg" className="h-10 w-full" disabled={pending}>
+          <Button type="submit" variant={variant} size="lg" className="h-11 w-full" disabled={pending}>
             {pending ? "Working…" : submit}
           </Button>
         </>

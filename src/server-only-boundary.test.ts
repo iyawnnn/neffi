@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 // deliberately excluded so Drizzle Kit and other Node tooling can load them.
 const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/orders/order.ts",
+  "src/modules/orders/products.ts",
   "src/config/env.ts",
   "src/db/index.ts",
   "src/auth/server.ts",
