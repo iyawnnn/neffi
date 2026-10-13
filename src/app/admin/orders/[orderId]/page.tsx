@@ -13,6 +13,7 @@ import { ActionForm } from "../../inventory/forms";
 import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
 import { recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction } from "./actions";
 import { reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction } from "./actions";
+import { cancelOrderAction } from "./actions";
 import { ActionSheet } from "./action-sheet";
 import { MoneyFields } from "./money-fields";
 
@@ -100,5 +101,8 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
     <section className="space-y-3"><h2 className="text-xl font-semibold">Assigned to</h2><ActionForm action={assignOrderAction} submit="Assign order">{hidden}<label className="flex flex-col gap-1 text-sm">Owner<select name="assignedToAccountId" className={inputClass} defaultValue={order.assignedToAccountId}>{order.assignees.map((owner) => <option key={owner.id} value={owner.id}>{owner.email}</option>)}</select></label></ActionForm><p className="text-sm text-muted-foreground">Last updated by {order.assignees.find((owner) => owner.id === order.updatedByAccountId)?.email ?? "Unknown account"} · {formatDateTime(order.updatedAt)}</p></section>
     <section className="space-y-3"><h2 className="text-xl font-semibold">Internal note</h2><ActionForm action={addOrderNoteAction} submit="Add note">{hidden}<label className="flex flex-col gap-1 text-sm">Note<Textarea name="note" required maxLength={500} /></label></ActionForm></section>
     <section className="space-y-3"><h2 className="text-xl font-semibold">Activity</h2>{order.timeline.map((event) => <div key={event.id} className="border-b py-3"><p>{event.type.replaceAll("_", " ")}</p>{event.note ? <p className="text-sm">{event.note}</p> : null}<p className="text-sm text-muted-foreground">{formatDateTime(event.createdAt)}</p></div>)}{!order.timeline.length ? <p>No activity yet.</p> : null}</section>
+    {order.status === "in_progress" ? <section className="space-y-3"><h2 className="text-xl font-semibold">Cancellation</h2>
+      {order.anyReleased || order.hasCommercialDelivery ? <p>This order has already been released or delivered and cannot be cancelled.</p> : <ActionSheet title="Cancel order"><ActionForm action={cancelOrderAction} submit="Cancel order" variant="destructive">{hidden}<p>Returns Reserved DBCs to stock and keeps all payment history. Record any refund separately.</p><label className="flex flex-col gap-1 text-sm">Reason (optional)<Textarea name="reason" maxLength={500} /></label><label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="confirm" required />Confirm cancellation. This is final.</label></ActionForm></ActionSheet>}
+    </section> : order.status === "cancelled" ? <p>Cancelled{order.cancellationReason ? `: ${order.cancellationReason}` : ""}. Any refund due is shown above.</p> : null}
   </main>;
 }

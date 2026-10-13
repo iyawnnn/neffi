@@ -12,6 +12,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/orders/queries.ts",
   "src/modules/orders/items.ts",
   "src/modules/orders/fulfillment.ts",
+  "src/modules/orders/cancel.ts",
   "src/modules/payments/record.ts",
   "src/modules/payments/void.ts",
   "src/config/env.ts",

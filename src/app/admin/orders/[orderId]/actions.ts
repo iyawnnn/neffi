@@ -11,6 +11,7 @@ import { addOrderItem, removeOrderItem, updateOrderItem } from "@/modules/orders
 import { recordPayment, recordRefund } from "@/modules/payments/record";
 import { voidPayment, voidRefund } from "@/modules/payments/void";
 import { reserveDbcCards, returnCardToStock, handOverOrder, shipOrder, updateShipment } from "@/modules/orders/fulfillment";
+import { cancelOrder } from "@/modules/orders/cancel";
 import type { ActionState } from "../../inventory/actions";
 
 const id = z.uuid();
@@ -34,6 +35,7 @@ async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: 
     if (error instanceof OrderError && error.code === "checks_incomplete") return { error: "Every DBC needs its package match and an unused credential before release." };
     if (error instanceof OrderError && error.code === "nothing_reserved") return { error: "Reserve a DBC first, or confirm an undelivered GRC sale." };
     if (error instanceof OrderError && error.code === "wrong_delivery") return { error: "Choose the matching delivery method before handing over or shipping." };
+    if (error instanceof OrderError && error.code === "already_released") return { error: "An order cannot be cancelled after a DBC release or commercial delivery." };
     if (error instanceof OrderError) return { error: error.code === "delivery_locked" ? "Delivery method is locked after release or delivery." : error.code === "items_delivered" ? "Delivered GRC quantities cannot change. You can still edit prices and references." : error.code === "item_full" ? "Quantity cannot be below the reserved or released DBC count." : error.code === "item_has_cards" ? "This item has linked Card history and cannot be removed." : error.code === "last_item" ? "An order must keep at least one item." : error.code === "no_product" ? "Set up this product in Settings first." : error.code === "wrong_status" ? "This action isn't available for the order's current status. Reload the order." : "Check the order details and try again." };
     throw error;
   }
@@ -108,4 +110,8 @@ export async function shipOrderAction(_previous: ActionState | undefined, data: 
 
 export async function updateShipmentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ ...shippingFields, shipmentId: id, status: z.enum(["in_transit", "delivered", "failed", "returned", "lost"]) }), data, (input, actorId) => updateShipment(db, { ...input, actorId, courierCost: input.courierCost ? parsePesos(input.courierCost) : null }));
+}
+
+export async function cancelOrderAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ orderId: id, reason: z.string().trim().max(500).optional(), confirm: z.literal("on") }), data, (input, actorId) => cancelOrder(db, { ...input, actorId }));
 }

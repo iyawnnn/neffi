@@ -9,18 +9,21 @@ vi.mock("@/modules/payments/record", () => ({ recordPayment: money.recordPayment
 vi.mock("@/modules/payments/void", () => ({ voidPayment: money.voidPayment, voidRefund: money.voidRefund }));
 const fulfillment = vi.hoisted(() => ({ reserveDbcCards: vi.fn(), returnCardToStock: vi.fn(), handOverOrder: vi.fn(), shipOrder: vi.fn(), updateShipment: vi.fn() }));
 vi.mock("@/modules/orders/fulfillment", () => fulfillment);
+const { cancelOrder } = vi.hoisted(() => ({ cancelOrder: vi.fn() }));
+vi.mock("@/modules/orders/cancel", () => ({ cancelOrder }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
 import { recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction } from "./actions";
 import { reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction } from "./actions";
+import { cancelOrderAction } from "./actions";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [k, v] of Object.entries(fields)) data.set(k, v); return data; };
 beforeEach(() => { vi.clearAllMocks(); authorize.mockResolvedValue({ ok: true, viewer: { accountId: id } }); });
 
 test("each action authorizes before domain calls", async () => {
   authorize.mockResolvedValue({ ok: false, denial: { status: 403, error: "forbidden" } });
-  for (const action of [addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction, recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction, reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction]) expect(await action(undefined, form({ orderId: id }))).toHaveProperty("error");
-  for (const service of [addOrderNote, assignOrder, updateOrderDetails, addOrderItem, updateOrderItem, removeOrderItem, ...Object.values(money), ...Object.values(fulfillment)]) expect(service).not.toHaveBeenCalled();
+  for (const action of [addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction, recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction, reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction, cancelOrderAction]) expect(await action(undefined, form({ orderId: id }))).toHaveProperty("error");
+  for (const service of [addOrderNote, assignOrder, updateOrderDetails, addOrderItem, updateOrderItem, removeOrderItem, cancelOrder, ...Object.values(money), ...Object.values(fulfillment)]) expect(service).not.toHaveBeenCalled();
 });
 
 test("item actions validate quantity/confirmation and convert or clear the agreed total", async () => {
@@ -51,6 +54,13 @@ test("reservation preserves all selected checkbox ids and release requires confi
   expect(fulfillment.reserveDbcCards).toHaveBeenCalledWith({}, { orderId: id, actorId: id, orderItemId: id, cardIds: [id, other] });
   expect(await handOverOrderAction(undefined, form({ orderId: id }))).toHaveProperty("error");
   expect(fulfillment.handOverOrder).not.toHaveBeenCalled();
+});
+
+test("cancel requires confirmation and permits an optional reason", async () => {
+  expect(await cancelOrderAction(undefined, form({ orderId: id }))).toHaveProperty("error");
+  expect(cancelOrder).not.toHaveBeenCalled();
+  await cancelOrderAction(undefined, form({ orderId: id, confirm: "on" }));
+  expect(cancelOrder).toHaveBeenCalledWith({}, expect.objectContaining({ orderId: id, actorId: id }));
 });
 
 test("bad ids, blank internal notes and invalid fees rejected; valid fee converted", async () => {
