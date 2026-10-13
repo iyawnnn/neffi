@@ -31,13 +31,10 @@ export async function eligibleGrcItems(db: Db) {
     .limit(100);
 }
 
-// Blank -> Reserved against an existing eligible Order Item. Locks the order, item, then card, so
+// Blank -> Reserved against an existing eligible Order Item. Locks the item, then the card (never the reverse), so
 // two owners racing for the last slot serialize and exactly one wins.
 export async function reserveGrc(db: Db, input: { actorId: string; cardId: string; orderItemId: string }): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx.select({ id: schema.orders.id }).from(schema.orders)
-      .innerJoin(schema.orderItems, eq(schema.orderItems.orderId, schema.orders.id))
-      .where(eq(schema.orderItems.id, input.orderItemId)).for("update", { of: schema.orders });
     const [item] = await tx
       .select({
         id: schema.orderItems.id,

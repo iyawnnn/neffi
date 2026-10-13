@@ -1,4 +1,4 @@
-export type ItemFacts = { quantity: number; unitPrice: number; agreedTotal: number | null; activeCount: number; releasedCount: number };
+export type ItemFacts = { productKind: "dbc" | "grc"; quantity: number; unitPrice: number; agreedTotal: number | null; activeCount: number; releasedCount: number };
 export type OrderFacts = {
   status: "in_progress" | "completed" | "cancelled";
   deliveryMethod: "pickup" | "local_handoff" | "courier" | null;
@@ -7,6 +7,7 @@ export type OrderFacts = {
   received: number;
   refunded: number;
   hasShippedShipment: boolean;
+  hasHandedOver: boolean;
 };
 
 export function effectiveItemTotal(item: Pick<ItemFacts, "quantity" | "unitPrice" | "agreedTotal">): number {
@@ -28,8 +29,9 @@ export function orderTotals(facts: OrderFacts) {
 export function isCompletionEligible(facts: OrderFacts): boolean {
   const { netPaid, orderTotal } = orderTotals(facts);
   return facts.status === "in_progress" && facts.items.length > 0
-    && facts.items.every((item) => item.releasedCount === item.quantity)
+    && facts.items.every((item) => item.productKind === "grc" || item.releasedCount === item.quantity)
     && facts.deliveryMethod !== null
     && (facts.deliveryMethod !== "courier" || facts.hasShippedShipment)
+    && (!facts.items.some((item) => item.productKind === "grc") || (facts.deliveryMethod === "courier" ? facts.hasShippedShipment : facts.hasHandedOver))
     && netPaid === orderTotal;
 }

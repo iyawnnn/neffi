@@ -31,3 +31,13 @@ test("customer denied before order data is read", async () => {
   await expect(render()).rejects.toThrow("denied");
   expect(getOrderDetail).not.toHaveBeenCalled();
 });
+
+test("GRC line shows its commercial reference without Card fulfillment counts", async () => {
+  getOrderDetail.mockResolvedValue({ ...detail, hasCommercialDelivery: true, items: [{ ...detail.items[0], name: "GRC", productKind: "grc", activeCount: 999, releasedCount: 999, label: "Branch A" }] });
+  const html = await render();
+  expect(html).toContain("Branch A");
+  expect(html).toContain("Manual programming");
+  expect(html).not.toContain("999 reserved");
+  expect(html).toContain('name="deliveryMethod" class=');
+  expect(html).toContain("disabled");
+});

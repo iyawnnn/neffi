@@ -14,6 +14,7 @@ export type ActivityType =
   | "order_created"
   | "order_assigned"
   | "order_items_changed"
+  | "order_handed_over"
   | "order_completed"
   | "order_cancelled"
   | "payment_recorded"
