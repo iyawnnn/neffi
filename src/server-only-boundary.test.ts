@@ -8,6 +8,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/support/errors.ts",
   "src/modules/support/case.ts",
   "src/modules/support/queries.ts",
+  "src/modules/support/money.ts",
   "src/modules/orders/dashboard.ts",
   "src/modules/search.ts",
   "src/modules/accounts/directory.ts",
