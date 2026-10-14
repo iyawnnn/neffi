@@ -42,6 +42,14 @@ test("public requester stays the displayed recipient when an Account is linked",
   expect(html).toContain("Resolve with notice");
 });
 
+test("linked customer recovery offers initiate, secure and cancel but no recovery-code resend", async () => {
+  getCaseDetail.mockResolvedValue({ ...detail, type: "account_recovery", account: { email: "account@example.test", role: "customer", methods: ["email"] }, recoveries: [{ id, newEmail: "new@example.test", status: "pending", attempts: 0, expiresAt: new Date("2026-10-15") }] });
+  const html = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  for (const label of ["Initiate recovery", "Secure account", "Cancel recovery", "Also remove Google sign-in"]) expect(html).toContain(label);
+  expect(html).toContain('name="unlinkGoogle" checked');
+  expect(html).not.toContain("Resend recovery code");
+});
+
 test("correction sheets follow case, order and linked-card state", async () => {
   const order = { id, number: 1001, purchaserId: id, status: "completed", totals: { orderTotal: 50000, netPaid: 45000, balance: 5000, afterSaleRefunded: 5000 }, items: [], readyDbcCards: [], payments: [], refunds: [] };
   const card = { id, kind: "dbc", state: "released", role: "affected", suffix: "ABCD", ownerAccountId: null };

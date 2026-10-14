@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { sendEmail } from "@/integrations/email/sender";
 import { prepareCaseMessage, dispatchCaseEmail } from "@/modules/support/email";
+import { initiateRecovery, cancelRecovery, resendRecoveryNotice } from "@/modules/accounts/recovery";
+import { secureAccount } from "@/modules/accounts/secure";
+import { recoveryInitiationSchema, verificationSchema } from "@/modules/support/domain";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
@@ -83,6 +86,23 @@ export async function sendCaseMessageAction(_previous: ActionState | undefined, 
     });
     return { ok: "Saved. Check the Activity timeline for the delivery result." };
   });
+}
+
+const accountVerified = verificationSchema.extend({ caseId: id, confirmed: z.preprocess(value => value === "on", z.literal(true)), unlinkGoogle: z.preprocess(value => value === "on", z.boolean()) });
+export async function initiateRecoveryAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(accountVerified.extend({ newEmail: recoveryInitiationSchema.shape.newEmail }), data, async (input, actorId) => {
+    await initiateRecovery(db, { ...input, actorId, secret: env.betterAuthSecret }, sendEmail);
+    return { ok: "Recovery started. Check Activity for delivery. Do not sign in with the proposed new address before completion." };
+  });
+}
+export async function cancelRecoveryAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, recoveryId: id }), data, (input, actorId) => cancelRecovery(db, { ...input, actorId }));
+}
+export async function secureAccountAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(accountVerified, data, (input, actorId) => secureAccount(db, { ...input, actorId }, sendEmail));
+}
+export async function resendRecoveryNoticeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, recoveryId: id, kind: z.enum(["recovery_started", "recovery_completed"]) }), data, (input, actorId) => resendRecoveryNotice(db, { ...input, actorId }, sendEmail));
 }
 
 export async function setCaseStatusAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

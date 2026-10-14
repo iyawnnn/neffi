@@ -108,3 +108,13 @@ export async function completeRecovery(db: Db, input: { email: string; code: str
   await sendSecurityNotice(db, { accountId: completed.accountId, caseId: completed.supportCaseId, actorId: null, kind: "recovery_completed", attemptId: completed.id, at: now, recipients: [{ to: completed.oldEmail, slot: "old" }, { to: completed.newEmail, slot: "new" }] }, send);
   return { ok: true };
 }
+
+export async function resendRecoveryNotice(db: Db, input: { caseId: string; actorId: string; recoveryId: string; kind: "recovery_started" | "recovery_completed" }, send: EmailSender) {
+  if (input.kind !== "recovery_started" && input.kind !== "recovery_completed") throw new SupportError("invalid_input");
+  const recovery = await withCase(db, { ...input, requireActive: false }, async tx => {
+    const [row] = await tx.select().from(s.accountRecoveries).where(and(eq(s.accountRecoveries.id, input.recoveryId), eq(s.accountRecoveries.supportCaseId, input.caseId)));
+    if (!row || (input.kind === "recovery_completed" && row.status !== "completed")) throw new SupportError("invalid_input");
+    return row;
+  });
+  await sendSecurityNotice(db, { accountId: recovery.accountId, caseId: input.caseId, actorId: input.actorId, kind: input.kind, attemptId: randomUUID(), at: input.kind === "recovery_started" ? recovery.createdAt : recovery.completedAt!, recipients: input.kind === "recovery_started" ? [{ to: recovery.oldEmail, slot: "old" }] : [{ to: recovery.oldEmail, slot: "old" }, { to: recovery.newEmail, slot: "new" }] }, send);
+}

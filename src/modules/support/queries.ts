@@ -40,7 +40,7 @@ export async function openCaseCount(db: Db) {
 export async function getCaseDetail(db: Db, id: string) {
   const [support] = await db.select().from(s.supportCases).where(eq(s.supportCases.id, id));
   if (!support) return null;
-  const [order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees] = await Promise.all([
+  const [order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees, recoveries] = await Promise.all([
     support.orderId ? getOrderDetail(db, support.orderId) : null,
     support.accountId ? accountDirectoryDetail(db, support.accountId) : null,
     support.purchaserId ? db.select({ id: s.purchasers.id, name: s.purchasers.name, contactNumber: s.purchasers.contactNumber }).from(s.purchasers).where(eq(s.purchasers.id, support.purchaserId)).then((rows) => rows[0]) : null,
@@ -50,6 +50,7 @@ export async function getCaseDetail(db: Db, id: string) {
     db.selectDistinct({ id: s.orders.id, number: s.orders.number, status: s.orders.status }).from(s.activityEvents).innerJoin(s.orders, eq(s.orders.id, s.activityEvents.orderId)).where(and(eq(s.activityEvents.supportCaseId, id), eq(s.activityEvents.type, "support_order_linked"))),
     db.select({ id: s.activityEvents.id, type: s.activityEvents.type, actorAccountId: s.activityEvents.actorAccountId, note: s.activityEvents.note, createdAt: s.activityEvents.createdAt }).from(s.activityEvents).where(eq(s.activityEvents.supportCaseId, id)).orderBy(desc(s.activityEvents.createdAt), desc(s.activityEvents.id)),
     orderAssignees(db),
+    db.select({ id: s.accountRecoveries.id, newEmail: s.accountRecoveries.newEmail, status: s.accountRecoveries.status, attempts: s.accountRecoveries.attempts, expiresAt: s.accountRecoveries.expiresAt, createdAt: s.accountRecoveries.createdAt }).from(s.accountRecoveries).where(eq(s.accountRecoveries.supportCaseId, id)).orderBy(desc(s.accountRecoveries.createdAt), desc(s.accountRecoveries.id)),
   ]);
-  return { ...support, order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees };
+  return { ...support, order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees, recoveries };
 }

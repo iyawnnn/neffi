@@ -4,7 +4,7 @@ import * as s from "@/db/schema";
 import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import type { Email } from "@/integrations/email/resend";
-import { initiateRecovery, cancelRecovery, completeRecovery } from "./recovery";
+import { initiateRecovery, cancelRecovery, completeRecovery, resendRecoveryNotice } from "./recovery";
 import { secureAccount } from "./secure";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -117,4 +117,13 @@ test.each(["expired", "resolved", "snapshot", "role", "occupied"])("completion r
   const now = reason === "expired" ? new Date(Date.now() + 2 * 86400000) : new Date();
   expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret, now }, async () => {})).toEqual({ ok: false });
   expect((await tx.select().from(s.accountRecoveries))[0].status).toBe("pending");
+}));
+
+test("manual notice retry uses the old snapshot and never regenerates or resends the code", () => rollback(db, async tx => {
+  const f = await pending(tx); const sent: Email[] = [];
+  await tx.update(s.accounts).set({ email: "changed@example.test" }).where(eq(s.accounts.id, f.account.id));
+  await resendRecoveryNotice(tx, { caseId: f.support.id, actorId: f.owner.id, recoveryId: f.recoveryId, kind: "recovery_started" }, async email => { sent.push(email); });
+  expect(sent).toHaveLength(1); expect(sent[0].to).toBe(f.account.email);
+  expect(sent[0].text).not.toContain(f.code);
+  expect(sent[0].idempotencyKey).not.toContain("recovery-code");
 }));
