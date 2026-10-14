@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
 import * as s from "@/db/schema";
-import { insertAccount } from "@/db/test-fixtures";
+import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import type { Email } from "@/integrations/email/resend";
-import { initiateRecovery, cancelRecovery } from "./recovery";
+import { initiateRecovery, cancelRecovery, completeRecovery } from "./recovery";
 import { secureAccount } from "./secure";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -74,4 +74,47 @@ test("secure refuses owner/resolved targets and preserves the only unverified Go
   await expect(secureAccount(tx, f.input, async () => {})).rejects.toMatchObject({ code: "checks_incomplete" });
   await tx.update(s.supportCases).set({ status: "resolved", resolvedAt: new Date() }).where(eq(s.supportCases.id, f.support.id));
   await expect(secureAccount(tx, { ...f.input, unlinkGoogle: false }, async () => {})).rejects.toMatchObject({ code: "case_resolved" });
+}));
+
+async function pending(tx: TestTx) {
+  const f = await fixture(tx); let code = "";
+  const result = await initiateRecovery(tx, f.input, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{8}\b/)![0]; });
+  return { ...f, ...result, code };
+}
+test("three wrong attempts commit and cancel the proof, so the right code subsequently fails", () => rollback(db, async tx => {
+  const f = await pending(tx); const wrong = f.code === "00000000" ? "11111111" : "00000000";
+  for (let n = 1; n <= 3; n++) {
+    expect(await completeRecovery(tx, { email: f.input.newEmail, code: wrong, secret }, async () => {})).toEqual({ ok: false });
+    expect((await tx.select().from(s.accountRecoveries))[0]).toMatchObject({ attempts: n, status: n === 3 ? "cancelled" : "pending" });
+  }
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret }, async () => {})).toEqual({ ok: false });
+  expect((await tx.select().from(s.activityEvents)).some(e => e.type === "account_recovery_cancelled" && e.note === "attempts exhausted")).toBe(true);
+}));
+
+test("completion preserves Account id and business data, verifies email, revokes sessions and Google once", () => rollback(db, async tx => {
+  const f = await pending(tx);
+  const { card } = await insertReleasedDbc(tx); const profile = await insertProfile(tx, f.account.id);
+  await tx.update(s.cards).set({ ownerAccountId: f.account.id, profileId: profile.id }).where(eq(s.cards.id, card.id));
+  await tx.insert(s.authSessions).values({ userId: f.account.id, token: "synthetic-session", expiresAt: new Date(Date.now() + 10000) });
+  await tx.insert(s.authIdentities).values({ userId: f.account.id, providerId: "google", accountId: "synthetic-google" });
+  const before = { cards: await tx.select().from(s.cards), profiles: await tx.select().from(s.profiles), orders: await tx.select().from(s.orders) };
+  const sent: Email[] = [];
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret }, async email => { sent.push(email); })).toEqual({ ok: true });
+  expect((await tx.select().from(s.accounts).where(eq(s.accounts.id, f.account.id)))[0]).toMatchObject({ id: f.account.id, email: f.input.newEmail, emailVerified: true });
+  expect(await tx.select().from(s.authSessions)).toHaveLength(0); expect(await tx.select().from(s.authIdentities)).toHaveLength(0);
+  expect({ cards: await tx.select().from(s.cards), profiles: await tx.select().from(s.profiles), orders: await tx.select().from(s.orders) }).toEqual(before);
+  expect(sent.map(e => e.to)).toEqual([f.account.email, f.input.newEmail]);
+  expect(sent.every(e => !e.text.includes(f.account.email) && !e.text.includes(f.input.newEmail) && !e.text.includes(f.code))).toBe(true);
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret }, async () => {})).toEqual({ ok: false });
+}));
+
+test.each(["expired", "resolved", "snapshot", "role", "occupied"])("completion rechecks %s with the identical public failure", reason => rollback(db, async tx => {
+  const f = await pending(tx);
+  if (reason === "resolved") await tx.update(s.supportCases).set({ status: "resolved", resolvedAt: new Date() }).where(eq(s.supportCases.id, f.support.id));
+  if (reason === "snapshot") await tx.update(s.accounts).set({ email: "changed@example.test" }).where(eq(s.accounts.id, f.account.id));
+  if (reason === "role") await tx.update(s.accounts).set({ role: "owner" }).where(eq(s.accounts.id, f.account.id));
+  if (reason === "occupied") await tx.insert(s.accounts).values({ name: "Other", email: f.input.newEmail.toUpperCase() });
+  const now = reason === "expired" ? new Date(Date.now() + 2 * 86400000) : new Date();
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret, now }, async () => {})).toEqual({ ok: false });
+  expect((await tx.select().from(s.accountRecoveries))[0].status).toBe("pending");
 }));

@@ -7,9 +7,10 @@ import type { EmailSender } from "@/integrations/email/resend";
 import { recoveryCodeEmail } from "@/integrations/email/support-templates";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
-import { withCase } from "../support/case";
+import { lockCase, withCase } from "../support/case";
+import { sameLookup } from "../activation/code";
 import { containsActivationCode } from "../support/credentials";
-import { recoveryInitiationSchema, RECOVERY_LIFETIME_MS } from "../support/domain";
+import { recoveryCompletionSchema, recoveryInitiationSchema, RECOVERY_LIFETIME_MS } from "../support/domain";
 import { SupportError } from "../support/errors";
 import { sendSecurityNotice } from "./security-notice";
 
@@ -70,4 +71,40 @@ export async function cancelRecovery(db: Db, input: { caseId: string; actorId: s
     await tx.update(s.accountRecoveries).set({ status: "cancelled", cancelledAt: now, updatedAt: now }).where(eq(s.accountRecoveries.id, row.id));
     await recordActivity(tx, { type: "account_recovery_cancelled", actorAccountId: input.actorId, supportCaseId: input.caseId, note: row.id });
   });
+}
+
+export async function completeRecovery(db: Db, input: { email: string; code: string; secret: string; now?: Date }, send: EmailSender): Promise<{ ok: boolean }> {
+  const parsed = recoveryCompletionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const now = input.now ?? new Date();
+  const [snapshot] = await db.select({ id: s.accountRecoveries.id, accountId: s.accountRecoveries.accountId, caseId: s.accountRecoveries.supportCaseId }).from(s.accountRecoveries).where(and(eq(s.accountRecoveries.newEmail, parsed.data.email), eq(s.accountRecoveries.status, "pending"))).limit(1);
+  if (!snapshot) return { ok: false };
+  let completed: typeof s.accountRecoveries.$inferSelect | null;
+  try {
+    completed = await db.transaction(async tx => {
+      const support = await lockCase(tx, snapshot.caseId);
+      if (support.status === "resolved") return null;
+      const account = await lockCustomerAccount(tx, snapshot.accountId);
+      const [row] = await tx.select().from(s.accountRecoveries).where(eq(s.accountRecoveries.id, snapshot.id)).for("update");
+      if (!row || row.status !== "pending" || row.expiresAt <= now || row.attempts >= 3 || account.email !== row.oldEmail || await emailOccupied(tx, row.newEmail)) return null;
+      if (!sameLookup(row.codeHmac, recoveryLookup(input.secret, row.id, parsed.data.code))) {
+        const attempts = row.attempts + 1;
+        await tx.update(s.accountRecoveries).set({ attempts, ...(attempts === 3 ? { status: "cancelled" as const, cancelledAt: now } : {}), updatedAt: now }).where(eq(s.accountRecoveries.id, row.id));
+        if (attempts === 3) await recordActivity(tx, { type: "account_recovery_cancelled", actorAccountId: null, accountId: account.id, supportCaseId: support.id, note: "attempts exhausted" });
+        return null;
+      }
+      await tx.update(s.accounts).set({ email: row.newEmail, emailVerified: true, updatedAt: now }).where(eq(s.accounts.id, account.id));
+      await tx.delete(s.authSessions).where(eq(s.authSessions.userId, account.id));
+      if (row.unlinkGoogle) await tx.delete(s.authIdentities).where(and(eq(s.authIdentities.userId, account.id), eq(s.authIdentities.providerId, "google")));
+      await tx.update(s.accountRecoveries).set({ status: "completed", completedAt: now, updatedAt: now }).where(eq(s.accountRecoveries.id, row.id));
+      await recordActivity(tx, { type: "account_recovery_completed", actorAccountId: null, accountId: account.id, supportCaseId: support.id });
+      return row;
+    });
+  } catch (error) {
+    if (pgCode(error) === "23505" || error instanceof SupportError) return { ok: false };
+    throw error;
+  }
+  if (!completed) return { ok: false };
+  await sendSecurityNotice(db, { accountId: completed.accountId, caseId: completed.supportCaseId, actorId: null, kind: "recovery_completed", attemptId: completed.id, at: now, recipients: [{ to: completed.oldEmail, slot: "old" }, { to: completed.newEmail, slot: "new" }] }, send);
+  return { ok: true };
 }
