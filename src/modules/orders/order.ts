@@ -20,7 +20,8 @@ export async function loadOrderFacts(tx: Db, id: string) {
     select o.status, o.delivery_method as "deliveryMethod", o.shipping_fee as "shippingFee",
       coalesce(lines.items, '[]'::jsonb) as items,
       coalesce((select sum(amount)::float8 from payments where order_id = o.id and voided_at is null), 0) as received,
-      coalesce((select sum(amount)::float8 from refunds where order_id = o.id and voided_at is null), 0) as refunded,
+      coalesce((select sum(amount)::float8 from refunds where order_id = o.id and voided_at is null and support_case_id is null), 0) as refunded,
+      coalesce((select sum(amount)::float8 from refunds where order_id = o.id and voided_at is null and support_case_id is not null), 0) as "afterSaleRefunded",
       exists(select 1 from shipments where order_id = o.id and shipped_on is not null and support_case_id is null) as "hasShippedShipment",
       exists(select 1 from activity_events where order_id = o.id and type = 'order_handed_over') as "hasHandedOver",
       coalesce(lines.any_released, false) as "anyReleased"
