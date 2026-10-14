@@ -10,6 +10,12 @@ import { SupportError, type SupportErrorCode } from "@/modules/support/errors";
 import { OrderError } from "@/modules/orders/errors";
 import { CardError } from "@/modules/cards/card";
 import type { ActionState } from "../../inventory/actions";
+import { env } from "@/config/env";
+import { parsePesos } from "@/lib/money";
+import { formatActivationCode } from "@/modules/activation/code";
+import { afterSaleRefund, voidAfterSaleRefund, voidCompletedPayment, recordCompletedPayment } from "@/modules/support/money";
+import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, resetCardOwnership } from "@/modules/support/cards";
+import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
 
 const MESSAGES: Record<SupportErrorCode, string> = {
   not_found: "That record was not found. Reload the case and try again.", invalid_input: "Check the fields and try again.",
@@ -33,6 +39,7 @@ async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: 
     const fields = parsed.data as { caseId?: string; orderId?: string; cardId?: string };
     if (fields.caseId) revalidatePath(`/admin/support/${fields.caseId}`);
     if (fields.orderId) revalidatePath(`/admin/orders/${fields.orderId}`);
+    else if (fields.caseId) revalidatePath("/admin/orders/[orderId]", "page");
     if (fields.cardId) revalidatePath(`/admin/inventory/cards/${fields.cardId}`);
     return result ?? { ok: "Saved." };
   } catch (error) {
@@ -76,4 +83,61 @@ export async function fillCaseLinkAction(_previous: ActionState | undefined, dat
 
 export async function linkCaseCardAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ caseId: id, cardId: id }), data, (input, actorId) => linkCaseCard(db, { ...input, actorId }));
+}
+
+const reason = z.string().trim().min(1).max(200);
+const controlled = z.object({ caseId: id, reason, confirm: z.literal("on") });
+const money = controlled.extend({ orderId: id, amount: z.string().trim().min(1).max(30), method: z.enum(["cash", "gcash", "bank_transfer"]) });
+const date = z.preprocess((v) => v === "" ? undefined : v, z.iso.date().optional());
+const optional = (max: number) => z.preprocess((v) => v === "" ? undefined : v, z.string().trim().max(max).optional());
+
+export async function afterSaleRefundAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(money.extend({ refundedOn: date }), data, (input, actorId) => afterSaleRefund(db, { ...input, actorId, amount: parsePesos(input.amount) }));
+}
+
+export async function recordCompletedPaymentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(money.extend({ paidOn: date, reference: optional(100) }), data, (input, actorId) => recordCompletedPayment(db, { ...input, actorId, amount: parsePesos(input.amount) }));
+}
+
+export async function voidAfterSaleRefundAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(controlled.extend({ orderId: id, refundId: id }), data, (input, actorId) => voidAfterSaleRefund(db, { ...input, actorId }));
+}
+
+export async function voidCompletedPaymentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(controlled.extend({ orderId: id, paymentId: id }), data, (input, actorId) => voidCompletedPayment(db, { ...input, actorId }));
+}
+
+export async function retireAffectedCardAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(controlled.extend({ cardId: id }), data, (input, actorId) => retireAffectedCard(db, { ...input, actorId }));
+}
+
+export async function releaseReplacementCardAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(controlled.extend({ cardId: id, orderItemId: id }), data, (input, actorId) => releaseReplacementCard(db, { ...input, actorId }));
+}
+
+const verified = z.object({ caseId: id, cardId: id, verificationNote: note, confirm: z.literal("on") });
+
+export async function reissueActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(verified, data, async (input, actorId) => {
+    const { activationCode } = await reissueActivationCode(db, { ...input, actorId, activationSecret: env.activationCodeSecret });
+    return { reveal: { code: formatActivationCode(activationCode), instructions: "Copy it now and deliver it to the verified requester outside Neffi. This code cannot be shown again after closing or leaving this page." } };
+  });
+}
+
+export async function resetCardOwnershipAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(verified, data, async (input, actorId) => {
+    const { activationCode } = await resetCardOwnership(db, { ...input, actorId, activationSecret: env.activationCodeSecret });
+    return { reveal: { code: formatActivationCode(activationCode), instructions: "Copy it now and deliver it to the verified requester outside Neffi. The card stays offline until it is claimed and connected to a Profile. This code cannot be shown again after closing or leaving this page." } };
+  });
+}
+
+const cost = z.preprocess((v) => v === "" || v == null ? undefined : v, z.string().max(30).optional());
+const shipment = controlled.extend({ courier: optional(100), trackingNumber: optional(100), courierCost: cost });
+
+export async function recordSupportShipmentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(shipment.extend({ shippedOn: date, recipientName: optional(100), recipientContact: optional(100), address: optional(500) }), data, (input, actorId) => recordSupportShipment(db, { ...input, actorId, courierCost: input.courierCost ? parsePesos(input.courierCost) : undefined }));
+}
+
+export async function updateSupportShipmentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(shipment.extend({ shipmentId: id, status: z.enum(["in_transit", "delivered", "failed", "returned", "lost"]) }), data, (input, actorId) => updateSupportShipment(db, { ...input, actorId, courierCost: input.courierCost ? parsePesos(input.courierCost) : null }));
 }

@@ -1,12 +1,15 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const { authorize, openCase, addCaseNote, setCaseStatus, revalidatePath } = vi.hoisted(() => ({ authorize: vi.fn(), openCase: vi.fn(), addCaseNote: vi.fn(), setCaseStatus: vi.fn(), revalidatePath: vi.fn() }));
+const { authorize, openCase, addCaseNote, setCaseStatus, revalidatePath, reissueActivationCode } = vi.hoisted(() => ({ authorize: vi.fn(), openCase: vi.fn(), addCaseNote: vi.fn(), setCaseStatus: vi.fn(), revalidatePath: vi.fn(), reissueActivationCode: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize }));
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "synthetic" } }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/modules/support/case", async (original) => ({ ...await original<object>(), openCase, addCaseNote, setCaseStatus }));
+vi.mock("@/modules/support/cards", async (original) => ({ ...await original<object>(), reissueActivationCode }));
 import { openCaseAction, addCaseNoteAction, setCaseStatusAction } from "./actions";
 import { SupportError } from "@/modules/support/errors";
+import * as actions from "./actions";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [key, value] of Object.entries(fields)) data.set(key, value); return data; };
 beforeEach(() => { vi.clearAllMocks(); authorize.mockResolvedValue({ ok: true, viewer: { accountId: id } }); openCase.mockResolvedValue({ caseId: id }); });
@@ -31,4 +34,32 @@ test("resolved stale submissions map to recovery copy, unknown errors rethrow", 
   expect(await setCaseStatusAction(undefined, data)).toEqual({ error: "This case is resolved. Reopen it before making a correction." });
   setCaseStatus.mockRejectedValueOnce(new Error("unexpected"));
   await expect(setCaseStatusAction(undefined, data)).rejects.toThrow("unexpected");
+});
+
+test("every controlled action requires confirmation and a reason or verification note", async () => {
+  const controlled = [actions.afterSaleRefundAction, actions.voidAfterSaleRefundAction, actions.voidCompletedPaymentAction, actions.recordCompletedPaymentAction, actions.retireAffectedCardAction, actions.releaseReplacementCardAction, actions.reissueActivationCodeAction, actions.resetCardOwnershipAction, actions.recordSupportShipmentAction, actions.updateSupportShipmentAction];
+  for (const action of controlled) {
+    const data = form({ caseId: id, orderId: id, cardId: id, orderItemId: id, paymentId: id, refundId: id, shipmentId: id, method: "cash", amount: "1", status: "delivered", reason: "Checked", verificationNote: "Checked" });
+    expect(await action(undefined, data)).toHaveProperty("error");
+    data.set("confirm", "on");
+    data.set("reason", "");
+    data.set("verificationNote", "");
+    expect(await action(undefined, data)).toHaveProperty("error");
+  }
+});
+
+test("every support action refuses a customer direct call", async () => {
+  authorize.mockResolvedValue({ ok: false });
+  for (const action of Object.values(actions)) {
+    expect(await action(undefined, new FormData())).toEqual({ error: "You aren't allowed to do that." });
+  }
+});
+
+test("a verified reissue returns a one-time reveal and only record paths are revalidated", async () => {
+  reissueActivationCode.mockResolvedValue({ activationCode: "A".repeat(16), credentialId: id });
+  const result = await actions.reissueActivationCodeAction(undefined, form({ caseId: id, cardId: id, verificationNote: "Invoice and claimant checked", confirm: "on" }));
+  expect(result.reveal?.code.length).toBe(19);
+  expect(result.reveal?.instructions).toContain("Copy it now");
+  expect(revalidatePath.mock.calls.map(([path]) => path)).toEqual(["/admin", "/admin/support", "/admin/orders", "/admin/inventory", "/admin/expenses", `/admin/support/${id}`, "/admin/orders/[orderId]", `/admin/inventory/cards/${id}`]);
+  expect(result.href).toBeUndefined();
 });

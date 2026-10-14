@@ -40,7 +40,7 @@ export async function retireAffectedCard(db: Db, input: CardMutation) {
   });
 }
 
-export async function releaseReplacementCard(db: Db, input: CaseMutation & { orderItemId: string; cardId: string }) {
+export async function releaseReplacementCard(db: Db, input: CaseMutation & { orderItemId: string; cardId: string; reason?: string }) {
   return withCase(db, input, async (tx, row) => {
     const item = await lockItem(tx, row.orderId, input.orderItemId);
     const [counts] = await tx.select({
@@ -54,7 +54,7 @@ export async function releaseReplacementCard(db: Db, input: CaseMutation & { ord
     if (!card.packageMatchedAt || !await usableCredential(tx, card.id)) throw new SupportError("checks_incomplete");
     await tx.update(s.cards).set({ state: "released", orderItemId: item.id }).where(eq(s.cards.id, card.id));
     await tx.insert(s.supportCaseCards).values({ supportCaseId: row.id, cardId: card.id, role: "replacement" });
-    await recordActivity(tx, { type: "card_released", actorAccountId: input.actorId, cardId: card.id, orderId: item.orderId, supportCaseId: row.id });
+    await recordActivity(tx, { type: "card_released", actorAccountId: input.actorId, cardId: card.id, orderId: item.orderId, supportCaseId: row.id, note: input.reason });
     await settleOrderCompletion(tx, item.orderId, input.actorId);
   });
 }

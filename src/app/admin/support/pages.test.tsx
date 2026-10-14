@@ -10,7 +10,6 @@ vi.mock("@/modules/orders/purchasers", () => ({ getPurchaser: vi.fn().mockResolv
 vi.mock("@/modules/accounts/directory", () => ({ accountDirectoryDetail: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/modules/inventory/queries", () => ({ getCardDetail: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/config/env", () => ({ env: {} }));
-vi.mock("./[caseId]/actions", () => ({ openCaseAction: vi.fn(), assignCaseAction: vi.fn(), setCaseStatusAction: vi.fn(), reopenCaseAction: vi.fn(), addCaseNoteAction: vi.fn(), fillCaseLinkAction: vi.fn(), linkCaseCardAction: vi.fn() }));
 import Queue from "./page";
 import Detail from "./[caseId]/page";
 import NewCase from "./new/page";
@@ -31,6 +30,25 @@ test("queue renders empty state and Support navigation", async () => {
   const html = renderToStaticMarkup(await Queue({ searchParams: Promise.resolve({}) }));
   expect(html).toContain("No support cases match");
   expect(renderToStaticMarkup(<AdminNav />)).toContain('href="/admin/support"');
+});
+
+test("correction sheets follow case, order and linked-card state", async () => {
+  const order = { id, number: 1001, purchaserId: id, status: "completed", totals: { orderTotal: 50000, netPaid: 45000, balance: 5000, afterSaleRefunded: 5000 }, items: [], readyDbcCards: [], payments: [], refunds: [] };
+  const card = { id, kind: "dbc", state: "released", role: "affected", suffix: "ABCD", ownerAccountId: null };
+  getCaseDetail.mockResolvedValue({ ...detail, order, cards: [card] });
+  const html = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  expect(html).toContain("After-sale refund");
+  expect(html).toContain("Record corrected payment");
+  expect(html).toContain("Issue new code");
+  expect(html).not.toContain("Reset ownership");
+  getCaseDetail.mockResolvedValue({ ...detail, order: { ...order, status: "in_progress" }, cards: [{ ...card, ownerAccountId: id }] });
+  const open = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  expect(open).not.toContain(">After-sale refund<");
+  expect(open).toContain("Reset ownership");
+  getCaseDetail.mockResolvedValue({ ...detail, status: "resolved", order, cards: [card] });
+  const resolved = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  expect(resolved).not.toContain("Issue new code");
+  expect(resolved).not.toContain("Record corrected payment");
 });
 
 test("new case rejects malformed or nonexistent prefilled records", async () => {

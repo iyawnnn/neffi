@@ -12,6 +12,7 @@ import { ActionForm } from "../../inventory/forms";
 import { ActionSheet } from "../../orders/[orderId]/action-sheet";
 import { LinkSelect, linkChoices } from "../link-fields";
 import { assignCaseAction, setCaseStatusAction, reopenCaseAction, addCaseNoteAction, fillCaseLinkAction, linkCaseCardAction } from "./actions";
+import { CaseCorrections } from "./corrections";
 
 export const instant = false;
 
@@ -47,6 +48,7 @@ export default async function CasePage({ params, searchParams }: PageProps<"/adm
     </section> : null}
     <section className="space-y-3"><h2 className="text-xl font-semibold">After-sale refunds</h2>{support.refunds.map((refund) => <div key={refund.id} className="border-b py-3"><p className={refund.voidedAt ? "line-through" : ""}>{formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p><p>{refund.reason}</p>{refund.voidedAt ? <p>Voided: {refund.voidReason}</p> : null}</div>)}{!support.refunds.length ? <p>No after-sale refunds from this case.</p> : null}</section>
     <section className="space-y-3"><h2 className="text-xl font-semibold">Support shipments</h2>{support.shipments.map((shipment) => <div key={shipment.id} className="border-b py-3"><p>{shipment.status.replaceAll("_", " ")} · {shipment.courier} · {shipment.trackingNumber}</p><p>{shipment.shippedOn}{shipment.courierCost !== null ? ` · Cost ${formatPeso(shipment.courierCost)}` : ""}</p><p>{shipment.recipientName} {shipment.recipientContact}</p><p className="whitespace-pre-wrap break-words">{shipment.address}</p></div>)}{!support.shipments.length ? <p>No support shipments.</p> : null}</section>
+    <CaseCorrections support={support} />
     <section className="space-y-3"><h2 className="text-xl font-semibold">Internal note</h2><ActionForm action={addCaseNoteAction} submit="Add note">{hidden}<label className="flex flex-col gap-1 text-sm">Note<Textarea name="note" required maxLength={500} /></label><p className="text-sm text-muted-foreground">Do not paste activation codes, identity documents or secrets.</p></ActionForm></section>
     <section className="space-y-3"><h2 className="text-xl font-semibold">Activity</h2>{support.timeline.map((event) => <div key={event.id} className="border-b py-3"><p>{event.type.replaceAll("_", " ")}</p>{event.note ? <p className="whitespace-pre-wrap break-words text-sm">{event.note}</p> : null}<p className="text-sm text-muted-foreground">{formatDateTime(event.createdAt)}</p></div>)}{!support.timeline.length ? <p>No activity yet.</p> : null}</section>
   </main>;
