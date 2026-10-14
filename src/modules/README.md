@@ -1,74 +1,32 @@
 # Domain modules
 
-Neffi is one modular monolith. Business rules live in domain modules under `src/modules/<name>/`; a module's folder is created when its first real code arrives (no empty scaffolding).
+Neffi is one modular monolith. Business rules live in domain modules under `src/modules/<name>/`; UI and server actions call them. Current behavior is described in [PRODUCT.md](../../PRODUCT.md), the [specs](../../docs/specs/) and the [architecture docs](../../docs/architecture/system.md).
 
-| Module | Owns | First milestone |
-|---|---|---|
-| `accounts` | Account, Authentication Identity, OWNER role | 2 (schema), 3 (behavior) |
-| `cards` | Physical Card, permanent `/c/{token}`, Card→Profile routing, disable/re-enable | 4 |
-| `activation` | Activation Credential lifecycle, code-first claim | 4 (credential issue/revoke), 5 (claim) |
-| `profiles` | Profile/shared identity, Scenes, ordered Blocks/Actions, publish state, native Forms/Form Submissions | 6 |
-| `orders` | Product, Customer/Purchaser, Order, Order Item, Shipment | 8 |
-| `payments` | Payment, Refund (separate history records) | 8 |
-| `inventory` | Stock Purchase, derived Card-state counts | 4, 8 |
-| `support` | Support Case and controlled recovery actions | 9 |
-| `expenses` | Manual Expense; reporting combines canonical Stock Purchase / Shipment costs | 8 |
-| `notifications` | EmailService boundary (Resend), meaningful owner notification email for native Form Submissions; later recovery/support | 6 (forms), 9 (recovery/support) |
-| `activity` | Activity Event history | 2 |
-
-Infrastructure boundaries outside `modules/`:
-
-- `src/config` — validated environment (`env.ts` is server-only) and environment isolation.
-- `src/db` — the only place that touches the database driver (`index.ts` is server-only).
-- `src/auth` — Better Auth configuration and server instance; server-only access DAL, session actions and linked-method reads; pure authorization policy and browser auth client.
-- `src/integrations/email/resend.ts` — server-only Resend delivery and auth-code template (M3); recovery/support templates remain M9.
-- MediaService/Cloudinary gets its own server-only boundary when introduced.
-
-## Milestone 2 persistence
-
-M2 delivers the shared schema under `src/db/schema/`, reviewed migrations, integrity guards, a development-only synthetic reset, PGlite invariant tests and the generated [ERD/catalog](../../docs/database/erd.md). Domain folders remain uncreated until their behavior arrives; M2 adds no domain services.
-
-| Persistence file | Future module consumers |
+| Module | Owns |
 |---|---|
-| `auth.ts` | accounts; Better Auth already uses these tables through its Drizzle adapter |
-| `commerce.ts` | orders, payments |
-| `inventory.ts` | inventory, cards, activation |
-| `profiles.ts` | profiles |
-| `operations.ts` | support, expenses, activity |
+| `accounts` | Owner-role operator service; the read-only owner Account directory (allow-listed projection) |
+| `activation` | Activation code format and HMAC lookup; credential issue, revoke and usable lookup; code check and atomic claim |
+| `activity` | `recordActivity` and the `ActivityType` set (immutable history) |
+| `cards` | Tokens and URLs; DBC provisioning, NFC check, package match, credential replacement; resolver for `/c/{token}`; customer routing, disable and enable; Sharing QR; legacy manual GRC utilities |
+| `expenses` | Manual expenses and the combined cost report (manual, stock and courier costs, each counted once) |
+| `forms` | Native Forms, public submission storage and deduplication, owner notification email |
+| `inventory` | Stock intake and edits, derived card counts and lists |
+| `orders` | Products and pricing, purchasers, order creation and edits, fulfilment, cancellation, derived order facts and totals, system completion, dashboard |
+| `payments` | Capped append-only payments and refunds, and reasoned voids |
+| `profiles` | Profiles, Scenes, Blocks, publishing, appearance, the public Scene view and cache, starters |
+| `search.ts` | Owner global search (limited groups, literal wildcard escaping) |
+| `db.ts` | The `Db` type shared by services |
 
-Database constraints enforce DBC/GRC separation, matching card/profile owners, credential uniqueness/outcomes and historical lifecycle/money integrity. Later domain services own authentication/authorization, credential generation and claim, URL validation, completion eligibility, cancellation rules, refund limits and support transactions. Balances, payment state and inventory counts stay derived. Stock-purchase and shipment costs remain on their source rows; manual expenses are separate.
+Planned, not present: a `support` module for Support Cases and controlled corrections ([M9A plan](../../docs/superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md)).
 
-The seed and ERD are developer tooling, not domain APIs. Live M2 migration/reset on `neffi-dev` requires the Task 9 restore-point confirmation and explicit approval described in the [database workflow](../../README.md#database-migrations).
+Infrastructure outside `modules/`: `src/config` (validated environment, isolation), `src/db` (the only place that opens the database driver), `src/auth` (Better Auth, access checks, pure policy), `src/integrations/email` (Resend, plain text), `src/integrations/media` (Cloudinary signed uploads).
 
-## Milestone 3 account behavior
+## Conventions
 
-`accounts/set-role.ts` is the server-only operator service used by `scripts/set-account-role.ts`. It locks the case-insensitive Account match and commits the role transition with its immutable activity event; no-op, invalid, unknown and ambiguous cases write nothing. Browser auth cannot grant OWNER. The CLI uses migration environment isolation and requires live approval before use against Neon.
-
-Sign-in, verified identity resolution, safe linking, OTP quotas and session lifecycle live in `src/auth`. `access.ts` checks layouts/pages and authorizes handlers/actions; `policy.ts` holds the pure role/ownership and redirect policies. Customer and owner screens are shells, with no M4+ business behavior. The minimal Resend boundary sends only sign-in codes.
-
-Migration `0007` adds auth abuse storage; forward fix `0008` indexes abandoned IP-counter cleanup. Live changes require the M3 Task 8 restore-point and approval gate; Task 9 whole-branch review follows live verification. The [auth runbook](../../README.md#authentication-runbook-m3) documents provider configuration, role operations, accepted limits and streamed navigation denials.
-
-## Milestone 4 provisioning
-
-`cards/card.ts` (lock, NFC check, retire), `cards/dbc.ts` (provision, package match, credential replacement), `cards/grc.ts` (reserve, eligible items), `activation/credentials.ts` (issue/revoke; HMAC only), `activity/record.ts` and `inventory/{stock-intake,queries}.ts` are server-only services taking a `Db`. Each mutation is one transaction that locks the card row first (`reserveGrc` locks the order item, then the card), re-reads state under the lock and writes its Activity Event in the same transaction. `activation/code.ts` and `cards/token.ts` are pure helpers. Actions in `src/app/admin/inventory/actions.ts` authorize as OWNER, validate with Zod and call the services. M4 does not claim cards, validate codes for customers, resolve `/c/{token}` or create orders; those are Milestones 5, 7 and 8. See the [provisioning runbook](../../README.md#physical-card-provisioning-m4).
-
-## Milestone 8 owner operations
-
-`orders/{create,items,order,totals,queries,products,purchasers,fulfillment,cancel,dashboard}.ts` owns commercial sales and derived order facts. `payments/{record,void}.ts` implements capped append-only payments/refunds and reasoned one-way voids. `inventory/stock-purchases.ts` edits authoritative stock costs; `expenses/{manual,report}.ts` combines manual entries and source costs without copying them. `accounts/directory.ts` projects only the approved read-only Account allow-list; `search.ts` returns limited groups with literal wildcard escaping. Every owner action authorizes and validates before a domain write.
-
-Order writers use `mutateOrder`: parent Order `FOR NO KEY UPDATE` → items → DBC Cards → activation credentials, then updated-by and system completion in the same transaction. The parent lock serializes writers and allows foreign-key `KEY SHARE` reads from independent manual M4 tools. Release/cancel return routines share DBC rules; M8 never calls `reserveGrc`, `recordNfcCheck` or `retireCard` for Order fulfillment. Existing M4 manual GRC capabilities remain intact.
-
-GRC is an ordinary commercial line with optional label/direct review URL. Google Place ID lookup, ReviewJet generation and NFC writing/testing remain manual. GRC completion uses Hand over history or a shipped non-support shipment plus exact payment, with no Card dependency; mixed orders additionally require all DBC quantities Released. Purchaser and Account remain separate. Money, balances and counts are derived, historical prices stay snapshotted, and stock/courier costs have one authoritative source. Completed-order correction and support are M9.
-
-Migration `0012_owner_operations` adds void metadata/guards and active-product uniqueness; existing M2–M7 guards remain authoritative. See the [M8 runbook](../../README.md#owner-business-operations-m8) for local acceptance and the separately approved isolated Preview procedure.
-
-## Rules
-
-M6 evolves Profile/shared identity → Scenes → ordered Blocks/Actions through additive migrations, including native Forms/Form Submissions and meaningful owner notification email. Existing Profile Links become Link-type Scene Blocks, not a competing flat public renderer. Scenes belong to Profiles, with Profile-level Theme/Appearance and no Card→Scene override in V1. These capabilities are deferred, not implemented in M4; the public active/default Scene resolver remains M7.
-
-- UI, Server Actions and Route Handlers call domain services; domain services own business rules and persistence.
-- Server Actions and Route Handlers are public endpoints: authenticate, authorize, validate and rate-limit them server-side. Hiding UI is never authorization.
-- Client Components receive minimal DTOs, never raw database rows or server config.
-- Select only the columns a screen needs; paginate unbounded lists; let PostgreSQL aggregate; use real transactions for multi-record invariants (e.g. Card claim).
-- Keep DBC and GRC behavior distinct, Purchaser separate from Account, and Card ownership separate from Card→Profile routing.
+- Every mutation is one transaction that locks first, re-reads under the lock, and writes its Activity event in the same transaction. Order writers use `mutateOrder`: Order (`FOR NO KEY UPDATE`) → items → DBC Cards → activation credentials, then updated-by and system completion. Card services lock the card row first. See [decision 0009](../../docs/decisions/0009-database-invariants-and-lock-order.md).
+- Server-only modules start with `import "server-only"` and are listed in `src/server-only-boundary.test.ts`.
+- Server Actions and Route Handlers are public endpoints: authenticate, authorize, validate and rate-limit them server-side.
+- Client Components receive minimal DTOs, never raw rows or server config.
+- Select only the columns a screen needs; paginate unbounded lists; let PostgreSQL aggregate.
+- Keep DBC and GRC behavior distinct ([GRC spec](../../docs/specs/google-review-card.md)), Purchaser separate from Account, and Card ownership separate from Card→Profile routing.
 - Never put activation codes, OTPs, tokens or other secrets into URLs, logs, error messages, analytics or browser storage.

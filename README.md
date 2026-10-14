@@ -1,8 +1,24 @@
 # Neffi
 
-NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monolith (App Router, TypeScript) on PostgreSQL via Drizzle, with Better Auth, Sentry and Vercel.
+NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monolith (App Router, TypeScript, Tailwind and shadcn/ui) on PostgreSQL via Drizzle, with Better Auth, Resend, Cloudinary, Sentry and Vercel.
 
-The product and architecture specification lives in the locked Notion pages (still titled "TapCard — …" from before the rename to Neffi). Domain module boundaries are in [`src/modules/README.md`](src/modules/README.md); milestone plans are in [`docs/superpowers/plans/`](docs/superpowers/plans/).
+| Product | In short |
+|---|---|
+| **Digital Business Card** | An NFC card with a permanent URL that opens the customer's Neffi profile. Customers activate it with a package code and manage their profile and Scenes from a phone |
+| **Google Review Card** | An NFC card that opens a business's direct Google review page. Neffi records the sale; the tag is prepared by hand |
+
+Status: Milestones 1–8 are complete (customer app, public card, owner business operations). Milestone 9A (Support Cases and corrections) is planned, not built. See [`docs/roadmap.md`](docs/roadmap.md).
+
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md), the map of which document is authoritative for what.
+
+- [`PRODUCT.md`](PRODUCT.md): what Neffi is and how it behaves today.
+- [`docs/architecture/`](docs/architecture/): system and domain model. [`docs/database/erd.md`](docs/database/erd.md) is the generated schema reference.
+- [`docs/specs/`](docs/specs/): feature contracts. [`docs/decisions/`](docs/decisions/): long-lived decisions.
+- [`docs/operations.md`](docs/operations.md): runbooks for migrations, seed, auth, card provisioning, deploys and verification.
+- [`docs/superpowers/plans/`](docs/superpowers/plans/): historical milestone plans (not specifications).
+- [`src/modules/README.md`](src/modules/README.md): domain module map.
 
 ## Prerequisites
 
@@ -15,222 +31,47 @@ The product and architecture specification lives in the locked Notion pages (sti
 1. Clone and install: `git clone <repo-url> neffi && cd neffi && pnpm install --frozen-lockfile`
 2. Create the development database: in the Neon console, create project `neffi-dev` (AWS Asia Pacific, Singapore). Do not enable Neon Auth.
 3. Configure: `cp .env.example .env.local` (`copy` in cmd.exe), then fill in:
-   - `DATABASE_URL`: the pooled connection string (Connect → connection pooling **on**; host contains `-pooler`)
+   - `DATABASE_URL`: the pooled connection string (connection pooling **on**; host contains `-pooler`)
    - `DATABASE_URL_UNPOOLED`: the direct connection string (connection pooling **off**)
    - `BETTER_AUTH_SECRET`: output of `openssl rand -base64 32`
    - `BETTER_AUTH_URL`: `http://localhost:3000`
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: the development/Preview OAuth web client
-   - `RESEND_API_KEY`, `AUTH_EMAIL_FROM`: the development/Preview send-only key and sender (see the auth runbook below)
+   - `RESEND_API_KEY`, `AUTH_EMAIL_FROM`: the development/Preview send-only key and sender (see the [auth runbook](docs/operations.md#authentication-runbook))
    - `ACTIVATION_CODE_SECRET`: at least 32 random characters (`openssl rand -base64 32`); keys the activation-code lookup hash
-   - `CARD_URL_ORIGIN`: bare origin written onto NFC cards, e.g. `http://localhost:3000` (see Physical card provisioning)
+   - `CARD_URL_ORIGIN`: bare origin written onto NFC cards, e.g. `http://localhost:3000` (see [card provisioning](docs/operations.md#physical-card-provisioning))
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: the development Cloudinary account (the secret stays server-only)
    - optional `NEXT_PUBLIC_SENTRY_DSN`: Sentry stays disabled without it
-4. Before the first M2 migration on `neffi-dev`, create a `pre-m2` Neon restore branch/snapshot and explicitly approve Task 9. Then migrate: `pnpm db:migrate`.
+4. Migrate: `pnpm db:migrate`. Applying migrations to a shared database needs a restore point and explicit approval ([operations](docs/operations.md#database-migrations)).
 5. Run: `pnpm dev`, then check <http://localhost:3000/api/health> returns `{"status":"ok","db":"ok"}`.
 
-The app refuses to start with missing or invalid configuration and names the variable without printing its value.
-
-The approved development target is Neon project `neffi-dev`, branch `production`. That branch name is Neon's default label; it is a development database, separate from application Production. `pre-m2` is the restore branch and must not receive migrations or seed resets. Verify the project, branch and endpoint before every database-changing command.
+The app refuses to start with missing or invalid configuration and names the variable without printing its value. The approved development target is Neon project `neffi-dev`, branch `production` (Neon's default label; it is a development database, separate from application Production). Verify the project, branch and endpoint before every database-changing command.
 
 ## Scripts
 
 | Command | Purpose |
 |---|---|
-| `pnpm dev` | Development server |
-| `pnpm lint` | ESLint |
-| `pnpm typecheck` | Generate route types, then `tsc --noEmit` |
-| `pnpm test` | Unit tests and database invariants on fresh, in-process PGlite databases |
-| `pnpm build` | Production build (needs the server env, but never connects to the database) |
+| `pnpm dev` / `pnpm build` / `pnpm start` | Development server / production build (needs the server env, never connects to the database) / serve the build |
+| `pnpm lint` / `pnpm typecheck` | ESLint / route types then `tsc --noEmit` |
+| `pnpm test` | Unit tests and database invariants on fresh in-process PGlite databases |
 | `pnpm check:bundle` | After `build`: fail if a server secret value appears in public build output |
-| `pnpm db:generate` | Generate a migration from `src/db/schema/index.ts` (no database connection) |
-| `pnpm db:migrate` | Apply pending migrations (uses `DATABASE_URL_UNPOOLED`) |
-| `pnpm db:check` | Check migration history consistency |
+| `pnpm db:generate` / `db:migrate` / `db:check` | Generate a migration from the schema (no connection) / apply pending migrations (uses `DATABASE_URL_UNPOOLED`) / check history consistency |
 | `pnpm db:seed` | Destructive development-only reset to synthetic fixtures; requires explicit development context |
-| `pnpm db:erd` | Generate the ERD and integrity catalog from migrations on PGlite (no credentials/network) |
-| `pnpm check:db-concurrency` | Two-session integrity regression on disposable loopback PostgreSQL only |
-| `pnpm check:provisioning-concurrency` | Two-session lock/race regression for the provisioning services; same disposable loopback database rules as `check:db-concurrency` |
+| `pnpm db:erd` | Regenerate [`docs/database/erd.md`](docs/database/erd.md) from migrations (no credentials). Never edit that file by hand |
 | `pnpm accounts:set-role <email> <owner\|customer>` | Guarded operator-only role change with an atomic activity event |
+| `pnpm check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` | Two-session race regressions on a disposable loopback PostgreSQL only (never Neon; not run in CI) |
+| `pnpm dev:activation-fixture`, `pnpm dev:form-submission` | Local-only synthetic fixtures for browser acceptance (loopback database only) |
 
-## Database schema
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, `db:check`, migration drift check, build and `check:bundle`.
 
-The shared schema entry is `src/db/schema/index.ts`. Runtime Drizzle and the Better Auth adapter use the same tables. See the generated [ERD and constraint/index/trigger catalog](docs/database/erd.md).
+## Project structure
 
-| Schema file | Owns |
-|---|---|
-| `auth.ts` | Accounts, provider identities, sessions, verification challenges |
-| `commerce.ts` | Products, purchasers, orders, items, payments, refunds, shipments |
-| `inventory.ts` | Stock purchases, physical cards, activation credentials |
-| `profiles.ts` | Profiles and ordered profile links |
-| `operations.ts` | Manual expenses, support cases, case/card links, activity history |
-| `enums.ts`, `columns.ts` | Shared state sets and timestamp builders |
-
-Money is integer PHP centavos; business dates are `date`, and audit timestamps are `timestamptz`. UUIDs are generated by PostgreSQL; human order numbers start at 1001. Purchasers are separate from Accounts. DBC ownership and profile routing are separate, and GRC review destinations belong to order items. Balances, payment state, inventory counts and completion eligibility are derived rather than stored.
-
-Better Auth's user/account/session/verification models map to Neffi's account/auth tables. M3 adds Google and email-code sign-in, database-backed IP limits and a separate per-email quota. Row guards preserve issued card tokens, final card/order states, credential history and recorded money/activity.
-
-## Database migrations
-
-PostgreSQL is the source of truth; Neon is replaceable hosting.
-
-1. Change the relevant file in `src/db/schema/` (or `pnpm db:generate --custom --name=<name>` for hand-written SQL).
-2. `pnpm db:generate`, then **review the SQL** in `drizzle/` and commit it with the schema change.
-3. Run `pnpm test`, `pnpm db:check`, and `pnpm db:erd`; commit the regenerated ERD with any migration change. Separate custom SQL statements with `--> statement-breakpoint` so PGlite and the live migrator apply the same sequence.
-4. After the live-database approval gate, run `pnpm db:migrate` against the development database. Running it again should make no changes.
-
-There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; M2 adds `0001_accounts_auth` through `0005_integrity_guards`, plus the reviewed forward fix `0006_serialize_credential_retirement`. CI generates the schema and rejects a diff in `drizzle/`.
-
-M3 adds `0007_auth_abuse_limits.sql` and the reviewed forward security fix `0008_auth_rate_limit_cleanup.sql` (an index for expiring abandoned IP counters). **Task 8 is a live-database approval gate:** confirm that a `pre-m3` restore branch exists on `neffi-dev`, then obtain explicit approval before applying pending M3 migrations or making any live role/data changes. M2 approval does not authorize M3. Do not migrate or reset `pre-m2` or `pre-m3`. After approval, migrate twice (the second run must be a no-op), inspect the journal and abuse tables, and exercise the auth flows and owner CLI against the confirmed working development target.
-
-**Recovery:** Drizzle has no down migrations. Before applying M2 to `neffi-dev`, keep a `pre-m2` restore branch/snapshot and obtain explicit Task 9 approval. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
-
-## Synthetic development seed
-
-**`db:seed` is a reset, not an additive import.** One transaction truncates only the 22 explicitly listed domain/auth tables in `public` (including M3 abuse counters), restarts identities, and inserts synthetic fixtures with stable fixture IDs. It bypasses row-history triggers deliberately. It uses `RESTRICT`, so an unlisted referencing table aborts the entire reset rather than being cascade-truncated. The migration journal and unrelated tables stay intact. A reset also deletes real development sign-ins, sessions and role audit history; it requires separate live approval.
-
-The CLI and the exported seed function both require `VERCEL_ENV=development`, with `NODE_ENV` unset or `development`, and validate `DATABASE_URL_UNPOOLED` through the existing isolation guard. Missing/blank environment markers, Preview, Production, test and unknown contexts are refused. Explicit development selects the operation's context; verify that the direct URL belongs to the intended development database before invoking it.
-
-After the Task 9 restore-point confirmation and live migration approval, run:
-
-```sh
-VERCEL_ENV=development pnpm db:seed
 ```
-
-PowerShell: set `$env:VERCEL_ENV = "development"`, run `pnpm db:seed`, then `Remove-Item Env:VERCEL_ENV` when finished. Do not set this marker in `.env.local` or a Preview/Production environment.
-
-Fixtures cover owners/customers, commercial history, DBC/GRC lifecycle, profiles, support, expenses and activity. Emails use `@example.test`. Credential lookup values are synthetic 64-character hex values with no corresponding activation code. The CLI prints row counts only. Run twice to verify stable counts and fixture IDs; generated row IDs and default audit timestamps are not fixture identifiers.
-
-## Local database verification
-
-`pnpm test` applies all committed migrations from zero to isolated, in-process PGlite databases. The invariant tests assert PostgreSQL error codes/constraint names and use rollback/savepoints. Seed tests prove repeatability, environment refusal and reset boundaries. The ERD freshness test regenerates the catalog in memory and compares it with `docs/database/erd.md`.
-
-Tests and `db:erd` need no live database credentials. `db:generate`/`db:check` load the migration configuration but do not connect. PGlite verification does not replace Task 9's gated Neon verification. No live migration, seed/reset or other schema/data change is authorized before that gate.
-
-`pnpm check:db-concurrency` runs the two-session retirement/credential-issuance regression under READ COMMITTED, REPEATABLE READ and SERIALIZABLE. It requires a disposable local PostgreSQL database named `neffi_m2_test`, with `DATABASE_URL_TEST` targeting `127.0.0.1`; it never loads `.env.local` and refuses Neon. The check applies migrations and inserts synthetic fixtures, so use an isolated database. PGlite and the credential-free CI suite cannot exercise independent concurrent sessions. Usable-credential issuance writes the parent card without changing its values, serializing retirement and making stale snapshots reject with a serialization failure; future domain transactions must retry such failures.
-
-## Environments and isolation
-
-| Environment | Database | Where its config lives |
-|---|---|---|
-| Local development | Neon `neffi-dev` | `.env.local` (git-ignored) |
-| Vercel Preview | Neon `neffi-dev` | Vercel env vars, Preview scope |
-| Production / pilot | Separate production Neon project (not created yet) | Vercel env vars, Production scope only |
-
-Safeguards:
-
-- `src/config/isolation.ts` refuses a production database host outside production, and in production refuses any host not listed in `PRODUCTION_DATABASE_HOSTS`. That list is empty until the production project exists, so a production deployment currently fails closed by design.
-- The migration config uses the same guard.
-- Database, auth and env modules import `server-only`, so a Client Component importing them fails the build.
-- CI runs `check:bundle` so server secret values cannot ship in client bundles or prerendered pages.
-- Real customer data is never copied into development or Preview.
-
-## Deploying a Preview (Vercel)
-
-1. Import the GitHub repository in Vercel (Hobby, Node 24.x).
-2. After explicit approval to modify Vercel, set `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `AUTH_EMAIL_FROM`, `ACTIVATION_CODE_SECRET` and `CARD_URL_ORIGIN` (and optionally `NEXT_PUBLIC_SENTRY_DSN`) for the **Preview** and **Development** scopes only, using `neffi-dev` values. Keep the activation secret consistent with issued development credentials. `CARD_URL_ORIGIN` must use HTTPS in Preview; localhost is permitted only in development. Preview/test-origin cards remain engineering-only; lock the final long-lived origin before any customer/pilot provisioning. Leave `BETTER_AUTH_URL` unset for Preview; it is derived from the branch URL.
-3. Leave the **Production** scope empty until the production database exists.
-4. Enable "Automatically expose System Environment Variables".
-5. After explicit push approval, push a branch and check `<preview-url>/api/health` and `<preview-url>/api/auth/ok`. Complete the auth Preview checks below; keep Vercel Authentication enabled.
-
-## Authentication runbook (M3)
-
-Use a single development/Preview Google OAuth **web** client. Keep its consent screen in Testing mode and add the intended Google accounts as test users. Register these exact redirect URIs; Google accepts no wildcard:
-
-- `http://localhost:3000/api/auth/callback/google`
-- `https://neffi-git-feat-m3-auth-iyawnnns-projects.vercel.app/api/auth/callback/google`
-
-Use a development/Preview Resend key with send-only permission. Until a sender domain is verified, set `AUTH_EMAIL_FROM` to `Neffi <onboarding@resend.dev>`; this test sender reaches only the Resend account owner's inbox. Domain verification and SPF/DKIM/DMARC are required before the pilot. Mail contains plain text with a random idempotency key per delivery; codes and provider responses are never logged.
-
-At `/sign-in`, choose Google or request a six-digit email code. Codes expire after five minutes, work once and allow three failed attempts; they are stored as keyed HMACs. Sends are limited to three per email per ten minutes and ten per IP per minute; code submissions also have a ten-per-minute IP limit. Limits persist in PostgreSQL. Known and unknown emails receive the same send response. Passwords, SMS and account-settings endpoints are disabled.
-
-Only the exact exposed auth paths create IP counters; arbitrary paths and blocked reset-token paths return 404 without adding counters. New traffic to allowed paths removes counters older than the longest active window (60 seconds) using the `last_request` index. Active counters and the separate ten-minute email quota are preserved. Google sign-in retains Better Auth's three-per-ten-second IP limit; other allowed paths retain their existing limits. Keep the cleanup bound aligned when adding longer-window rules or upgrading auth plugins.
-
-A successful email code verifies the address and resolves its existing Account or creates a customer. A linked Google identity resolves its permanent Account even if the provider email changes. A new Google identity matching an existing Account is refused: sign in with an email code, then use **Connect Google** in `/app`. Linking requires a verified matching email and refuses an identity already owned by another Account. Google tokens are not persisted. Different verified emails may represent separate Accounts; merging is support work in M9.
-
-Sessions roll for 30 days, with renewal after one day through a server action called by the protected shell. Server rendering reads without refreshing; authorization reads the current database role without a cookie cache. Sign-out deletes the session, and expired/deleted sessions lose access. Cookies are HttpOnly and SameSite=Lax, plus Secure on HTTPS. `/get-session` is disabled over HTTP; the email-code sign-in response still contains Better Auth's session token. CSP and owner MFA/step-up remain M10 work.
-
-Both protected layouts and pages validate access on the server. `/app` requires a verified Account; `/admin` requires OWNER. Route handlers/actions use `authorize()` for 401/403 denials and explicit ownership checks; OWNER does not implicitly grant access to another customer's private data. Post-sign-in destinations pass through `safeNext()` and stay inside `/app` or `/admin`.
-
-**Navigation status caveat:** Next.js Cache Components streams a static shell with HTTP 200 before a denied navigation's redirect or not-found result arrives. Protected content is withheld, but the initial HTTP status is not 307/404; visitors without JavaScript may see a blank shell. The accepted M3 implementation does not add `proxy.ts`.
-
-### Owner role operations
-
-After live Task 8 approval, verify the endpoint belongs to `neffi-dev / production` before each write, then run:
-
-```sh
-pnpm accounts:set-role <email> owner
-pnpm accounts:set-role <email> customer
+src/app/        routes: (public), (customer)/app, admin, api    src/proxy.ts   /c/:token availability
+src/modules/    domain services (accounts, activation, activity, cards, expenses, forms, inventory, orders, payments, profiles)
+src/db/         schema, connection, seed, invariant tests       drizzle/       reviewed SQL migrations
+src/auth/       Better Auth, access checks                      src/config/    validated environment and isolation
+src/integrations/  email (Resend), media (Cloudinary)           docs/          documentation (see above)
 ```
-
-This operator CLI uses the direct migration URL and existing environment/isolation checks. Production fails closed until a production host is registered. It loads `.env.local` locally, needs no OAuth/Resend credentials, and runs the service under Node's `react-server` condition to preserve its `server-only` import boundary. There is no public role-change endpoint: Better Auth ignores submitted roles, forces new Accounts to customer, and disables `/update-user`.
-
-Email lookup is case-insensitive. Unknown or ambiguous Accounts and invalid roles fail without writes. A locked transaction changes the role and inserts `activity_events` with type `account_role_changed`, the Account ID and note `customer→owner` or `owner→customer`; audit failure rolls the role back. Setting the current role is a no-op with no new event. Success prints the Account ID only (also for a no-op); failure prints a generic diagnostic and exits nonzero without SQL, email or credentials.
-
-### Local and approved live checks
-
-Local tests use fresh PGlite databases and mocked Google/Resend responses; they send no mail and need no live database. CI supplies synthetic auth configuration, checks migration drift and scans public bundles for secret values. A local build requires all four new auth variables; synthetic CI values prove compilation but cannot verify delivery or OAuth setup.
-
-At the approved Task 8 gate, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Application Production remains untouched.
-
-Accepted abuse limits: another person can consume an email's send quota or invalidate its outstanding code; delivery failures also consume quota. Defaults allow up to nine incorrect guesses across three sends per ten minutes. Google is a fallback; stronger anti-abuse measures are M10 work. Milestone 3 remains incomplete until the gated live verification and Task 9 final review pass.
-
-## Physical card provisioning (M4)
-
-OWNER-only screens at `/admin/inventory` receive stock, provision Digital Business Cards (DBC), reserve and test Google Review Cards (GRC), and show derived card counts. `/c/{token}` is the public card page (Milestone 7, below). Customer activation is described under Activation below.
-
-**Configuration.** `CARD_URL_ORIGIN` is a bare origin (no path, query or hash; https outside development). The NFC value written for a DBC is exactly `<CARD_URL_ORIGIN>/c/<token>`. Cards provisioned while it points at a development origin are **engineering test units and must never be sold.** Before any pilot or commercial DBC is provisioned, lock the final long-lived NFC domain and change `CARD_URL_ORIGIN` to it. `ACTIVATION_CODE_SECRET` keys the HMAC stored for each activation code; changing it makes every issued, unclaimed code unverifiable, so treat it like a database credential and do not rotate it casually.
-
-**Tokens and codes.** The permanent public token is 26 Crockford Base32 characters (130 bits), issued once and never changed. It is public and is not proof of ownership. The activation code is 16 Crockford characters shown as `XXXX-XXXX-XXXX-XXXX`; only its keyed hash is stored. The raw code appears once, in the response of the Provision or Replace action, and is never persisted, logged or placed in a URL. If a response is lost, use **Replace credential**.
-
-**DBC lifecycle.**
-
-1. **Receive stock** creates a stock purchase and N Blank cards. M8 adds optional purchase and inbound-shipping costs on that purchase.
-2. **Provision** (card page) gives a Blank card its permanent token and its first credential and shows the code once. The card stays Blank and is shown as *in provisioning*; that label is derived, not a new state.
-3. **Write and test the NFC tag** with NFC Tools on a real phone: *Write, Add a record, URL/URI*, paste the exact URL shown on the card page, *Write*; then *Read* it back. Do not use *Lock tag* or set a password; the tag must stay writable. Tap the tag with a real phone (Android with NFC on, or an iPhone XS or later) and confirm it recognises the tag and tries to open that exact address. A not-found page is expected until Milestone 7. Then record the NFC check with the address you read back and the three confirmations. The server checks that the read-back address is exactly the card's URL.
-4. **Match the package.** Pack the matched Card with the common activation insert containing the static `/activate` QR plus its unique printed activation-code label, inside the sealed package; type the code from that package. The server compares it with the card's current credential. This means the OWNER verified that the code physically packaged with this card matches this card. The QR is common, not Card-specific, and never contains the code. The physical insert is part of M4 packing; the working `/activate` validation/claim experience remains Milestone 5 and is not needed for this match. A matching code makes the card **Ready**.
-5. **Replace credential** is the pre-release fix for a lost or mismatched unused code: it revokes the old code, issues a new one, returns a Ready card to Blank and requires the package to be matched again. It never restores a used or revoked credential and does not apply once a card is Released; customer-facing lost-code and recovery cases are Milestone 9.
-
-**GRC.** A GRC stays Blank until an eligible order item needs it. **Reserve** a Blank card against an existing open GRC item that has a review URL and spare quantity, then write that direct review URL to the tag, read it back, tap it, and record the check. GRCs never get a token, credential, owner or profile. Creating orders and order items is Milestone 8; until then use controlled development items (the development seed includes one with spare capacity).
-
-These existing M4 GRC utilities remain available for manual provisioning. M8 Orders do not require or invoke this reservation/testing chain; the simpler sales workflow below is authoritative for M8.
-
-**Retire** removes a Blank, Ready or reserved-GRC card that failed or must not be sold. It revokes any unused credential, keeps all history, and a retired reserved GRC stops counting against its order item so a replacement can be reserved.
-
-**Physical evidence.** `nfc_verified_at` and `package_matched_at` exist only after a real physical check. A DBC cannot be Ready without both (a database constraint), and issuing any new usable credential clears the package match. The development seed contains no Ready DBC and no physical evidence by design; only isolated automated tests and disposable loopback activation fixtures use synthetic timestamps. Never record a check you did not perform, including on `neffi-dev`.
-
-**Migration 0009.** Adds the two columns and `cards_dbc_ready_checks_recorded`, created `NOT VALID` so a pre-M4 development row that was seeded as Ready (with no physical evidence) is not given invented timestamps. New and updated rows are still checked, and a database migrated from zero has no legacy rows. Milestone 10 validates the constraint. It also replaces the `activation_credentials_guard` function; the serialization with retirement from `0006` is unchanged.
-
-**Hardware acceptance (required before M4 is complete).** On `neffi-dev`, using engineering cards labelled TEST, record device, date and card id (never a code or a photo showing one):
-
-An internal engineering NFC encoding test checks the exact URL, phone tap and writable tag; it alone is not customer/pilot package acceptance. Customer/pilot package acceptance must also use the common activation insert with its static `/activate` QR, the exact-Card printed activation-code label inside the sealed package, and the matched Card. Localhost and other development/test URLs are engineering-only; these cards must never be sold or used as customer/pilot units. Customer/pilot cards require the final long-lived origin before provisioning.
-
-- [ ] DBC written with NFC Tools, read back identical, tapped on a real phone (opened the exact address), tag still writable, NFC check recorded, package matched, card Ready.
-- [ ] Credential replaced on that card, old code refused, new code matched, card Ready again.
-- [ ] GRC reserved against a controlled item, review URL written, read back, tapped, writable, encode check recorded.
-
-## Activation (Milestone 5)
-
-The customer flow is `/activate` → activation code → sign in with Google or email code if needed → **Add to my account** → `/app`. Only Released DBCs can be claimed; the release workflow belongs to M8. Claiming assigns ownership, consumes the credential and records Activity atomically. `/app` lists owned cards **Ready to set up** as the resumable M6 handoff; activation creates no Profile or Scene.
-
-An accepted code sets the 15-minute `neffi_activation` cookie (`HttpOnly`, `SameSite=Lax`, `Path=/activate`, secure over HTTPS). It contains only a signed opaque credential reference and expiry, never the activation code. Checks allow 20 attempts per IP and claims allow 10 attempts per Account per 10 minutes, using the existing HMAC-keyed quota counters.
-
-`pnpm check:claim-concurrency` proves single-winner claims using `DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test` only. `pnpm dev:activation-fixture` creates synthetic claimable and unavailable cases and prints their synthetic codes for private local browser acceptance. It requires a loopback `DATABASE_URL` and the same `ACTIVATION_CODE_SECRET` as the dev server; it never loads `.env.local` itself and must never target Neon. Its synthetic Ready timestamps are software test inputs, never evidence of physical acceptance.
-
-Run `DATABASE_URL=<loopback> pnpm dev` with the process environment overriding `.env.local` so browser acceptance uses the disposable local database. Google requires the registered localhost OAuth callback and email sign-in requires a real controlled inbox. Do not copy codes, OTPs or cookies into logs or acceptance records. Real packaged-card acceptance remains deferred until M4's physical gate passes; M5 is not fully complete until its real packaged-card test passes.
-
-## Customer experience (Milestone 6)
-
-After claiming a Card, **Ready to set up** leads through a purpose (Network, Get Clients or Show My Work), essentials, owner preview and Publish. A Draft resumes from Home. Profiles hold shared identity and appearance; each has a protected main Scene and may show another Scene. Scenes contain ordered About, Link, Project, Booking, Contact and Form blocks. Limits are 10 Profiles per Account, 5 Scenes per Profile, 20 Blocks per Scene and 5 Forms per Profile. Links are HTTPS; the legacy flat Profile Links table is unused after its migration backfill.
-
-Native Forms have fixed fields and up to 3 custom questions. Same-origin `POST /api/forms/[formId]/submissions` stores a message before a single notification-email attempt; a repeated browser key creates no duplicate. Delivery failure leaves the message in the Inbox, with no automatic retry. Home shows unread counts; opening a message marks it read, and the Inbox supports confirmed deletion. Visitors use these forms on the public card page.
-
-Images use signed direct uploads to the development Cloudinary account. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` locally and in Vercel Preview; the secret remains server-only. Appearance applies across a Profile's Scenes. Cards can be connected to owned Profiles, turned off/on, and shared using a downloadable Sharing QR encoding their permanent Card URL. This is distinct from the common activation insert QR.
-
-Account supports deliberate Google linking/removal, verified sign-in email changes and sign out everywhere. Account deletion remains support-only until M9.
-
-`pnpm check:profile-concurrency` proves duplicate-safe setup, dense block ordering and submission deduplication against the disposable `DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test` only. It applies migrations and creates synthetic fixtures; never run it against Neon.
-
-With a local dev server using a loopback database and a Published Profile showing a Form, run `DATABASE_URL=<loopback> pnpm dev:form-submission`. It never loads `.env.local`, refuses non-loopback database/app hosts and Neon, and prints only HTTP status codes. `APP_ORIGIN` defaults to `http://localhost:3000`; `VISITOR_EMAIL` can be a controlled reply address. It sends synthetic name/message/question answers and a fixed synthetic phone so Required Phone works. `--repeat-key` submits the same message twice: expect `201 201` and one new Inbox message. Notification delivery uses the dev server's email configuration; real inbox acceptance is manual.
-
-M4 and M5 remain software gate passed with physical acceptance pending. These software fixtures do not provide hardware or packaged-card evidence.
 
 ## Security rules
 
@@ -238,41 +79,3 @@ M4 and M5 remain software gate passed with physical acceptance pending. These so
 - Activation codes, OTPs, auth cookies and tokens must never appear in URLs, logs, error messages, analytics, Sentry or browser storage.
 - Sentry runs errors-only with personal-data collection disabled and request scrubbing (`src/lib/sentry-scrub.ts`).
 - Authorization is always enforced server-side. Hiding UI is not authorization.
-
-## Public card page (Milestone 7)
-
-`/c/{token}` is the permanent URL on the NFC chip and in the digital Sharing QR. Every request reads the card fresh (one
-indexed lookup): only a claimed, enabled card showing a Published profile renders; everything else — unknown link,
-unclaimed, turned off, no profile, Draft or Unpublished — gets the same "This Neffi isn't available right now" 404, so the
-page never reveals why. The profile's shown Scene (or its Default Scene) renders with its visible Blocks in order.
-
-Scene content is cached with `"use cache"` under `(profile, scene, content_version)`. Every change a visitor could see calls
-`bumpProfileContentVersion` inside its transaction, so an edit never meets a stale entry; card state, card→profile routing
-and publish status are never cached. Visitors can save a vCard (`/c/{token}/contact`), follow https links, book, call,
-email and send the profile's form. A signed-in owner sees the same page plus Edit / Switch scene (or Manage this card when
-it is unavailable). All public pages are `noindex`; customer search indexing is a later, separately planned feature.
-
-The /c-only Proxy decides Card availability before rendering and forwards an authenticated request-only snapshot.
-Unavailable document requests return a prebuilt generic 404; unavailable Next navigation requests receive an early 404
-and load the same permanent document URL. Profile revision checks fail closed if content changes during resolution.
-
-## Owner business operations (M8)
-
-The OWNER area provides Dashboard, Orders, Inventory, Customers, Expenses and Settings. Settings contains Products & Pricing and read-only Owner Access. Business, Communications, support workflows and Account mutations remain deferred.
-
-**Order runbook.** Create an order with a purchaser name, DBC/GRC quantities, delivery method and optional negotiated line totals, notes and shipping fee. Purchasers are commercial buyers and are never linked automatically to Neffi Accounts. New lines snapshot the active catalog price; changing catalog pricing never changes an existing line's `unit_price`. Money is entered in pesos and stored as integer centavos. Payments are capped at the remaining balance; partial payment remains Unpaid until fully settled.
-
-- **DBC:** reserve specific Ready cards from the item, then Hand over for pickup/local or Ship for courier. Release checks the matched package and usable credential. The existing `/activate` claim consumes that credential and assigns the customer's Account; no Profile is created by sale or claim. A Reserved DBC can return to Ready stock, keeping its physical evidence. Lost-package recovery uses existing M4 credential replacement after returning the card.
-- **GRC:** find the customer's Google Business Place ID with Google's Place ID/Maps tools, use ReviewJet's Google Review Link Generator manually, then write the direct review URL to the NFC tag and test manually. Neffi records the sale, quantity, price, purchaser, payments and delivery. Optional business/branch labels and HTTPS review URLs are references. No Google/ReviewJet API, Neffi Account, activation, `/c/{token}`, Scene, or M8 GRC Card reservation/encoding/testing/release state is involved.
-- **Completion:** system-controlled, with exact net payment and delivery. All DBC quantities must have Released cards. GRC pickup/local uses the ordinary Hand over activity; courier uses a non-support shipment with a shipped date. Mixed orders require DBC releases plus commercial GRC delivery. GRC lines need no Card rows or NFC verification. Once commercially delivered, GRC quantities/add/remove are fixed; pricing/references remain editable while In Progress.
-- **Cancellation:** available only before any DBC release or commercial Hand over/Ship. Reserved DBCs return to stock; manual GRC inventory stays untouched. Money history remains and the workspace shows refund due. Cancelled and Completed orders are terminal.
-
-**Money correction.** Payments/refunds remain append-only. Void requires a reason and records one-way metadata on the original row; voided rows are struck through and excluded from totals. Payment void is In Progress only; refunds and refund voids are allowed In Progress or Cancelled. Completed-order refunds/corrections belong to M9. A mis-keyed refund after cancellation can be voided and re-recorded. Partial payments have no idempotency key yet; pending-disabled controls and void correction cover mistakes, while the balance cap prevents duplicate final payments.
-
-**Costs and customers.** Receive stock with optional purchase/inbound costs, then use Stock Purchases to edit source fields. Quantity/state breakdown comes from Card rows. Expenses combines manual entries with stock and courier costs once, linking derived rows to their read-only sources. Manual expenses can be edited/deleted. Dashboard collections use payment/refund dates and exclude voids; outstanding includes only In Progress orders. Customers offers editable Purchasers and separate read-only Accounts: email, role, created date, method kinds, card state/disabled/token suffix/profile name/status, and profile names/statuses only. No sessions, provider subjects/tokens, Inbox or profile content are exposed.
-
-**Transactions.** Order writers lock the parent with `FOR NO KEY UPDATE`, then items → DBC Cards → activation credentials. Every input-changing operation re-settles completion in the same transaction. The parent lock serializes writers while remaining compatible with independent M4 activity-event foreign keys. M8 never locks/mutates GRC Cards and never calls `retireCard` in Order fulfillment/cancellation. M2–M7 guards and public caching are unchanged.
-
-**Migration `0012_owner_operations`.** Adds payment/refund void metadata, complete/reasoned-void CHECKs, a one-way void guard, and one active product per kind. No other schema change is required. Automated checks use ephemeral PGlite and loopback PostgreSQL only. Run all five concurrency commands with `DATABASE_URL_TEST` pointing at disposable `127.0.0.1:55432/neffi_m2_test`; never point these harnesses at Neon. The required automated chain covers M8 reservation/release → existing M5 `claimCard`.
-
-**Acceptance and isolated Preview.** T17 is the software gate; T18 is user-performed desktop/phone acceptance against `next build && next start` on loopback. The canonical [M8 plan](docs/superpowers/plans/2026-10-13-milestone-8-owner-business-operations.md#8-acceptance-strategy) contains the exact matrix. No remote resources are created before explicit T19 approval. At T19, create a temporary Neon branch from the current `neffi-dev` baseline, run the plan's pre-check, apply committed migrations through `0011` and `0012` to that isolated branch only, migrate twice to verify the second is a no-op, and seed minimal synthetic products/Ready DBCs (GRC requires no Card fixtures). Grant OWNER only there, then separately approve push and configure a branch-scoped isolated Vercel Preview pointing only at that branch with Vercel Authentication enabled. Smoke-test health/sign-in/order/fulfillment/cancellation/refund/dashboard; record evidence and explicitly approved teardown. Existing `neffi-dev` migration is a separate decision. T20's physical DBC reserve → release → claim → publish → tap is recommended, non-gating evidence. No approval for push, PR, merge or deployment is implied by local software verification.
