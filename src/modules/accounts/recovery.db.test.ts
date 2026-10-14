@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
 import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
@@ -142,4 +142,13 @@ test("post-commit code delivery audit failure still returns initiation and attem
     expect(sent.some(email => email.to === f.account.email && email.subject === "Neffi account security notice")).toBe(true);
     expect(await tx.select().from(s.accountRecoveries)).toHaveLength(1);
   } finally { insert.mockRestore(); }
+}));
+
+test("a unique violation during email update rolls completion back to the same generic failure", () => rollback(db, async tx => {
+  const f = await pending(tx);
+  await tx.execute(sql`CREATE FUNCTION recovery_test_conflict() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic concurrent signup' USING ERRCODE='23505'; END $$`);
+  await tx.execute(sql`CREATE TRIGGER recovery_test_conflict BEFORE UPDATE OF email ON accounts FOR EACH ROW EXECUTE FUNCTION recovery_test_conflict()`);
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret }, async () => { throw new Error("must not send"); })).toEqual({ ok: false });
+  expect((await tx.select().from(s.accounts).where(eq(s.accounts.id, f.account.id)))[0].email).toBe(f.account.email);
+  expect((await tx.select().from(s.accountRecoveries))[0].status).toBe("pending");
 }));
