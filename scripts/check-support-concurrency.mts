@@ -11,6 +11,7 @@ import { claimCard } from "../src/modules/activation/claim";
 import { connectCardToProfile, setCardDisabled } from "../src/modules/cards/manage";
 import { reserveDbcCards } from "../src/modules/orders/fulfillment";
 import { loadOrderFacts } from "../src/modules/orders/order";
+import { createProfileFromStarter } from "../src/modules/profiles/profiles";
 import { openCase, setCaseStatus } from "../src/modules/support/case";
 import { afterSaleRefund, voidCompletedPayment, recordCompletedPayment } from "../src/modules/support/money";
 import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, resetCardOwnership } from "../src/modules/support/cards";
@@ -24,7 +25,7 @@ assert(["postgres:", "postgresql:"].includes(url.protocol));
 assert(![...url.searchParams.keys()].some((key) => ["host", "hostaddr", "port"].includes(key)));
 const clients: pg.Client[] = [], pools: pg.Pool[] = [], failures: string[] = [];
 const secret = randomBytes(32).toString("hex");
-const errorCode = (error: unknown) => (error as { code?: string } | undefined)?.code;
+const errorCode = (error: unknown) => (error as { cause?: { code?: string }; code?: string } | undefined)?.cause?.code ?? (error as { code?: string } | undefined)?.code;
 async function connect() {
   const client = new pg.Client({ connectionString: url.href, connectionTimeoutMillis: 5000 });
   await client.connect();
@@ -80,7 +81,7 @@ try {
     const { rows: [payment] } = await admin.query("INSERT INTO payments(order_id,amount,method,paid_on,recorded_by_account_id) VALUES($1,100,'cash','2026-10-14',$2) RETURNING id", [orderId, owner]);
     return { actorId: owner, caseId, orderId, orderItemId, ...card, paymentId: payment.id as string, reason: "Synthetic verified correction" };
   }
-  async function lockedScenario(table: "support_cases" | "orders" | "order_items" | "cards", id: string, calls: (() => Promise<unknown>)[], prepare?: (holder: Db) => Promise<void>) {
+  async function lockedScenario(table: "support_cases" | "orders" | "order_items" | "cards" | "accounts", id: string, calls: (() => Promise<unknown>)[], prepare?: (holder: Db) => Promise<void>, whileBlocked?: (holder: Db) => Promise<void>) {
     const holder = await connect();
     const { rows: [{ pid }] } = await holder.query("SELECT pg_backend_pid() AS pid");
     let pending: ReturnType<typeof settle>[] = [];
@@ -99,6 +100,7 @@ try {
         if (waiting < calls.length) await new Promise((resolve) => setTimeout(resolve, 20));
       }
       assert.equal(waiting, calls.length, "Every service demonstrates an actual lock wait");
+      if (whileBlocked) await whileBlocked(tx);
       });
       await Promise.all(pending.map((p) => p.finished));
       return pending.map((p) => p.state.error);
@@ -181,8 +183,63 @@ try {
     assert.equal((await admin.query("SELECT status FROM support_cases WHERE id=$1", [f.caseId])).rows[0].status, "resolved");
     assert.equal((await loadOrderFacts(dbA, f.orderId)).totals.afterSaleRefunded, errors[1] ? 0 : 10);
   });
+  for (const action of ["reset", "retire"] as const) {
+    const correct = (tx: Db, f: Awaited<ReturnType<typeof fixture>>) => action === "reset"
+      ? resetCardOwnership(tx, { ...f, verificationNote: "Synthetic purchase verified", activationSecret: secret })
+      : retireAffectedCard(tx, f);
+    for (const first of ["setup", "support"] as const) await check(`R10 setup vs ${action}, ${first} first, has no deadlock`, async () => {
+      const f = await fixture();
+      const accountId = randomUUID();
+      await admin.query("INSERT INTO accounts(id,name,email,role) VALUES($1,'Synthetic setup customer',$2,'customer')", [accountId, `${accountId}@example.test`]);
+      await claimCard(dbA, { credentialId: f.credentialId, accountId });
+      const setup = (tx: Db) => createProfileFromStarter(tx, { accountId, cardId: f.cardId, purpose: "network", essentials: { fullName: "Synthetic setup", headline: null, bio: null, email: null, phone: null, link: null } });
+      let profileId: string | undefined;
+      let errors: unknown[];
+      try {
+        errors = first === "setup"
+          ? await lockedScenario("accounts", accountId, [() => correct(dbB, f)], undefined, async (holder) => { profileId = (await setup(holder)).profileId; })
+          : await lockedScenario("cards", f.cardId, [() => setup(dbB)], async (holder) => { await correct(holder, f); });
+      } catch (error) { assert.fail(`Setup/support must complete without a database error (${errorCode(error)})`); }
+      if (first === "setup") assert(!errors[0], `Support must finish after setup (${errorCode(errors[0])})`);
+      else assert.equal(errorCode(errors[0]), "not_found");
+      const { rows: [card] } = await admin.query("SELECT state,owner_account_id,profile_id,disabled_at FROM cards WHERE id=$1", [f.cardId]);
+      assert.deepEqual(card, { state: action === "reset" ? "released" : "retired", owner_account_id: null, profile_id: null, disabled_at: null });
+      const profiles = (await admin.query("SELECT id,account_id FROM profiles WHERE account_id=$1", [accountId])).rows;
+      assert.equal(profiles.length, first === "setup" ? 1 : 0);
+      if (profileId) assert.deepEqual(profiles[0], { id: profileId, account_id: accountId });
+      const { rows: [history] } = await admin.query("SELECT used_at,revoked_at FROM activation_credentials WHERE id=$1", [f.credentialId]);
+      assert(history.used_at); assert.equal(history.revoked_at, null);
+      assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [f.cardId])).rows[0].n, action === "reset" ? 1 : 0);
+      assert.equal((await admin.query("SELECT account_id FROM activity_events WHERE support_case_id=$1 AND type=$2", [f.caseId, action === "reset" ? "card_ownership_reset" : "card_retired"])).rows[0].account_id, accountId);
+    });
+    await check(`R11 ${action} refuses a changed owner after its Account snapshot`, async () => {
+      const f = await fixture();
+      await claimCard(dbA, { credentialId: f.credentialId, accountId: customer });
+      const other = await openCase(dbA, { actorId: owner, type: "ownership_correction", summary: "Synthetic concurrent reset", cardId: f.cardId });
+      const newOwner = randomUUID();
+      await admin.query("INSERT INTO accounts(id,name,email,role) VALUES($1,'Synthetic rightful customer',$2,'customer')", [newOwner, `${newOwner}@example.test`]);
+      const errors = await lockedScenario("cards", f.cardId, [() => correct(dbB, f)], undefined, async (holder) => {
+        const fresh = await resetCardOwnership(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", activationSecret: secret });
+        assert.equal((await claimCard(holder, { accountId: newOwner, credentialId: fresh.credentialId })).status, "claimed");
+      });
+      assert.equal(errorCode(errors[0]), "card_unavailable");
+      assert.deepEqual((await admin.query("SELECT state,owner_account_id FROM cards WHERE id=$1", [f.cardId])).rows[0], { state: "released", owner_account_id: newOwner });
+      assert.equal((await admin.query("SELECT count(*)::int AS n FROM activity_events WHERE support_case_id=$1 AND type IN ('card_retired','card_ownership_reset')", [f.caseId])).rows[0].n, 0);
+      assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1", [f.cardId])).rows[0].n, 2);
+    });
+  }
+  await check("R12 unclaimed reissue vs retirement completes without a Card/item FK cycle", async () => {
+    const f = await fixture();
+    const other = await openCase(dbA, { actorId: owner, type: "activation_issue", summary: "Synthetic concurrent reissue", cardId: f.cardId });
+    const errors = await lockedScenario("cards", f.cardId, [() => retireAffectedCard(dbB, f)], undefined, async (holder) => {
+      await reissueActivationCode(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", activationSecret: secret });
+    });
+    assert(!errors[0], `Retirement must finish after reissue (${errorCode(errors[0])})`);
+    assert.deepEqual((await admin.query("SELECT state,owner_account_id,profile_id FROM cards WHERE id=$1", [f.cardId])).rows[0], { state: "retired", owner_account_id: null, profile_id: null });
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [f.cardId])).rows[0].n, 0);
+  });
   assert.equal(failures.length, 0, `${failures.length} support concurrency checks failed`);
-  console.log("All R1–R9 support races passed (10 scenarios). No remote database accessed.");
+  console.log("All R1–R12 support races passed (17 scenarios). No remote database accessed.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));

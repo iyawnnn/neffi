@@ -162,7 +162,7 @@ The repo and Notion agree: **M9 = "Support, Recovery & Email"** (Notion Step 8, 
 
 - **M2 §15 "free replacement: reserve/release replacement against the original item":** still valid for DBC. **For GRC it is invalid after A7.** GRC replacements are commercial only: a case note plus an optional support shipment, with no Card rows.
 - **Step 3 "Completed = balance ₱0":** after-sale refunds must not create a balance. The M8 single money definition has to learn this (G1).
-- **M8 lock order** (Order `NO KEY UPDATE` → items → DBC cards → credentials) extends cleanly by putting the case first (§5.2).
+- **M8 lock order** (Order `NO KEY UPDATE` → items → DBC cards → credentials) extends with case first, FK-compatible Support item locks and former-owner Account before Card (§5.2).
 
 ---
 
@@ -512,14 +512,17 @@ New module `src/modules/support/`, all `server-only`:
 
 ### 5.2 Lock order (extends M8)
 
-**`support_cases` (`NO KEY UPDATE`) → `orders` (`NO KEY UPDATE`) → `order_items` (`FOR UPDATE`) → DBC `cards` (`FOR UPDATE`, ascending id) → `activation_credentials`.**
+**`support_cases` (`NO KEY UPDATE`) → `orders` (`NO KEY UPDATE`) → `order_items` (`NO KEY UPDATE`) → former-owner `accounts` (`KEY SHARE`, if claimed) → DBC `cards` (`FOR UPDATE`, ascending id) → `activation_credentials`.**
 
-- Card-only actions (reissue, reset) lock case → card → credential.
+- Card-only reissue locks case → card → credential. Reset locks case → former-owner Account (`KEY SHARE`) → card → credential.
+- **Approved lock-order ruling (2026-10-14):** Support retirement/reset take the former-owner Account lock before Card, matching M6 setup's Account → Card order. After locking Card, refuse a changed owner snapshot rather than acting on a different Account. M6 is unchanged.
+- Support item locks use `NO KEY UPDATE`: they still conflict with each other, M8's item locks and item writes/deletes, but permit the `KEY SHARE` foreign-key checks caused by recovery's Card updates. An item `UPDATE` lock can deadlock with another case's reset while waiting on its Card. M8's lock mode is unchanged.
+- Regression evidence: loopback R10 covers setup vs reset/retirement with either winner; R11 covers a changed-owner snapshot during reset/retirement; R12 covers unclaimed reissue vs retirement. The original `40P01` failures became green after this Support-only fix. Full command output and commit SHAs stay in the ignored ledger.
 - Compatibility with existing paths:
   - M5 claim (card → credential), M6 customer card actions (card) and M4 tools (card → credential) never lock a case. Their Activity FKs take only `KEY SHARE`, which `NO KEY UPDATE` allows.
   - M8 order writers never touch cases.
   - Paid-replacement creation locks the case, then inserts the new order (no wait on an existing order).
-- No cycle exists.
+- Account-before-Card ordering and FK-compatible parent locks avoid these cycles.
 
 ### 5.3 Caching
 
@@ -744,9 +747,12 @@ Chains:
 4. **R4:** retire affected vs release replacement on the same item → the replacement waits; succeeds only after the retire commits.
 5. **R5:** two replacements for one retired slot → exactly one.
 6. **R6:** replacement vs M8 `reserveDbcCards` for the same Ready DBC → exactly one.
-7. **R7:** reissue vs `claimCard` with the old code → either claim wins and reissue is refused (`card_claimed`), or reissue wins and claim returns unavailable. Exactly one usable credential.
+7. **R7:** reissue vs `claimCard` with the old code → either claim wins and reissue is refused (`card_claimed`), or reissue wins and claim returns unavailable. Exactly one usable credential when reissue wins; none when claim wins because claim consumes it.
 8. **R8:** ownership reset vs the customer's `connectCardToProfile`/`setCardDisabled` → after the reset the customer action is refused; no profile is reconnected.
 9. **R9:** resolve case vs a controlled action → either the action commits first and resolve follows, or the action is refused.
+10. **R10:** Profile setup vs reset/retirement, each action first → no deadlock; setup either creates its Profile before correction or is refused after correction. The former Account keeps any created Profile.
+11. **R11:** reset/retirement waits while another case resets and a different Account claims → stale owner snapshot is refused atomically.
+12. **R12:** unclaimed reissue vs retirement → no Card/item FK cycle; retired Card has no usable credential.
 
 The existing five suites (31 scenarios) must stay green.
 
@@ -893,7 +899,7 @@ If the user wants Preview evidence anyway, reuse the M8 T19 procedure verbatim, 
    #7 (email idempotency) is M9B.
 3. The B2 money model is consistent across the pure functions, order facts, the list, the dashboard and purchaser balances.
 4. Migration 0013 guards proven.
-5. R1–R9 pass alongside the existing 31 scenarios.
+5. R1–R12 (17 Support scenarios) pass alongside the existing 31 scenarios.
 6. The T15 gate is green and the independent review is approved.
 7. The T16 matrix passes, with user evidence and SQL evidence recorded separately.
 8. Docs updated per §10.
@@ -915,5 +921,5 @@ If the user wants Preview evidence anyway, reuse the M8 T19 procedure verbatim, 
 2. Done: plan saved at this path, uncommitted.
 3. Codex runs T0–T15 with the per-task protocol.
 4. T16 needs the user.
-5. Claude reviews at T15 (independent review) and on any `Blocked` ruling.
+5. Independent GPT-6.1 reviews at T15 and the lock-order ruling (user-approved substitution on 2026-10-14 after Claude providers failed).
 6. After M9A merges, plan M9B (public help, recovery, email) the same way, with an isolated Preview.

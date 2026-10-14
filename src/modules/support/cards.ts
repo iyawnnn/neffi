@@ -12,11 +12,22 @@ import { SupportError } from "./errors";
 
 type CardMutation = CaseMutation & { cardId: string; reason: string };
 
+async function lockSupportCard(tx: Db, cardId: string) {
+  const [snapshot] = await tx.select({ ownerAccountId: s.cards.ownerAccountId }).from(s.cards).where(eq(s.cards.id, cardId));
+  if (!snapshot) throw new SupportError("not_found");
+  // Setup locks Account before Card; take the former-owner Activity FK lock in that order too.
+  if (snapshot.ownerAccountId) await tx.select({ id: s.accounts.id }).from(s.accounts).where(eq(s.accounts.id, snapshot.ownerAccountId)).for("key share");
+  const card = await lockCard(tx, cardId);
+  if (card.ownerAccountId !== snapshot.ownerAccountId) throw new SupportError("card_unavailable");
+  return card;
+}
+
 async function lockItem(tx: Db, orderId: string | null, itemId: string | null) {
   if (!orderId || !itemId) throw new SupportError("wrong_order");
   const order = await lockOrder(tx, orderId);
   if (order.status === "cancelled") throw new SupportError("wrong_status");
-  const [item] = await tx.select().from(s.orderItems).where(and(eq(s.orderItems.id, itemId), eq(s.orderItems.orderId, orderId))).for("update");
+  // Serialize item writers while allowing card-side foreign-key checks during recovery.
+  const [item] = await tx.select().from(s.orderItems).where(and(eq(s.orderItems.id, itemId), eq(s.orderItems.orderId, orderId))).for("no key update");
   if (!item) throw new SupportError("wrong_order");
   if (item.productKind !== "dbc") throw new SupportError("card_unavailable");
   return item;
@@ -28,7 +39,7 @@ export async function retireAffectedCard(db: Db, input: CardMutation) {
     const [snapshot] = await tx.select({ orderItemId: s.cards.orderItemId }).from(s.cards).where(eq(s.cards.id, input.cardId));
     if (!snapshot) throw new SupportError("not_found");
     const item = await lockItem(tx, row.orderId, snapshot.orderItemId);
-    const card = await lockCard(tx, input.cardId);
+    const card = await lockSupportCard(tx, input.cardId);
     if (card.kind !== "dbc" || card.state !== "released") throw new SupportError("card_unavailable");
     if (card.orderItemId !== item.id) throw new SupportError("wrong_order");
     await tx.insert(s.supportCaseCards).values({ supportCaseId: row.id, cardId: card.id, role: "affected" }).onConflictDoNothing();
@@ -66,7 +77,7 @@ async function recoverCredential(db: Db, input: RecoveryInput, reset: boolean) {
   return withCase(db, input, async (tx, row) => {
     const [linked] = await tx.select({ id: s.supportCaseCards.cardId }).from(s.supportCaseCards).where(and(eq(s.supportCaseCards.supportCaseId, row.id), eq(s.supportCaseCards.cardId, input.cardId)));
     if (!linked) throw new SupportError("card_not_linked");
-    const card = await lockCard(tx, input.cardId);
+    const card = reset ? await lockSupportCard(tx, input.cardId) : await lockCard(tx, input.cardId);
     if (card.kind !== "dbc" || card.state !== "released") throw new SupportError("card_unavailable");
     if (reset && !card.ownerAccountId) throw new SupportError("card_unclaimed");
     if (!reset && card.ownerAccountId) throw new SupportError("card_claimed");

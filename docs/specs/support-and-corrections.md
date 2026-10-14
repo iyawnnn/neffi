@@ -42,7 +42,7 @@ Support shipments require an active case linked to an In Progress or Completed o
 
 ## Integrity and authorization
 
-Every Support page requires OWNER and every action authorizes OWNER before Zod validation and service execution. Services re-read state under locks: case (`NO KEY UPDATE`) → Order (`NO KEY UPDATE`) → item (`UPDATE`) → DBC card (`UPDATE`) → credential. Card-only recovery uses case → card → credential. Nested services share the transaction through savepoints. Losers in races receive domain errors with no partial writes.
+Every Support page requires OWNER and every action authorizes OWNER before Zod validation and service execution. Services re-read state under locks: case (`NO KEY UPDATE`) → Order (`NO KEY UPDATE`) → item (`NO KEY UPDATE`) → former-owner Account (`KEY SHARE`, if claimed) → DBC card (`UPDATE`) → credential. Reset locks the former-owner Account before Card, matching Profile setup; unclaimed reissue uses case → card → credential. Retirement/reset refuse a changed owner snapshot after locking Card. Support item locks still serialize writers but allow recovery's foreign-key checks, preventing a Card/item cycle. Nested services share the transaction through savepoints. Losers in races receive domain errors with no partial writes.
 
 Migration `0013_support_guards` freezes refund sale/support classification, requires a nonblank reason on a support refund, and makes case-card links immutable. Existing final-order, permanent-URL, retired-routing, append-only money, one-way void and credential guards remain intact. After-sale refunds being Completed-only and replacement allowances are service rules under locks.
 
