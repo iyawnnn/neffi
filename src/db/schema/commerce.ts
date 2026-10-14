@@ -173,6 +173,7 @@ export const refunds = pgTable(
   },
   (t) => [
     check("refunds_amount_positive", sql`${t.amount} > 0`),
+    check("refunds_support_reason", sql`${t.supportCaseId} IS NULL OR (${t.reason} IS NOT NULL AND length(trim(${t.reason})) > 0)`),
     check("refunds_void_all_or_none", sql`(${t.voidedAt} IS NULL AND ${t.voidedByAccountId} IS NULL AND ${t.voidReason} IS NULL) OR (${t.voidedAt} IS NOT NULL AND ${t.voidedByAccountId} IS NOT NULL AND ${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason})) > 0)`),
     index("refunds_order_id_idx").on(t.orderId),
   ],
