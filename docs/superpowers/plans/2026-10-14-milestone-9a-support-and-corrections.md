@@ -35,7 +35,7 @@ Precedence: Locked Plan → Steps 2/3/5/6/7 → Step 8 → M8 decisions A1–A7 
 
 1. **Task 0 (Codex only).**
    - Start from `origin/main` once the `docs/consolidation` branch has been merged (or from `docs/consolidation` itself if the user says so). This plan is already committed there, so there is no plan commit to make. Create `feat/m9a-support-corrections`.
-   - Create the ledger `.superpowers/sdd/2026-10-14-milestone-9a-support-and-corrections/progress.md`. Its header is `# SDD ledger — plan: <path>` and `Plan commit: <SHA of the commit containing this plan>`. Add the directory to `.git/info/exclude`.
+   - Create the ledger `.superpowers/sdd/2026-10-14-milestone-9a-support-and-corrections/progress.md`. Its header is `# SDD ledger — plan: <path>` and `Plan commit: <SHA of the commit containing this plan>`. `.superpowers/` is already ignored by `.gitignore`.
    - Never `git add -f` the ledger. Never make ledger-only commits.
    - Record in the ledger that S1, S2 and B1–B9 (§2.3) were approved by the user on 2026-10-14, as written.
    - If `main` moved past `2394961` and the new commits touch files this plan modifies, stop.

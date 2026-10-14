@@ -4,7 +4,7 @@ Current as of M8. See also [domain model](domain-model.md), the [ERD](../databas
 
 ## Shape
 
-One Next.js 16 App Router **modular monolith** (TypeScript, React 19, Tailwind and shadcn/ui) on PostgreSQL. Server Components are the default; Client Components are limited to interactive forms and editors. Mutations are Server Actions that authenticate, authorize and validate (Zod) before calling a domain service. Route Handlers are used only for the auth callbacks, the public form submission endpoint, image-upload signing, and health. There is no separate API service, queue, cache server or search engine.
+One Next.js 16 App Router **modular monolith** (TypeScript, React 19, Tailwind and shadcn/ui) on PostgreSQL. Server Components are the default; Client Components are limited to interactive forms and editors. Mutations are Server Actions that authenticate, authorize and validate (Zod) before calling a domain service. Route Handlers are used only for the auth callbacks, the public form submission endpoint, the vCard download (`/c/{token}/contact`) and health. Image-upload signing is a Server Action. There is no separate API service, queue, cache server or search engine.
 
 | Surface | Routes | Access |
 |---|---|---|

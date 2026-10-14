@@ -14,7 +14,7 @@ Customer (Account owner), visitor, and the Card's owner viewing their own public
 
 - Created only during first-card setup from a claimed DBC (a purpose, then essentials), idempotently for the same card. Purposes are recipes, not stored: **Network**, **Get Clients**, **Show My Work**.
 - Holds identity (name, headline, company, bio, phone, email, website, location) and appearance (one of 8 accent colours; an image or logo via Cloudinary). Appearance applies to every Scene.
-- Status: **Draft**, **Published**, **Unpublished**. Publishing requires a name, at least one of phone, email or website, and a visible Block in the Default Scene (also database-checked). While Published, edits that would break this are refused, as is hiding or deleting the last visible Default-Scene Block.
+- Status: **Draft**, **Published**, **Unpublished**. Publishing requires a name, at least one of phone, email or website, and a visible Block in the Default Scene. The database also checks that a Published Profile has a name and a Default Scene; the contact-method and visible-Block rules are enforced in code. While Published, edits that would break this are refused, as is hiding or deleting the last visible Default-Scene Block.
 - Deleting a Profile is blocked while Cards are connected.
 - Limits: 10 Profiles per Account, 5 Scenes per Profile, 20 Blocks per Scene, 5 Forms per Profile.
 

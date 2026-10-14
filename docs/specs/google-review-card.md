@@ -25,7 +25,7 @@ Completion is exact payment plus commercial delivery. A GRC-only order needs no 
 
 ## Existing manual tools
 
-The earlier M4 utilities (reserve a Blank GRC against an order item, record an NFC check for a GRC, retire a reserved GRC) remain available in Inventory. They are independent of Orders: nothing in order creation, fulfilment, cancellation or completion calls them or depends on their results.
+The earlier M4 utilities (reserve a Blank GRC against an order item, record an NFC check for a GRC, retire a reserved GRC) remain available in Inventory. They are independent of Orders: nothing in order creation, fulfilment, cancellation or completion calls them or depends on their results. Two edges remain: removing an order line is refused while any Card is linked to it (including a reserved legacy GRC), and the legacy reserve itself needs an In Progress order and a review URL on the line.
 
 ## Non-goals
 

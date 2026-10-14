@@ -16,7 +16,7 @@ Identify people securely with the least friction, and keep customer data and own
 
 - The **Account** is the permanent identity, not an email string. A verified email resolves to its existing Account; a linked Google identity always resolves to its Account even if Google's email changes.
 - A new Google identity that matches an existing Account's email is refused: sign in with an email code, then **Connect Google** from `/app`. A Google identity owned by another Account is refused. Google tokens are not stored.
-- Different verified emails may be separate Accounts. Merging is a support exception (**Planned**, not built).
+- Different verified emails may be separate Accounts. Merging is a deferred support exception (not built, not in M9A).
 - In `/app/account` the customer can connect or remove Google (only when another verified method remains), change the sign-in email (re-authenticated, new address confirmed by code), and sign out everywhere. Account deletion is not self-service; the page says to contact support.
 
 ## Roles and authorization

@@ -16,7 +16,7 @@ A purchaser name is the only required purchaser field (an existing purchaser can
 
 ## Editing (In Progress only)
 
-Add, remove or change items, quantities, prices, agreed totals, delivery method, shipping fee and notes. Rules: quantity ≥ 1; a DBC quantity cannot go below its Reserved plus Released cards; a DBC line with active cards, or the last line, cannot be removed; the delivery method is locked once any DBC is Released or commercial delivery is recorded; GRC quantities are fixed after GRC delivery. Assignment and internal notes are allowed in every status. Every change records who and when.
+Add, remove or change items, quantities, prices, agreed totals, delivery method, shipping fee and notes. Rules: quantity ≥ 1; a DBC quantity cannot go below its Reserved plus Released cards; a DBC line with active cards, or the last line, cannot be removed; the delivery method is locked once any DBC is Released or commercial delivery is recorded; GRC quantities are fixed once any commercial delivery is recorded (any Hand over or shipped shipment, including a DBC-only one on a mixed order). Assignment and internal notes are allowed in every status. Every change records who and when.
 
 ## Fulfilment
 
