@@ -14,6 +14,7 @@ export default async function AccountPage({ params }: PageProps<"/admin/customer
   const account = await accountDirectoryDetail(db, id);
   if (!account) notFound();
   return <main data-admin-section="customers" className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 sm:p-8"><Link className="underline" href="/admin/customers?view=accounts">Neffi Accounts</Link><h1 className="break-all text-2xl font-semibold">{account.email}</h1>
+    <Link className="flex min-h-11 items-center underline" href={`/admin/support/new?accountId=${id}`}>Open support case</Link>
     <p>Read-only Account</p><dl><dt>Role</dt><dd>{account.role}</dd><dt>Created</dt><dd>{formatDateTime(account.createdAt)}</dd><dt>Sign-in methods</dt><dd>{account.methods.join(", ")}</dd></dl>
     <section><h2 className="font-semibold">Owned cards</h2><ul>{account.cards.map((card, i) => <li key={i} className="border-b py-3">…{card.tokenSuffix} · {card.state} · {card.disabled ? "Disabled" : "Enabled"} · {card.profileName ?? "No connected profile"} {card.profileStatus}</li>)}</ul>{!account.cards.length ? <p>No owned cards.</p> : null}</section>
     <section><h2 className="font-semibold">Profiles</h2><ul>{account.profiles.map((profile, i) => <li key={i} className="border-b py-3">{profile.name ?? "Unnamed profile"} · {profile.status}</li>)}</ul>{!account.profiles.length ? <p>No profiles.</p> : null}</section>

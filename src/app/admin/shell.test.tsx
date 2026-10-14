@@ -15,8 +15,17 @@ test("dashboard and search deny nonowners before querying", async () => {
 });
 test("server nav has exactly approved sections and markers highlight nested pages", () => {
   const html = renderToStaticMarkup(<AdminNav />);
-  for (const section of ["dashboard", "orders", "inventory", "customers", "expenses", "settings"]) expect(html).toContain(`data-admin-section=${section}`);
-  expect(html.match(/<a /g)).toHaveLength(6);
+  for (const section of ["dashboard", "orders", "inventory", "customers", "expenses", "support", "settings"]) expect(html).toContain(`data-admin-section=${section}`);
+  expect(html.match(/<a /g)).toHaveLength(7);
   expect(readFileSync("src/app/admin/orders/[orderId]/page.tsx", "utf8")).toContain('data-admin-section="orders"');
   expect(readFileSync("src/app/admin/inventory/cards/[cardId]/page.tsx", "utf8")).toContain('data-admin-section="inventory"');
+});
+
+test("dashboard shows open cases and an opening action", async () => {
+  requireOwner.mockResolvedValue({ email: "owner@example.test" });
+  dashboard.mockResolvedValue({ inProgress: 0, outstanding: 0, collected: 0, expenses: 0, openSupportCases: 3, stock: { rows: [], inProvisioning: 0 }, recent: [] });
+  const html = renderToStaticMarkup(await AdminHome());
+  expect(html).toContain("Open support cases");
+  expect(html).toContain("Open Support Case");
+  expect(html).toContain('href="/admin/support/new"');
 });

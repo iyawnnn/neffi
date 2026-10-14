@@ -5,6 +5,7 @@ vi.mock("@/auth/access", () => ({ requireOwner }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/server", () => ({ connection: vi.fn() }));
 vi.mock("@/modules/orders/queries", () => ({ getOrderDetail }));
+vi.mock("@/modules/support/queries", () => ({ casesForOrder: vi.fn().mockResolvedValue([]) }));
 vi.mock("../../inventory/forms", () => ({ ActionForm: ({ children }: { children: React.ReactNode }) => <form>{children}</form> }));
 vi.mock("./actions", () => ({ assignOrderAction: vi.fn(), addOrderNoteAction: vi.fn(), updateOrderDetailsAction: vi.fn(), addOrderItemAction: vi.fn(), updateOrderItemAction: vi.fn(), removeOrderItemAction: vi.fn(), recordPaymentAction: vi.fn(), recordRefundAction: vi.fn(), voidPaymentAction: vi.fn(), voidRefundAction: vi.fn(), reserveDbcCardsAction: vi.fn(), returnCardToStockAction: vi.fn(), handOverOrderAction: vi.fn(), shipOrderAction: vi.fn(), updateShipmentAction: vi.fn(), cancelOrderAction: vi.fn() }));
 import OrderPage from "./page";
@@ -25,6 +26,18 @@ test("terminal order retains notes and assignment but hides detail edits", async
   const html = await render();
   expect(html).toContain("Internal note");
   expect(html).not.toContain('name="shippingFee"');
+  expect(html).toContain("Open support case");
+  expect(html).not.toContain(">Record payment<");
+  expect(html).not.toContain(">Record refund<");
+});
+
+test("after-sale refunds link to Support and Completed correction balances are explicit", async () => {
+  getOrderDetail.mockResolvedValue({ ...detail, status: "completed", totals: { ...detail.totals, afterSaleRefunded: 5000 }, refunds: [{ id, supportCaseId: id, amount: 5000, method: "cash", refundedOn: "2026-10-14", voidedAt: null }] });
+  const html = await render();
+  expect(html).toContain("Balance due after correction");
+  expect(html).toContain("After-sale refund");
+  expect(html).toContain(`/admin/support/${id}`);
+  expect(html).not.toContain(">Void refund<");
 });
 test("customer denied before order data is read", async () => {
   requireOwner.mockRejectedValueOnce(new Error("denied"));

@@ -32,6 +32,7 @@ test("Blank DBC shows honest progress, physical next step, then details, activit
   const html = await render();
   expect(requireOwner).toHaveBeenCalledOnce();
   expect(html).toContain("In provisioning");
+  expect(html).toContain(`/admin/support/new?cardId=${id}`);
   expect(html.match(/>Complete</g)).toHaveLength(1);
   expect(html.match(/>Pending</g)).toHaveLength(3);
   expect(html).toContain("Waiting for physical card");
