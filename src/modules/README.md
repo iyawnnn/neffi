@@ -13,17 +13,18 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 | `inventory` | Stock intake and edits, derived card counts and lists |
 | `orders` | Products and pricing, purchasers, order creation and edits, fulfilment, cancellation, derived order facts and totals, system completion, dashboard |
 | `payments` | Capped append-only payments and refunds, and reasoned voids |
+| `support` | Case lifecycle, assignment, immutable links, notes and queries; Completed-order money corrections, support shipments, Released DBC retirement/replacement, verified reissue/reset |
 | `profiles` | Profiles, Scenes, Blocks, publishing, appearance, the public Scene view and cache, starters |
 | `search.ts` | Owner global search (limited groups, literal wildcard escaping) |
 | `db.ts` | The `Db` type shared by services |
 
-Planned, not present: a `support` module for Support Cases and controlled corrections ([M9A plan](../../docs/superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md)).
+The `support` module is owner-side only ([spec](../../docs/specs/support-and-corrections.md)); public intake, recovery and email remain M9B.
 
 Infrastructure outside `modules/`: `src/config` (validated environment, isolation), `src/db` (the only place that opens the database driver), `src/auth` (Better Auth, access checks, pure policy), `src/integrations/email` (Resend, plain text), `src/integrations/media` (Cloudinary signed uploads).
 
 ## Conventions
 
-- Every mutation is one transaction that locks first, re-reads under the lock, and writes its Activity event in the same transaction. Order writers use `mutateOrder`: Order (`FOR NO KEY UPDATE`) → items → DBC Cards → activation credentials, then updated-by and system completion. Card services lock the card row first. See [decision 0009](../../docs/decisions/0009-database-invariants-and-lock-order.md).
+- Every mutation is one transaction that locks first, re-reads under the lock, and writes its Activity event in the same transaction. Order writers use `mutateOrder`: Order (`FOR NO KEY UPDATE`) → items → DBC Cards → activation credentials, then updated-by and system completion. Support writers lock the case (`FOR NO KEY UPDATE`) first, then Order → item → DBC Card → credential; card-only support recovery uses case → card → credential. Nested services receive the open transaction. Other card services lock the card row first. See [decision 0009](../../docs/decisions/0009-database-invariants-and-lock-order.md).
 - Server-only modules start with `import "server-only"` and are listed in `src/server-only-boundary.test.ts`.
 - Server Actions and Route Handlers are public endpoints: authenticate, authorize, validate and rate-limit them server-side.
 - Client Components receive minimal DTOs, never raw rows or server config.

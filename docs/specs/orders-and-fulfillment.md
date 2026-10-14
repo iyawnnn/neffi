@@ -1,6 +1,6 @@
 # Spec: Orders and fulfilment
 
-**Status:** implemented (M8). Related: [money and costs](money-and-costs.md), [cards and activation](cards-and-activation.md), [GRC](google-review-card.md), [0006](../decisions/0006-grc-simple-commercial-line.md), [0007](../decisions/0007-price-snapshots-single-active-product.md).
+**Status:** implemented through M9A. Related: [money and costs](money-and-costs.md), [cards and activation](cards-and-activation.md), [GRC](google-review-card.md), [0006](../decisions/0006-grc-simple-commercial-line.md), [0007](../decisions/0007-price-snapshots-single-active-product.md).
 
 ## Purpose
 
@@ -28,7 +28,7 @@ Add, remove or change items, quantities, prices, agreed totals, delivery method,
 
 ## Completion (system only, exactly once)
 
-Written by the system at the end of every input-changing transaction, under the order lock, when all hold: In Progress; at least one item; every DBC line's Released count equals its quantity; a delivery method is set; courier orders have a shipment with a shipped date (shipments tied to a support case never count), pickup/local orders with GRC have the Hand over event; and **net paid equals the order total exactly** (an overpaid order must refund first). Customer activation never affects completion. A Completed order is final.
+Written by the system at the end of every input-changing transaction, under the order lock, when all hold: In Progress; at least one item; every DBC line's Released count equals its quantity; a delivery method is set; courier orders have a shipment with a shipped date (shipments tied to a support case never count), pickup/local orders with GRC have the Hand over event; and **settled paid (received minus sale refunds) equals the order total exactly** (an overpaid order must refund first). Customer activation never affects completion. A Completed order is final.
 
 ## Cancellation
 
@@ -54,4 +54,8 @@ Writers serialize on the parent order, then items, DBC cards and credentials. Tw
 
 ## Non-goals (current)
 
-Deleting orders; reopening or correcting Completed orders (**Planned: M9A**); replacements and shipping-exception cases (**Planned: M9A**); order emails; invoices; courier APIs; customer order portal; partial-payment idempotency keys.
+Deleting orders; reopening Completed/Cancelled orders; order emails; invoices; courier APIs; customer order portal; partial-payment idempotency keys.
+
+## Support and corrections (M9A)
+
+The status matrix above describes the ordinary order workspace. Completed-order payments/refunds are corrected only through an active linked Support Case with reason and confirmation. After-sale refunds reduce cash kept without creating a balance; a voided payment may expose **Balance due after correction**. **Support cases** on the order lists its cases and provides **Open support case**. Free replacements use the original item; paid replacements create a normal new order linked through Activity. Support shipments never contribute to completion. See [support and corrections](support-and-corrections.md).

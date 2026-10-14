@@ -1,0 +1,51 @@
+# Spec: Support and corrections
+
+**Status:** implemented (M9A), owner-side only. Related: [money and costs](money-and-costs.md), [orders](orders-and-fulfillment.md), [cards](cards-and-activation.md). M9B public intake, recovery and email remain later work.
+
+## Cases
+
+Both owners use `/admin/support`: a status-filtered queue with 25 cases per keyset page, case creation, and a case workspace. Type classifies a case; it does not grant permission for an action. A trimmed summary is required (500 characters maximum); assignment defaults to the creator and must name an owner.
+
+Cases move between Open and Waiting on customer, then Resolved (optional resolution note); Reopen returns a resolved case to Open. Resolution sets `resolved_at`, reopening clears it. Resolved cases accept notes and reopening, while corrections, assignment and new links require an active case. Internal notes are limited to 500 characters. Every mutation updates the case and records immutable Activity with its case link.
+
+Purchaser, Account and original Order links can each be filled once while empty and cannot be changed or cleared. Affected cards can be added, never removed. Record selectors search order numbers, names, Account emails and card suffixes; entry points prefill verified records. Account context uses the existing restricted read-only directory DTO.
+
+## Completed-order corrections
+
+The Order workspace remains terminal. Its **Open support case** action leads to corrections through an active case linked to that Order. Money corrections require a reason (1–200 characters) and confirmation:
+
+- **After-sale refund:** greater than zero and no more than net cash kept. It links to the case, reduces Net paid and dated collections, and leaves settlement, Paid state, completion and balance unchanged.
+- **Void after-sale refund:** only a refund belonging to this case and order. Sale refunds cannot be voided after completion.
+- **Void payment:** keeps the original row and may expose **Balance due after correction**, also included in dashboard outstanding.
+- **Record corrected payment:** greater than zero and capped at the current balance. It cannot overpay or add a payment to an already settled order.
+
+Money is never deleted or rewritten beyond the one-way void metadata. Completed orders never reopen. Items, prices, shipping fee and delivery method stay locked. Methods remain cash, GCash and bank transfer; dates default to today in Asia/Manila. Sale refunds retain their M8 rules on In Progress/Cancelled orders.
+
+## Card corrections
+
+All card actions are DBC-only and transactional:
+
+- **Retire affected Released card:** requires the case's original Order (In Progress or Completed), reason and confirmation. It revokes any usable credential, retires the card permanently, and clears owner, routing and disabled flag in one update. Activity preserves the former Account. The old card routes nowhere and disappears from that Account's cards.
+- **Release free replacement:** uses a Ready DBC of the original item's product, with package match and usable credential. A card retired through this case provides one replacement allowance on that item; allowances cannot be reused across cases. Existing Reserved/Released cards must also remain within the item's quantity. The replacement is released directly against the original item and linked as `replacement`. There is no new Order Item, payment or price change. In Progress completion settles after replacement release. The customer claims the replacement and reconnects their Profile.
+- **Issue new code:** only a linked Released, unclaimed DBC. Revoke any usable credential and issue a new one. The old credential stays revoked or used.
+- **Reset ownership:** only a linked Released, claimed DBC. Clear owner, routing and disabled flag, keep the old used credential immutable, revoke any usable credential and issue a new one. The former Account keeps its Profile; no Account merge or Profile move occurs. The card remains offline until claimed and connected again.
+
+Reissue and reset require **I verified the purchase and the requester's claim** and a verification note (1–500 characters). Notes describe the offline checks without copying identity documents or secrets. The new code is revealed once in the issuing action response for delivery outside Neffi. Copy it before closing the sheet or leaving the page. It is never stored raw, logged, placed in URLs or revalidation keys, or reconstructed on reload. Issuing it clears the package-match timestamp by the existing credential guard; claim does not depend on that timestamp. The card's permanent URL is unchanged through reset and reissue. A replacement is a different physical card with its own URL and code.
+
+GRC replacements are a commercial case note and optional shipment, with no GRC Card workflow.
+
+## Paid replacements and shipping exceptions
+
+**New replacement order** opens ordinary order creation with the purchaser prefilled. Creation locks the active case first and writes `support_order_linked` Activity linking the case to the new Order. Revenue, payment and fulfillment are ordinary M8 behavior; the original order stays intact.
+
+Support shipments require an active case linked to an In Progress or Completed order; Cancelled is refused. They record a replacement/re-send in transit, with shipped date defaulting to Manila today and optional recipient, address, courier, tracking and cost. Updates affect only that case's shipment and do not edit the shipped date. They never count toward commercial completion; courier cost appears once in Expenses. The original shipment's failed/returned/lost status is updated from its existing order workspace, including on Completed orders.
+
+## Integrity and authorization
+
+Every Support page requires OWNER and every action authorizes OWNER before Zod validation and service execution. Services re-read state under locks: case (`NO KEY UPDATE`) → Order (`NO KEY UPDATE`) → item (`UPDATE`) → DBC card (`UPDATE`) → credential. Card-only recovery uses case → card → credential. Nested services share the transaction through savepoints. Losers in races receive domain errors with no partial writes.
+
+Migration `0013_support_guards` freezes refund sale/support classification, requires a nonblank reason on a support refund, and makes case-card links immutable. Existing final-order, permanent-URL, retired-routing, append-only money, one-way void and credential guards remain intact. After-sale refunds being Completed-only and replacement allowances are service rules under locks.
+
+## Deferred
+
+No public `/support`, customer portal or visible case status; no support/security/recovery email; no account recovery mutation, merge, Profile move or customer deletion. Owner MFA/step-up is M10. Partial payments still have no idempotency key; balance caps and reasoned voids remain the correction path.

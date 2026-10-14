@@ -1,6 +1,6 @@
 # System architecture
 
-Current as of M8. See also [domain model](domain-model.md), the [ERD](../database/erd.md) and the [decision records](../decisions/).
+Current through M9A. See also [domain model](domain-model.md), the [ERD](../database/erd.md) and the [decision records](../decisions/).
 
 ## Shape
 
@@ -30,7 +30,7 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 ## Code layout
 
 - `src/app/` routes: `(public)`, `(customer)/app`, `admin`, `api`. `src/proxy.ts` handles `/c/:token` only.
-- `src/modules/<domain>/` server-only domain services that own business rules: `accounts`, `activation`, `activity`, `cards`, `expenses`, `forms`, `inventory`, `orders`, `payments`, `profiles`, plus `search.ts`. See [`src/modules/README.md`](../../src/modules/README.md).
+- `src/modules/<domain>/` server-only domain services that own business rules: `accounts`, `activation`, `activity`, `cards`, `expenses`, `forms`, `inventory`, `orders`, `payments`, `profiles`, `support`, plus `search.ts`. See [`src/modules/README.md`](../../src/modules/README.md).
 - `src/db/` schema, runtime connection, seed and invariant tests. `src/auth/`, `src/config/` (validated environment and isolation), `src/integrations/`, `src/lib/` (pure helpers).
 - Server-only modules start with `import "server-only"`. `src/server-only-boundary.test.ts` lists them, and `pnpm check:bundle` fails CI if a secret value reaches client output.
 
@@ -39,7 +39,8 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 - UI and actions call domain services; services own rules and persistence. Client Components receive minimal DTOs.
 - Hiding UI is never authorization. Actions use `authorize("owner" | "account")`; pages use `requireOwner()` / `requireAccount()`.
 - Multi-record changes are one transaction that locks first and re-reads under the lock ([0009](../decisions/0009-database-invariants-and-lock-order.md)). Order writers go through `mutateOrder`: lock the Order (`FOR NO KEY UPDATE`), then items, then DBC Cards, then credentials, set updated-by, and re-settle completion in the same transaction.
-- Every meaningful change writes an immutable Activity event in the same transaction.
+- Support writers lock case (`FOR NO KEY UPDATE`) → Order (`FOR NO KEY UPDATE`) → item (`FOR UPDATE`) → DBC card (`FOR UPDATE`) → credential. Card-only reissue/reset uses case → card → credential. Nested services share the open transaction using savepoints.
+- Every meaningful change writes an immutable Activity event in the same transaction; Support mutations include `support_case_id`.
 - Money is integer centavos. Business dates are `date`; timestamps are `timestamptz`; display uses Asia/Manila.
 - Select only needed columns, paginate unbounded lists (keyset), and let PostgreSQL aggregate.
 

@@ -35,9 +35,9 @@ PostgreSQL is the source of truth; Neon is replaceable hosting.
 3. Run `pnpm test`, `pnpm db:check`, and `pnpm db:erd`; commit the regenerated ERD with any migration change. Separate custom SQL statements with `--> statement-breakpoint` so PGlite and the live migrator apply the same sequence.
 4. After the live-database approval gate, run `pnpm db:migrate` against the development database. Running it again should make no changes.
 
-There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; Migrations `0001`–`0012` are all committed (accounts/auth, commerce, inventory/profiles, operations, integrity guards, credential serialization, auth abuse limits and cleanup, card provisioning, scenes/forms, profile content version, owner operations). CI generates the schema and rejects a diff in `drizzle/`.
+There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; Migrations `0001`–`0013` are all committed (accounts/auth, commerce, inventory/profiles, operations, integrity guards, credential serialization, auth abuse limits and cleanup, card provisioning, scenes/forms, profile content version, owner operations). CI generates the schema and rejects a diff in `drizzle/`.
 
-**Live-database gate.** Applying pending migrations, running roles or resets on `neffi-dev`, or any other live change needs a confirmed restore point (Neon branch or snapshot) and explicit approval; approval for one change does not authorize another. Do not migrate or reset restore branches. After approval, migrate twice (the second run must be a no-op) and inspect the journal. Migrations `0011` and `0012` have not been applied to any shared Neon database as of this writing; verify the pre-checks in the relevant plan first (for example, `0012` requires at most one active product per kind).
+**Live-database gate.** Applying pending migrations, running roles or resets on `neffi-dev`, or any other live change needs a confirmed restore point (Neon branch or snapshot) and explicit approval; approval for one change does not authorize another. Do not migrate or reset restore branches. After approval, migrate twice (the second run must be a no-op) and inspect the journal. Neon development is correctly migrated through `0012` as of 2026-10-14. M9A migration `0013_support_guards` has not been applied to Neon development; applying it requires separate approval.
 
 **Recovery:** Drizzle has no down migrations. Before applying migrations to a shared database, keep a restore branch or snapshot. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
 
@@ -151,8 +151,22 @@ With a local dev server using a loopback database and a Published Profile showin
 
 ## Concurrency suites
 
-Five two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency` and `check:orders-concurrency`. Each applies migrations and creates synthetic fixtures. M8 passed all five (31 scenarios).
+Six two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` and `check:support-concurrency`. Each applies migrations and creates synthetic fixtures. The five existing suites cover 31 scenarios. Support adds R1–R9 (10 scenarios, including reset versus both customer connect and disable). All six use loopback only.
 
 ## Owner business operations checks
 
 Migration `0012_owner_operations` adds payment and refund void metadata, reasoned-void CHECKs, a one-way void guard and the one-active-product-per-kind index; its pre-check is `SELECT kind FROM products WHERE active GROUP BY kind HAVING count(*) > 1` returning no rows. Local production-like acceptance uses `next build && next start` against a loopback database seeded with synthetic fixtures and an owner role set with `accounts:set-role` on that database only. For remote validation, use a temporary Neon branch and a dedicated Vercel Preview (Vercel Authentication on), approved step by step, torn down afterwards, and never touching `neffi-dev` or Production; this is how M8 was validated.
+
+## Support and corrections checks
+
+Migration `0013_support_guards` freezes `refunds.support_case_id`, requires a nonblank reason on case-linked refunds, and preserves case-card link history. Before any separately approved shared apply, run:
+
+```sql
+SELECT count(*) FROM refunds
+WHERE support_case_id IS NOT NULL
+  AND (reason IS NULL OR trim(reason) = '');
+```
+
+The result must be zero. Never rewrite applied migrations; use a reviewed forward fix. `0011` and `0012` are already applied to Neon development. Do not seed/reset a shared database or invent a restore-branch name.
+
+For M9A, run `corepack pnpm check:support-concurrency` with `DATABASE_URL_TEST=postgresql://postgres@127.0.0.1:55432/neffi_m2_test`. It applies migrations, checks a no-op rerun and demonstrates real lock waits for R1–R9. The database must be disposable and loopback, never Neon. Run the existing five suites as well. Local production-like browser acceptance uses `corepack pnpm build` and `corepack pnpm start` against separate synthetic loopback fixtures. Follow the approved M9A plan’s acceptance matrix; keep observed browser evidence separate from read-only SQL evidence. Never record activation codes, OTPs, cookies or tokens. No Preview, remote resources, emails or production action are part of M9A verification.
