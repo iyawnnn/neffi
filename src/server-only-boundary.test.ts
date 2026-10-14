@@ -5,6 +5,12 @@ import { expect, test } from "vitest";
 // `next build` fail if a Client Component ever imports them. Pure schema/config modules are
 // deliberately excluded so Drizzle Kit and other Node tooling can load them.
 const SERVER_ONLY_ENTRYPOINTS = [
+  "src/modules/support/errors.ts",
+  "src/modules/support/case.ts",
+  "src/modules/support/queries.ts",
+  "src/modules/support/money.ts",
+  "src/modules/support/shipments.ts",
+  "src/modules/support/cards.ts",
   "src/modules/orders/dashboard.ts",
   "src/modules/search.ts",
   "src/modules/accounts/directory.ts",

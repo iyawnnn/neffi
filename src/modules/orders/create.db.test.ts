@@ -4,9 +4,25 @@ import * as s from "@/db/schema";
 import { insertAccount, insertProduct } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { createOrder } from "./create";
+import { openCase, setCaseStatus } from "../support/case";
+import { getCaseDetail } from "../support/queries";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
+
+test("paid replacement is an ordinary new sale linked to an active case", () => rollback(db, async (tx) => {
+  const owner = await insertAccount(tx, "owner");
+  await insertProduct(tx, "dbc");
+  const { caseId } = await openCase(tx, { actorId: owner.id, type: "replacement", summary: "Lost card" });
+  const input = { actorId: owner.id, purchaser: { name: "Buyer" }, items: [{ kind: "dbc", quantity: 1 }], supportCaseId: caseId };
+  const { orderId } = await createOrder(tx, input);
+  expect((await getCaseDetail(tx, caseId))?.linkedOrders).toMatchObject([{ id: orderId, status: "in_progress" }]);
+  expect((await tx.select().from(s.orderItems))[0].unitPrice).toBe(50000);
+  await setCaseStatus(tx, { actorId: owner.id, caseId, status: "resolved" });
+  await expect(createOrder(tx, input)).rejects.toMatchObject({ code: "case_resolved" });
+  await expect(createOrder(tx, { ...input, supportCaseId: crypto.randomUUID() })).rejects.toMatchObject({ code: "not_found" });
+  expect(await tx.select().from(s.orders)).toHaveLength(1);
+}));
 
 test("name-only purchaser, server price snapshot, creator assignment and creation event", () => rollback(db, async (tx) => {
   const owner = await insertAccount(tx, "owner");

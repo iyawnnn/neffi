@@ -1,6 +1,6 @@
 # Spec: Cards, inventory and activation
 
-**Status:** implemented through M8. Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [domain model](../architecture/domain-model.md).
+**Status:** implemented through M9A. Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [domain model](../architecture/domain-model.md).
 
 ## Purpose
 
@@ -49,4 +49,8 @@ Concurrent claims: one winner, the other gets *unavailable*. A failed claim leav
 
 ## Non-goals (current)
 
-No customer transfer or unclaim button; no GRC activation; no printed per-card QR; no customer-visible support flow. After release, owner correction of ownership or codes does not exist yet (**Planned: M9A**).
+No customer transfer or unclaim button; no GRC activation; no printed per-card QR; no customer-visible support flow.
+
+## Owner corrections after release (M9A)
+
+An active Support Case permits retirement of an affected Released DBC and a verified free replacement against its original item. Retirement clears owner and routing; the old URL remains permanently unavailable. Reissue is for a linked unclaimed Released DBC; wrong-account reset clears a claimed card's owner/routing while leaving the former Account's Profile untouched. Both require offline purchase/claim verification, confirmation and a required note; the new code is revealed once for delivery outside Neffi. Old credentials stay used or revoked, and the same card keeps its permanent URL. See [support and corrections](support-and-corrections.md).

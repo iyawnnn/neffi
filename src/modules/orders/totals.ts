@@ -6,6 +6,7 @@ export type OrderFacts = {
   items: ItemFacts[];
   received: number;
   refunded: number;
+  afterSaleRefunded?: number;
   hasShippedShipment: boolean;
   hasHandedOver: boolean;
 };
@@ -16,22 +17,23 @@ export function effectiveItemTotal(item: Pick<ItemFacts, "quantity" | "unitPrice
 
 export function orderTotals(facts: OrderFacts) {
   const orderTotal = facts.items.reduce((sum, item) => sum + effectiveItemTotal(item), facts.shippingFee);
-  const { received, refunded } = facts;
-  const netPaid = received - refunded;
+  const { received, refunded, afterSaleRefunded = 0 } = facts;
+  const settledPaid = received - refunded;
+  const netPaid = settledPaid - afterSaleRefunded;
   return {
-    orderTotal, received, refunded, netPaid,
-    balance: Math.max(orderTotal - netPaid, 0),
-    refundDue: facts.status === "cancelled" ? netPaid : facts.status === "in_progress" ? Math.max(netPaid - orderTotal, 0) : 0,
-    paymentState: netPaid >= orderTotal ? "Paid" as const : "Unpaid" as const,
+    orderTotal, received, refunded, saleRefunded: refunded, afterSaleRefunded, settledPaid, netPaid,
+    balance: Math.max(orderTotal - settledPaid, 0),
+    refundDue: facts.status === "cancelled" ? netPaid : facts.status === "in_progress" ? Math.max(settledPaid - orderTotal, 0) : 0,
+    paymentState: settledPaid >= orderTotal ? "Paid" as const : "Unpaid" as const,
   };
 }
 
 export function isCompletionEligible(facts: OrderFacts): boolean {
-  const { netPaid, orderTotal } = orderTotals(facts);
+  const { settledPaid, orderTotal } = orderTotals(facts);
   return facts.status === "in_progress" && facts.items.length > 0
     && facts.items.every((item) => item.productKind === "grc" || item.releasedCount === item.quantity)
     && facts.deliveryMethod !== null
     && (facts.deliveryMethod !== "courier" || facts.hasShippedShipment)
     && (!facts.items.some((item) => item.productKind === "grc") || (facts.deliveryMethod === "courier" ? facts.hasShippedShipment : facts.hasHandedOver))
-    && netPaid === orderTotal;
+    && settledPaid === orderTotal;
 }

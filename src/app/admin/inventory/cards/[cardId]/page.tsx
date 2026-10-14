@@ -49,6 +49,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
         <p className="text-lg font-medium">{blank && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}</p>
         <p className="break-all font-mono text-xs text-muted-foreground">Card ID: {card.id}</p>
       </header>
+      <Link className="flex min-h-11 items-center underline" href={`/admin/support/new?${new URLSearchParams({ cardId: card.id, ...(card.orderContext?.orderId ? { orderId: card.orderContext.orderId } : {}), ...(card.owningAccountId ? { accountId: card.owningAccountId } : {}), ...(card.purchaser ? { purchaserId: card.purchaser.id } : {}) })}`}>Open support case</Link>
 
       {card.kind === "dbc" ? (
         <Section title="Provisioning progress">

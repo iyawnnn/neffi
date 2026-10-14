@@ -33,8 +33,30 @@ test("mixed completion requires released DBC quantities and commercial GRC deliv
 });
 
 test("partial payments remain Unpaid and refunds reduce netPaid", () => {
-  expect(orderTotals({ ...facts, received: 10000, refunded: 1000 })).toEqual({ orderTotal: 20500, received: 10000, refunded: 1000, netPaid: 9000, balance: 11500, refundDue: 0, paymentState: "Unpaid" });
+  expect(orderTotals({ ...facts, received: 10000, refunded: 1000 })).toMatchObject({ orderTotal: 20500, received: 10000, refunded: 1000, netPaid: 9000, balance: 11500, refundDue: 0, paymentState: "Unpaid" });
   expect(orderTotals(facts)).toMatchObject({ balance: 0, paymentState: "Paid" });
+});
+
+test("after-sale concessions reduce cash kept without changing settlement", () => {
+  expect(orderTotals({ ...facts, status: "completed", afterSaleRefunded: 3000 })).toMatchObject({
+    saleRefunded: 0, afterSaleRefunded: 3000, settledPaid: 20500, netPaid: 17500,
+    balance: 0, refundDue: 0, paymentState: "Paid",
+  });
+});
+
+test("a completed payment correction exposes a balance but never a refund due", () => {
+  expect(orderTotals({ ...facts, status: "completed", received: 10000, afterSaleRefunded: 1000 })).toMatchObject({
+    settledPaid: 10000, netPaid: 9000, balance: 10500, refundDue: 0, paymentState: "Unpaid",
+  });
+});
+
+test("completion uses settlement and cancelled refunds use cash kept", () => {
+  expect(isCompletionEligible({ ...facts, afterSaleRefunded: 1000 })).toBe(true);
+  expect(orderTotals({ ...facts, status: "cancelled", refunded: 500, afterSaleRefunded: 1000 })).toMatchObject({ refundDue: 19000 });
+});
+
+test.each(["in_progress", "completed", "cancelled"] as const)("zero after-sale refunds preserve M8 totals for %s", (status) => {
+  expect(orderTotals({ ...facts, status, afterSaleRefunded: 0 })).toEqual(orderTotals({ ...facts, status }));
 });
 
 test("overpaid and cancelled orders show the required refund", () => {

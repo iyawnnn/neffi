@@ -10,13 +10,14 @@ import { createOrderAction } from "./actions";
 type Line = { kind: "dbc" | "grc"; quantity: number; agreedTotal: string; label: string; reviewUrl: string; adjust: boolean };
 const newLine = (): Line => ({ kind: "dbc", quantity: 1, agreedTotal: "", label: "", reviewUrl: "", adjust: false });
 
-export function OrderForm({ products, purchaser }: { products: { kind: "dbc" | "grc"; name: string; price: number }[]; purchaser?: { id: string; name: string; contactNumber: string | null } }) {
+export function OrderForm({ products, purchaser, supportCaseId }: { products: { kind: "dbc" | "grc"; name: string; price: number }[]; purchaser?: { id: string; name: string; contactNumber: string | null }; supportCaseId?: string }) {
   const [lines, setLines] = useState<Line[]>([newLine()]);
   const [delivery, setDelivery] = useState("pickup");
   const [paidNow, setPaidNow] = useState(false);
   const [method, setMethod] = useState("cash");
   const update = (index: number, change: Partial<Line>) => setLines((current) => current.map((line, i) => i === index ? { ...line, ...change } : line));
   return <ActionForm action={createOrderAction} submit="Create order">
+    {supportCaseId ? <input type="hidden" name="supportCaseId" value={supportCaseId} /> : null}
     <fieldset className="space-y-3"><legend className="mb-3 text-lg font-semibold">Purchaser</legend>
       {purchaser ? <><input type="hidden" name="purchaserId" value={purchaser.id} /><p>{purchaser.name}{purchaser.contactNumber ? ` · ${purchaser.contactNumber}` : ""}</p></> : <>
         <label className="flex flex-col gap-1 text-sm">Name<Input name="name" required maxLength={100} autoComplete="name" /></label>

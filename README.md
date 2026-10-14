@@ -7,7 +7,7 @@ NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monol
 | **Digital Business Card** | An NFC card with a permanent URL that opens the customer's Neffi profile. Customers activate it with a package code and manage their profile and Scenes from a phone |
 | **Google Review Card** | An NFC card that opens a business's direct Google review page. Neffi records the sale; the tag is prepared by hand |
 
-Status: Milestones 1–8 are complete (customer app, public card, owner business operations). Milestone 9A (Support Cases and corrections) is planned, not built. See [`docs/roadmap.md`](docs/roadmap.md).
+Status: Milestones 1–8 are complete. M9A Support Cases and corrections are implemented on the feature branch; the software and local acceptance gates precede integration. M9B remains next. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Documentation
 
@@ -58,7 +58,7 @@ The app refuses to start with missing or invalid configuration and names the var
 | `pnpm db:seed` | Destructive development-only reset to synthetic fixtures; requires explicit development context |
 | `pnpm db:erd` | Regenerate [`docs/database/erd.md`](docs/database/erd.md) from migrations (no credentials). Never edit that file by hand |
 | `pnpm accounts:set-role <email> <owner\|customer>` | Guarded operator-only role change with an atomic activity event |
-| `pnpm check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` | Two-session race regressions on a disposable loopback PostgreSQL only (never Neon; not run in CI) |
+| `pnpm check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency`, `check:support-concurrency` | Two-session race regressions on a disposable loopback PostgreSQL only (never Neon; not run in CI) |
 | `pnpm dev:activation-fixture`, `pnpm dev:form-submission` | Local-only synthetic fixtures for browser acceptance (loopback database only) |
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, `db:check`, migration drift check, build and `check:bundle`.
@@ -67,7 +67,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, `db:check`, migrati
 
 ```
 src/app/        routes: (public), (customer)/app, admin, api    src/proxy.ts   /c/:token availability
-src/modules/    domain services (accounts, activation, activity, cards, expenses, forms, inventory, orders, payments, profiles)
+src/modules/    domain services (accounts, activation, activity, cards, expenses, forms, inventory, orders, payments, profiles, support)
 src/db/         schema, connection, seed, invariant tests       drizzle/       reviewed SQL migrations
 src/auth/       Better Auth, access checks                      src/config/    validated environment and isolation
 src/integrations/  email (Resend), media (Cloudinary)           docs/          documentation (see above)

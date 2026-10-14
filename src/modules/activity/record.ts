@@ -30,6 +30,14 @@ export type ActivityType =
   | "card_disabled"
   | "card_enabled"
   | "support_case_resolved"
+  | "support_case_opened"
+  | "support_case_assigned"
+  | "support_case_waiting"
+  | "support_case_reopened"
+  | "support_case_linked"
+  | "support_order_linked"
+  | "activation_credential_reissued"
+  | "card_ownership_reset"
   | "note";
 
 type ActivityInput = {
@@ -39,6 +47,7 @@ type ActivityInput = {
   accountId?: string;
   orderId?: string;
   stockPurchaseId?: string;
+  supportCaseId?: string;
   note?: string;
 };
 

@@ -1,4 +1,4 @@
-# Neffi — product definition (current state: through Milestone 8)
+# Neffi — product definition (current state: through Milestone 9A)
 
 This is the canonical description of what Neffi is and how it behaves today. Behavior that is approved but not yet built is labelled **Planned**. For detail, follow the links to [`docs/specs/`](docs/specs/) and [`docs/decisions/`](docs/decisions/). [`docs/README.md`](docs/README.md) is the map of which document is authoritative for what.
 
@@ -51,10 +51,10 @@ A GRC is a **simple commercial order line** ([0006](docs/decisions/0006-grc-simp
 
 ## Owner business operations (`/admin`)
 
-OWNER accounts see Dashboard, Orders, Inventory, Customers, Expenses and Settings, plus global search. Detail: [orders and fulfilment](docs/specs/orders-and-fulfillment.md), [money and costs](docs/specs/money-and-costs.md), [accounts and access](docs/specs/accounts-and-access.md).
+OWNER accounts see Dashboard, Orders, Inventory, Customers, Expenses, Support and Settings, plus global search. Detail: [orders and fulfilment](docs/specs/orders-and-fulfillment.md), [money and costs](docs/specs/money-and-costs.md), [accounts and access](docs/specs/accounts-and-access.md).
 
 - **Orders.** A purchaser name is enough to create an order from a phone. Lines copy the catalog price; an optional negotiated total overrides a line. Orders are assigned to an owner, carry internal notes and activity history, and are In Progress, Completed or Cancelled. Items, delivery and fee can be edited while In Progress. Completion is automatic ([orders and fulfilment](docs/specs/orders-and-fulfillment.md)). Cancellation is allowed only before any DBC release or commercial delivery.
-- **Payments and refunds.** Partial or later payments are allowed, capped at the balance. Refunds apply to In Progress or Cancelled orders. Originals are never changed; a void (reason required) strikes a row through and excludes it from totals.
+- **Payments and refunds.** Partial or later payments are allowed, capped at the balance. Sale refunds apply to In Progress or Cancelled orders. Completed-order payment corrections and after-sale refunds require an active linked Support Case, a reason and confirmation. After-sale refunds reduce cash kept without creating a balance; a voided payment may show Balance due after correction. Originals are never changed; a void (reason required) strikes a row through and excludes it from totals.
 - **Fulfilment.** Pickup and local hand-off are recorded as Hand over; courier orders record a shipment with courier, tracking and cost. Shipment status (in transit, delivered, failed, returned, lost) can be updated even after completion, without reopening the order.
 - **Inventory.** Cards are the inventory unit; counts by state are always derived. Stock purchases carry supplier, reference, date and optional purchase and inbound-shipping costs.
 - **Expenses.** Manual entries plus costs derived from stock purchases and courier shipments, each counted once. This is operational tracking, not accounting.
@@ -62,11 +62,14 @@ OWNER accounts see Dashboard, Orders, Inventory, Customers, Expenses and Setting
 - **Dashboard and search.** In Progress count, outstanding balances, collected and expenses this month, stock counts, recent activity; search across orders, purchasers, accounts, cards and tracking numbers.
 - **Settings.** Products and pricing (one active product per kind; changes affect future orders only) and the read-only list of owners. Owner roles are changed only by a guarded command-line tool.
 
+## Support and corrections (M9A)
+
+Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assignment, Open/Waiting/Resolved status, reopen, immutable related links, internal notes and Activity. Guided actions correct Completed-order money, retire defective Released DBCs, release verified free replacements against the original item, link real paid replacement orders and record support shipments. Reissue and wrong-account reset require purchase/claim verification and a note; the code is revealed once for delivery outside Neffi. Reset keeps the permanent URL and leaves the former Account’s Profile intact. See [support and corrections](docs/specs/support-and-corrections.md).
+
 ## Planned and later (not current behavior)
 
-- **M9A (approved, not implemented):** Support Cases; corrections to Completed Orders (refund after completion, void a payment); retiring a defective card and releasing a free replacement; reissuing a lost activation code; resetting a wrong-account claim; paid-replacement linkage; shipping-exception follow-up. See [the plan](docs/superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md).
 - **M9B (later):** public support intake, account recovery, and support/security/recovery email.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
 - **M10 and later:** OWNER MFA, CSP and rate-limit tuning, full verification, pilot readiness. See [the roadmap](docs/roadmap.md).
 
-Until M9A ships, completed orders cannot be corrected inside Neffi, released cards have no owner actions, and customer "contact support" text has no in-product form.
+Customer "contact support" text still has no in-product public form; public intake, account recovery and email are M9B.

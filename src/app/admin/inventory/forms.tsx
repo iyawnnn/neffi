@@ -29,7 +29,7 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(reveal.code);
-      setMessage("Activation code copied. Save it to the card's package now.");
+      setMessage(reveal.instructions ? "Activation code copied." : "Activation code copied. Save it to the card's package now.");
     } catch {
       setMessage("Could not copy. Select the code and copy it manually.");
     }
@@ -39,12 +39,11 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
     <div role="status" className="flex flex-col gap-4 rounded-lg border-2 border-primary bg-secondary p-5 text-sm">
       <h2 className="text-xl font-semibold">Activation code — shown once</h2>
       <p className="break-all font-mono text-2xl font-semibold tracking-wider select-all">{reveal.code}</p>
-      <Button type="button" className="h-10 self-start" onClick={copy}>Copy activation code</Button>
+      <Button type="button" className="min-h-11 self-start" onClick={copy}>Copy activation code</Button>
       <p role="status">{message}</p>
       {reveal.url ? <p className="break-all font-mono text-xs select-all">{reveal.url}</p> : null}
       <p>
-        Save this code to the card&apos;s package now. It cannot be shown again. If it is lost before release,
-        use Credential recovery.
+        {reveal.instructions ?? "Save this code to the card's package now. It cannot be shown again. If it is lost before release, use Credential recovery."}
       </p>
     </div>
   );

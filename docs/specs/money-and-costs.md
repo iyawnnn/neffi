@@ -1,6 +1,6 @@
 # Spec: Money, payments, refunds and costs
 
-**Status:** implemented (M8). Related: [0008](../decisions/0008-append-only-money.md), [orders and fulfilment](orders-and-fulfillment.md).
+**Status:** implemented through M9A. Related: [0008](../decisions/0008-append-only-money.md), [orders and fulfilment](orders-and-fulfillment.md), [support and corrections](support-and-corrections.md).
 
 ## Principles
 
@@ -12,11 +12,14 @@ Money is integer PHP centavos; owners enter pesos (for example `1,500.50`), each
 |---|---|
 | Item total | `agreed_total`, or `quantity × unit_price` |
 | Order total | Sum of item totals + shipping fee |
-| Received / Refunded | Sum of **non-voided** payments / refunds |
-| Net paid | Received − Refunded |
-| Balance | `max(Order total − Net paid, 0)` |
-| Payment state | **Paid** if Net paid ≥ Order total, otherwise **Unpaid** (partial is Unpaid) |
-| Refund due | In Progress: `max(Net paid − Order total, 0)`; Cancelled: Net paid; Completed: 0 |
+| Received | Sum of **non-voided** payments |
+| Sale refunded | Non-voided refunds without a support case |
+| After-sale refunded | Non-voided refunds linked to a support case (Completed orders only) |
+| Settled paid | Received − Sale refunded |
+| Net paid | Settled paid − After-sale refunded (cash kept; refund cap) |
+| Balance | `max(Order total − Settled paid, 0)` |
+| Payment state | **Paid** if Settled paid ≥ Order total, otherwise **Unpaid** |
+| Refund due | In Progress: `max(Settled paid − Order total, 0)`; Cancelled: Net paid; Completed: 0 |
 | Discount (display only) | `quantity × unit_price − agreed_total` when overridden |
 
 ## Payments
@@ -29,7 +32,7 @@ In Progress or Cancelled orders, `0 < amount ≤ net paid`, optional reason. A r
 
 ## Voids
 
-A void records time, actor and a required reason on the original row, one way (a database guard blocks changing it), and excludes the row from every total. The row stays visible, struck through. Payment voids: In Progress only. Refund voids: In Progress or Cancelled (so a mis-keyed refund after cancellation can be voided and re-recorded). Completed orders accept neither (**Planned: M9A**, from a Support Case).
+A void records time, actor and a required reason on the original row, one way (a database guard blocks changing it), and excludes the row from every total. The row stays visible, struck through. The order workspace allows payment voids while In Progress and sale-refund voids while In Progress or Cancelled. An active Support Case linked to a Completed order permits payment correction, after-sale refunds and their voids. Sale refunds cannot be voided after completion. A voided payment may show **Balance due after correction**, settled by a new payment capped at balance; the order remains Completed.
 
 ## Costs and expenses
 
@@ -39,8 +42,8 @@ A void records time, actor and a required reason on the original row, one way (a
 
 ## Dashboard definitions
 
-*Outstanding* = sum of balances of In Progress orders. *Collected this month* = non-voided payments minus non-voided refunds by their own dates. *Expenses this month* = the report total. There is no profit metric.
+*Outstanding* = sum of balances of In Progress and Completed orders (including balance due after correction). *Collected this month* = non-voided payments minus all non-voided refunds by their own dates. *Expenses this month* = the report total. There is no profit metric.
 
 ## Non-goals
 
-Accounting, tax, payables, invoices, receipts, payment gateways, idempotency keys for partial payments (a duplicate is corrected by a void), and corrections to Completed orders (**Planned: M9A**).
+Accounting, tax, payables, invoices, receipts, payment gateways and idempotency keys for partial payments (a duplicate is corrected by a void).

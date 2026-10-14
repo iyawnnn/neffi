@@ -16,6 +16,7 @@ import { reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, sh
 import { cancelOrderAction } from "./actions";
 import { ActionSheet } from "./action-sheet";
 import { MoneyFields } from "./money-fields";
+import { casesForOrder } from "@/modules/support/queries";
 
 export const instant = false;
 
@@ -26,6 +27,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   if (!z.uuid().safeParse(orderId).success) notFound();
   const order = await getOrderDetail(db, orderId);
   if (!order) notFound();
+  const supportCases = await casesForOrder(db, orderId);
   const hidden = <input type="hidden" name="orderId" value={order.id} />;
   const canDeliver = order.cards.some((card) => card.state === "reserved") || (order.items.some((item) => item.productKind === "grc") && !order.hasCommercialDelivery);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
@@ -33,6 +35,9 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   return <main data-admin-section="orders" className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-4 sm:p-8">
     <header className="space-y-2"><Link className="inline-flex min-h-11 items-center underline" href="/admin/orders">Orders</Link><h1 className="text-2xl font-semibold">Order {order.number}</h1><p>{order.status.replaceAll("_", " ")} · {order.totals.paymentState}</p><Link className="underline" href={`/admin/customers/purchasers/${order.purchaserId}`}>{order.purchaser.name}</Link>{order.purchaser.contactNumber ? <p>{order.purchaser.contactNumber}</p> : null}</header>
     <dl className="grid grid-cols-2 gap-4 tabular-nums sm:grid-cols-4">{[["Order total", order.totals.orderTotal], ["Net paid", order.totals.netPaid], ["Balance", order.totals.balance], ["Refund due", order.totals.refundDue]].map(([label, value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="text-lg font-semibold">{formatPeso(value as number)}</dd></div>)}</dl>
+    {order.status === "completed" && order.totals.balance > 0 ? <p role="status" className="rounded-lg border p-4">Balance due after correction: {formatPeso(order.totals.balance)}</p> : null}
+    {order.status === "completed" ? <p>After-sale refunds: {formatPeso(order.totals.afterSaleRefunded ?? 0)}</p> : null}
+    <section className="space-y-3"><h2 className="text-xl font-semibold">Support cases</h2><Link className="flex min-h-11 items-center underline" href={`/admin/support/new?orderId=${order.id}&purchaserId=${order.purchaserId}`}>Open support case</Link>{supportCases.map((support) => <Link key={support.id} className="flex min-h-11 items-center underline" href={`/admin/support/${support.id}`}>{support.summary} · {support.status.replaceAll("_", " ")}</Link>)}{!supportCases.length ? <p>No support cases linked to this order.</p> : null}</section>
     <section className="space-y-4"><h2 className="text-xl font-semibold">Items &amp; fulfillment</h2>
       {order.items.map((item) => <div key={item.id} className="space-y-2 border-b pb-4"><h3 className="font-medium">{item.name}{item.label ? ` · ${item.label}` : ""}</h3><p className="tabular-nums">{item.quantity} × {formatPeso(item.unitPrice)} · Total {formatPeso(effectiveItemTotal(item))}</p>{item.agreedTotal !== null ? <p className="text-sm">Adjustment: {formatPeso(item.quantity * item.unitPrice - item.agreedTotal)}</p> : null}{item.productKind === "dbc" ? <p className="text-sm">{item.activeCount} reserved or released · {item.releasedCount} released</p> : <p className="text-sm text-muted-foreground">Manual programming · Commercial delivery {order.hasCommercialDelivery ? "recorded" : "pending"}</p>}{item.reviewUrl ? <a className="block break-all underline" href={item.reviewUrl}>{item.reviewUrl}</a> : null}</div>)}
       {order.cards.map((card) => <Link className="flex min-h-11 items-center gap-3 underline" key={card.id} href={`/admin/inventory/cards/${card.id}`}>{card.kind?.toUpperCase()} {card.suffix ?? card.id.slice(-4)} · {card.state}</Link>)}
@@ -63,7 +68,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
     </section>
     <section className="space-y-4"><h2 className="text-xl font-semibold">Payments &amp; refunds</h2>
       {order.payments.map((payment) => <div key={payment.id} className={payment.voidedAt ? "text-muted-foreground" : ""}><p className={payment.voidedAt ? "line-through" : ""}>Payment {formatPeso(payment.amount)} · {payment.method} · {payment.paidOn}</p>{payment.reference ? <p className="text-sm">{payment.reference}</p> : null}{payment.voidedAt ? <p className="text-sm">Voided: {payment.voidReason}</p> : order.status === "in_progress" ? correction("payment", payment.id) : null}</div>)}
-      {order.refunds.map((refund) => <div key={refund.id}><p className={refund.voidedAt ? "line-through text-muted-foreground" : ""}>Refund {formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p>{refund.reason ? <p className="text-sm">{refund.reason}</p> : null}{refund.voidedAt ? <p className="text-sm">Voided: {refund.voidReason}</p> : order.status !== "completed" && !refund.supportCaseId ? correction("refund", refund.id) : null}</div>)}
+      {order.refunds.map((refund) => <div key={refund.id}><p className={refund.voidedAt ? "line-through text-muted-foreground" : ""}>{refund.supportCaseId ? "After-sale refund" : "Refund"} {formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p>{refund.supportCaseId ? <Link className="flex min-h-11 items-center underline" href={`/admin/support/${refund.supportCaseId}`}>View support case</Link> : null}{refund.reason ? <p className="text-sm">{refund.reason}</p> : null}{refund.voidedAt ? <p className="text-sm">Voided: {refund.voidReason}</p> : order.status !== "completed" && !refund.supportCaseId ? correction("refund", refund.id) : null}</div>)}
       {!order.payments.length && !order.refunds.length ? <p>No money recorded.</p> : null}
       <div className="flex flex-wrap gap-3">
         {order.status === "in_progress" && order.totals.balance > 0 ? <ActionSheet title="Record payment"><ActionForm action={recordPaymentAction} submit="Record payment">{hidden}<MoneyFields kind="payment" amount={order.totals.balance} /></ActionForm></ActionSheet> : null}

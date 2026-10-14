@@ -20,6 +20,17 @@ test("rejects malformed or excessive line data", async () => {
   expect(createOrder).not.toHaveBeenCalled();
 });
 
+test("validates and forwards the optional support case link", async () => {
+  const data = form();
+  data.set("supportCaseId", "invalid");
+  expect(await createOrderAction(undefined, data)).toHaveProperty("error");
+  expect(createOrder).not.toHaveBeenCalled();
+  const caseId = crypto.randomUUID();
+  data.set("supportCaseId", caseId);
+  await createOrderAction(undefined, data);
+  expect(createOrder).toHaveBeenCalledWith({}, expect.objectContaining({ supportCaseId: caseId }));
+});
+
 test("ignores client prices, converts negotiated pesos and redirects to the new workspace", async () => {
   await createOrderAction(undefined, form('[{"kind":"dbc","quantity":1,"agreedTotal":"400.50","unitPrice":1}]'));
   expect(createOrder).toHaveBeenCalledWith({}, expect.objectContaining({ actorId: "owner", items: [{ kind: "dbc", quantity: 1, agreedTotal: 40050, label: undefined, reviewUrl: undefined }] }));

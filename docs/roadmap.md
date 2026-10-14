@@ -12,13 +12,13 @@ Status as of 2026-10-14. Implementation plans for each milestone are kept as his
 | M6 | Customer mobile experience (guided setup, Profiles, Scenes, Blocks, Forms, Inbox, Cloudinary media, Sharing QR) | Complete, merged |
 | M7 | Public NFC / active Scene experience (`/c/{token}`) | Complete, merged. Physical NFC acceptance passed |
 | M8 | Owner business operations (Orders, payments, fulfilment, inventory, expenses, customers, dashboard, search, Settings) | Complete, merged (PR #8). Local acceptance and isolated Preview acceptance passed. The optional real-card chain (T20) and the physical-phone scenario were not run |
-| **M9A** | Support Cases, corrections to Completed Orders, DBC card corrections, free and paid replacements, shipping exceptions | **Planned, approved, not implemented.** [Plan](superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md) |
-| M9B | Public support intake, account-recovery support path, support/security/recovery email | Later, not yet planned |
+| **M9A** | Support Cases, corrections to Completed Orders, DBC card corrections, free and paid replacements, shipping exceptions | **Implemented on the feature branch; software/local acceptance gates precede integration.** [Plan](superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md) |
+| M9B | Public support intake, account-recovery support path, support/security/recovery email | Next, not yet planned |
 | M10 | Security and performance hardening (OWNER MFA/step-up, rate-limit tuning, CSP, query review) | Later |
 | M11 | Full verification | Later |
 | M12 | Pilot readiness gate | Later. It cannot pass while any required physical acceptance is pending |
 
-No production deployment exists yet. Migrations `0011`–`0012` (and `0013` once M9A ships) have not been applied to any shared Neon database. Applying them to `neffi-dev` is a separate, explicitly approved decision.
+No production deployment exists yet. Neon development is migrated through `0012`. Migration `0013_support_guards` is local-only verified; applying it to `neffi-dev` requires separate explicit approval. M9A does not modify Neon development or Production.
 
 ## Deliberately deferred
 

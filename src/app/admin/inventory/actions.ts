@@ -17,7 +17,7 @@ import { OrderError } from "@/modules/orders/errors";
 
 // Every action is a public endpoint: authorize as OWNER first, then validate, then call the domain service.
 // A raw activation code appears only in the `reveal` of the response that issued it.
-export type ActionState = { error?: string; ok?: string; href?: string; reveal?: { code: string; url?: string } };
+export type ActionState = { error?: string; ok?: string; href?: string; reveal?: { code: string; url?: string; instructions?: string } };
 
 const MESSAGES: Record<CardErrorCode, string> = {
   not_found: "That card was not found.",

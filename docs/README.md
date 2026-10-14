@@ -35,6 +35,7 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 - [Orders and fulfilment](specs/orders-and-fulfillment.md)
 - [Money and costs](specs/money-and-costs.md): payments, refunds, voids, expenses, stock costs
 - [Accounts and access](specs/accounts-and-access.md): sign-in, roles, authorization, the owner Account view
+- [Support and corrections](specs/support-and-corrections.md): owner cases, Completed-order money, replacements, shipping and verified card recovery
 
 ## Decision records
 
@@ -54,15 +55,14 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 
 ## Current, planned and later
 
-- **Current:** everything through M8. All documents above describe it.
-- **Planned (approved, not implemented):** M9A, in [its plan](superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md). Documents refer to it as planned only.
+- **Current:** M1–M8 are merged. M9A is implemented on the feature branch, with software/local acceptance gates before integration; the specs describe its behavior.
 - **Later:** M9B and M10–M12 (see [roadmap](roadmap.md)).
 
-The `support_cases` and `support_case_cards` tables, and the `support_case_id` links on refunds, shipments and activity, exist in the schema but no application behavior uses them yet.
+M9A uses the existing Support tables and subject links, with the additive guards in migration `0013`. Neon development remains through `0012` pending separate apply approval.
 
 ## Milestone plans
 
-[`superpowers/plans/`](superpowers/plans/) holds one implementation plan per milestone, M1 to M8 (all implemented and merged) and M9A (planned). They record what was decided and built at the time. Each carries a status banner. Where a plan disagrees with the documents above, the documents above win. The main example is the earlier GRC order-fulfilment lifecycle, superseded by [decision 0006](decisions/0006-grc-simple-commercial-line.md).
+[`superpowers/plans/`](superpowers/plans/) holds one implementation plan per milestone, M1 to M8 (all implemented and merged) and the canonical M9A execution plan. They record the decisions and implementation sequence; task evidence stays in the ignored local ledger. The main historical drift is the earlier GRC order-fulfilment lifecycle, superseded by [decision 0006](decisions/0006-grc-simple-commercial-line.md).
 
 ## Known drift in Notion (not edited)
 
