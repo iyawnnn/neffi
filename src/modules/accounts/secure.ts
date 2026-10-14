@@ -6,7 +6,7 @@ import type { EmailSender } from "@/integrations/email/resend";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { withCase } from "../support/case";
-import { containsActivationCode } from "../support/credentials";
+import { containsStoredCredential } from "../support/credentials";
 import { verificationSchema } from "../support/domain";
 import { SupportError } from "../support/errors";
 import { lockCustomerAccount } from "./recovery";
@@ -14,7 +14,7 @@ import { sendSecurityNotice } from "./security-notice";
 
 export async function secureAccount(db: Db, input: { caseId: string; actorId: string } & Record<string, unknown>, send: EmailSender) {
   const parsed = verificationSchema.safeParse(input);
-  if (!parsed.success || containsActivationCode(parsed.data.verificationNote)) throw new SupportError("invalid_input");
+  if (!parsed.success || containsStoredCredential(parsed.data.verificationNote)) throw new SupportError("invalid_input");
   const account = await withCase(db, input, async (tx, row) => {
     const target = await lockCustomerAccount(tx, row.accountId);
     if (parsed.data.unlinkGoogle && !target.emailVerified) throw new SupportError("checks_incomplete");

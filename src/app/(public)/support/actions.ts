@@ -27,7 +27,7 @@ export async function submitSupportAction(_previous: SupportState | undefined, d
     });
     return { ok: SUPPORT_SUCCESS };
   } catch (error) {
-    if (error instanceof SupportError && error.code === "invalid_input") return { error: "Check the fields and try again." };
+    if (error instanceof SupportError && error.code === "invalid_input") return { error: "Check the fields and remove any activation or recovery codes before sending." };
     throw error;
   }
 }

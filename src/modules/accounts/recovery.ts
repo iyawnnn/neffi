@@ -9,7 +9,7 @@ import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { lockCase, withCase } from "../support/case";
 import { sameLookup } from "../activation/code";
-import { containsActivationCode } from "../support/credentials";
+import { containsStoredCredential } from "../support/credentials";
 import { recoveryCompletionSchema, recoveryInitiationSchema, RECOVERY_LIFETIME_MS } from "../support/domain";
 import { SupportError } from "../support/errors";
 import { sendSecurityNotice } from "./security-notice";
@@ -32,7 +32,7 @@ export function pgCode(error: unknown): string | undefined {
 
 export async function initiateRecovery(db: Db, input: { caseId: string; actorId: string; secret: string; now?: Date } & Record<string, unknown>, send: EmailSender) {
   const parsed = recoveryInitiationSchema.safeParse(input);
-  if (!parsed.success || containsActivationCode(parsed.data.verificationNote)) throw new SupportError("invalid_input");
+  if (!parsed.success || containsStoredCredential(parsed.data.verificationNote)) throw new SupportError("invalid_input");
   const data = parsed.data; const now = input.now ?? new Date();
   const recoveryId = randomUUID(); const code = String(randomInt(100000000)).padStart(8, "0");
   let account: typeof s.accounts.$inferSelect;
@@ -58,7 +58,8 @@ export async function initiateRecovery(db: Db, input: { caseId: string; actorId:
   let sent = true;
   try { await send({ to: data.newEmail, ...recoveryCodeEmail(code, now), idempotencyKey: `recovery-code-${recoveryId}` }); }
   catch { sent = false; }
-  await recordActivity(db, { type: sent ? "support_email_sent" : "support_email_failed", actorAccountId: input.actorId, accountId: account.id, supportCaseId: input.caseId, note: `recovery_code ${recoveryId}` });
+  try { await recordActivity(db, { type: sent ? "support_email_sent" : "support_email_failed", actorAccountId: input.actorId, accountId: account.id, supportCaseId: input.caseId, note: `recovery_code ${recoveryId}` }); }
+  catch { /* Delivery audit failure must not interrupt the independently attempted old-address notice. */ }
   await sendSecurityNotice(db, { accountId: account.id, caseId: input.caseId, actorId: input.actorId, kind: "recovery_started", attemptId: recoveryId, at: now, recipients: [{ to: account.email, slot: "old" }] }, send);
   return { recoveryId };
 }

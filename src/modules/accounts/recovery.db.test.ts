@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
 import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
@@ -39,6 +39,12 @@ test("owner targets, occupied email, unverified input and resolved cases refuse 
   await tx.update(s.supportCases).set({ status: "resolved", resolvedAt: new Date() }).where(eq(s.supportCases.id, f.support.id));
   await expect(initiateRecovery(tx, f.input, async () => {})).rejects.toMatchObject({ code: "case_resolved" });
   expect(await tx.select().from(s.accountRecoveries)).toHaveLength(0);
+}));
+
+test("recovery and secure verification notes cannot persist recovery-code-shaped credentials", () => rollback(db, async tx => {
+  const f = await fixture(tx);
+  for (const action of [initiateRecovery, secureAccount]) await expect(action(tx, { ...f.input, verificationNote: "Recovery code 12345678" }, async () => {})).rejects.toMatchObject({ code: "invalid_input" });
+  expect(await tx.select().from(s.activityEvents)).toHaveLength(0);
 }));
 test("expired recovery can be replaced and a failed code email requires cancel and fresh initiation", () => rollback(db, async tx => {
   const f = await fixture(tx); const before = new Date("2026-10-01T00:00:00Z");
@@ -126,4 +132,14 @@ test("manual notice retry uses the old snapshot and never regenerates or resends
   expect(sent).toHaveLength(1); expect(sent[0].to).toBe(f.account.email);
   expect(sent[0].text).not.toContain(f.code);
   expect(sent[0].idempotencyKey).not.toContain("recovery-code");
+}));
+
+test("post-commit code delivery audit failure still returns initiation and attempts the old-address notice", () => rollback(db, async tx => {
+  const f = await fixture(tx); const sent: Email[] = [];
+  const insert = vi.spyOn(tx, "insert").mockImplementationOnce(() => { throw new Error("synthetic delivery audit failure"); });
+  try {
+    await expect(initiateRecovery(tx, f.input, async email => { sent.push(email); })).resolves.toHaveProperty("recoveryId");
+    expect(sent.some(email => email.to === f.account.email && email.subject === "Neffi account security notice")).toBe(true);
+    expect(await tx.select().from(s.accountRecoveries)).toHaveLength(1);
+  } finally { insert.mockRestore(); }
 }));

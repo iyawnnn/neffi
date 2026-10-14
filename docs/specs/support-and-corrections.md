@@ -66,6 +66,8 @@ Initiate/secure lock case → Account `FOR UPDATE`; completion looks up without 
 
 Proof is HMAC-only, eight digits and valid for 24 hours. Code is emailed only to the new address, once, without a resend path; failed delivery requires cancellation and fresh initiation. Started notice goes to the old address, completion notices to both. Customers must not sign in at the proposed address beforehand: email-code signup may create an occupied Account, which recovery refuses without merging or deleting.
 
+Intake free text and recovery/secure verification notes reject activation-shaped credentials and standalone eight-digit recovery-shaped strings before persistence. The any-16-character-run filter can also reject numeric references or long words composed of the accepted code alphabet; provide blocked evidence through the owner's verified channel without pasting codes into Neffi.
+
 Secure account uses the same verification on any active linked customer case, revokes sessions and optionally removes Google only when verified email remains. It changes no email or business records. Recovery notices retry from saved address snapshots; secure notices target Account email rather than public contact. Notices contain only event, time, optional case reference and support guidance, never the other address, codes or submitted support text. Delivery failure never undoes committed changes. Recovery routes are dynamic and noindex.
 
 Migration `0014` freezes intake fields on UPDATE only, with no DELETE-blocking case trigger (N2). Recovery history is immutable after terminal status and cannot be deleted. Public-data retention and full privacy/terms pages remain deferred.

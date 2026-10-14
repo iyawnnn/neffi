@@ -7,12 +7,14 @@ import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { ACK_WINDOW_MS, categories, intakeSchema, SUPPORT_LIMITS } from "./domain";
 import { SupportError } from "./errors";
+import { containsStoredCredential } from "./credentials";
 
 export async function submitSupportRequest(db: Db, input: unknown, { ip, secret, viewer, now = new Date() }: { ip: string; secret: string; viewer?: Viewer | null; now?: Date }): Promise<{ caseId?: string; acknowledge: boolean }> {
   if (input && typeof input === "object" && "website" in input && input.website) return { acknowledge: false };
   const parsed = intakeSchema.safeParse(input);
   if (!parsed.success) throw new SupportError("invalid_input");
   const data = parsed.data;
+  if (containsStoredCredential(data.message) || containsStoredCredential(data.name)) throw new SupportError("invalid_input");
   const email = (viewer?.email ?? data.email).toLowerCase();
   return db.transaction(async tx => {
     const [existing] = await tx.select({ id: s.supportCases.id }).from(s.supportCases).where(eq(s.supportCases.clientKey, data.clientKey));

@@ -22,6 +22,11 @@ test("public intake is unassigned, anonymous, unlinked and never queries Account
   } finally { query.mockRestore(); }
 }));
 
+test("credential-shaped free text is refused before persistence", () => rollback(db, async tx => {
+  for (const change of [{ message: "My code is 0123-4567-89AB-CDEF" }, { message: "My recovery code is 12345678" }, { name: "0123456789ABCDEF" }]) await expect(submitSupportRequest(tx, { ...data(), ...change }, options)).rejects.toMatchObject({ code: "invalid_input" });
+  expect(await tx.select().from(s.supportCases)).toHaveLength(0);
+}));
+
 test("client key dedupes and a prior case throttles acknowledgement for 24 hours", () => rollback(db, async tx => {
   const input = data();
   const first = await submitSupportRequest(tx, input, options);

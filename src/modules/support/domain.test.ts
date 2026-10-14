@@ -41,6 +41,11 @@ test("ordinary messages and invalid alphabet do not look like activation credent
   expect(containsActivationCode("0123456789ABCDEU")).toBe(false);
 });
 
+test("embedding a code in a longer token does not bypass the email credential guard", () => {
+  expect(containsActivationCode("code0123456789ABCDEF")).toBe(true);
+  expect(containsActivationCode("0123456789ABCDEF0")).toBe(true);
+});
+
 test("acknowledgement and security notices accept no personal content and use fixed headers", () => {
   const at = new Date("2026-10-14T12:00:00Z");
   const ack = acknowledgementEmail("abcdef12-1234-4000-8000-000000000001", at);
