@@ -1,4 +1,5 @@
 # Milestone 6 — Customer Mobile Experience Implementation Plan
+> **Historical implementation plan — implemented and merged. This is not the current specification.** Current behavior is in [PRODUCT.md](../../../PRODUCT.md) and [docs/README.md](../../README.md). Where this plan disagrees with them, they win.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans or superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. This plan is executor-independent: any capable agent (or human) must be able to execute it from repository state alone.
 

@@ -1,4 +1,5 @@
 # Milestone 8: Owner Business Operations Implementation Plan
+> **Historical implementation plan — implemented and merged. This is not the current specification.** Current behavior is in [PRODUCT.md](../../../PRODUCT.md) and [docs/README.md](../../README.md). Where this plan disagrees with them, they win. The Google Review Card order-fulfilment lifecycle described here (Card reservation, NFC verification, release) was superseded by [decision 0006](../../decisions/0006-grc-simple-commercial-line.md).
 
 > **For agentic workers:** **Codex is the sole implementation agent.** Execute task by task with superpowers:executing-plans (or subagent-driven-development), following the per-task protocol in §0. This plan is executor-independent: any capable agent must be able to resume from repository state and the local ledger alone.
 

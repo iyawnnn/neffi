@@ -1,4 +1,5 @@
 # Neffi Milestone 4 — Physical Card Provisioning Plan
+> **Historical implementation plan — implemented and merged. This is not the current specification.** Current behavior is in [PRODUCT.md](../../../PRODUCT.md) and [docs/README.md](../../README.md). Where this plan disagrees with them, they win. The Google Review Card order-fulfilment lifecycle described here (Card reservation, NFC verification, release) was superseded by [decision 0006](../../decisions/0006-grc-simple-commercial-line.md).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use `- [ ]`. No worktree. Branch `feat/m4-provisioning`, created only after explicit authorization.
 

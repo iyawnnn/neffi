@@ -1,4 +1,5 @@
 # TapCard Milestone 1 — Foundation Implementation Plan
+> **Historical implementation plan — implemented and merged. This is not the current specification.** Current behavior is in [PRODUCT.md](../../../PRODUCT.md) and [docs/README.md](../../README.md). Where this plan disagrees with them, they win.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to carry out this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > On approval, Task 0 copies this file to `docs/superpowers/plans/2026-10-10-milestone-1-foundation.md` inside the feature worktree. Plan mode only allows writing here, so that copy happens in Task 0.
