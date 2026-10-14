@@ -7,6 +7,11 @@ import pg from "pg";
 import * as schema from "../src/db/schema";
 import { randomCrockford } from "../src/lib/crockford";
 import { issueActivationCredential } from "../src/modules/activation/credentials";
+import { consumeQuota, hmacHex } from "../src/auth/otp-quota";
+import { initiateRecovery, completeRecovery } from "../src/modules/accounts/recovery";
+import { submitSupportRequest } from "../src/modules/support/intake";
+import type { EmailSender } from "../src/integrations/email/resend";
+import { sql } from "drizzle-orm";
 import { claimCard } from "../src/modules/activation/claim";
 import { connectCardToProfile, setCardDisabled } from "../src/modules/cards/manage";
 import { reserveDbcCards } from "../src/modules/orders/fulfillment";
@@ -81,13 +86,14 @@ try {
     const { rows: [payment] } = await admin.query("INSERT INTO payments(order_id,amount,method,paid_on,recorded_by_account_id) VALUES($1,100,'cash','2026-10-14',$2) RETURNING id", [orderId, owner]);
     return { actorId: owner, caseId, orderId, orderItemId, ...card, paymentId: payment.id as string, reason: "Synthetic verified correction" };
   }
-  async function lockedScenario(table: "support_cases" | "orders" | "order_items" | "cards" | "accounts", id: string, calls: (() => Promise<unknown>)[], prepare?: (holder: Db) => Promise<void>, whileBlocked?: (holder: Db) => Promise<void>) {
+  async function lockedScenario(table: "support_cases" | "orders" | "order_items" | "cards" | "accounts" | "auth_otp_quotas", id: string, calls: (() => Promise<unknown>)[], prepare?: (holder: Db) => Promise<void>, whileBlocked?: (holder: Db) => Promise<void>) {
     const holder = await connect();
     const { rows: [{ pid }] } = await holder.query("SELECT pg_backend_pid() AS pid");
     let pending: ReturnType<typeof settle>[] = [];
     try {
       await drizzle({ client: holder, schema, casing: "snake_case" }).transaction(async (tx) => {
-        await holder.query(`SELECT id FROM ${table} WHERE id=$1 FOR ${table === "support_cases" || table === "orders" ? "NO KEY UPDATE" : "UPDATE"}`, [id]);
+        const key = table === "auth_otp_quotas" ? "key" : "id";
+        await holder.query(`SELECT ${key} FROM ${table} WHERE ${key}=$1 FOR ${table === "support_cases" || table === "orders" ? "NO KEY UPDATE" : "UPDATE"}`, [id]);
         if (prepare) await prepare(tx);
         pending = calls.map((call) => settle(call()));
       let waiting = 0;
@@ -238,8 +244,72 @@ try {
     assert.deepEqual((await admin.query("SELECT state,owner_account_id,profile_id FROM cards WHERE id=$1", [f.cardId])).rows[0], { state: "retired", owner_account_id: null, profile_id: null });
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [f.cardId])).rows[0].n, 0);
   });
+  const noEmail: EmailSender = async () => {};
+  async function recoveryTarget() {
+    const accountId = randomUUID(), email = `${randomUUID()}@example.test`;
+    await admin.query("INSERT INTO accounts(id,name,email,role,email_verified) VALUES($1,'Synthetic recovery customer',$2,'customer',true)", [accountId, email]);
+    const { caseId } = await openCase(dbA, { actorId: owner, type: "account_recovery", summary: "Synthetic recovery", accountId });
+    return { accountId, email, caseId, actorId: owner, newEmail: `${randomUUID()}@example.test`, secret, confirmed: true, verificationNote: "Synthetic purchase verified", unlinkGoogle: true };
+  }
+  async function recoveryFixture() {
+    const target = await recoveryTarget(); let code = "";
+    const { recoveryId } = await initiateRecovery(dbA, target, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{8}\b/)![0]; });
+    return { ...target, recoveryId, code };
+  }
+  const finish = (db: Db, f: Awaited<ReturnType<typeof recoveryFixture>>) => completeRecovery(db, { email: f.newEmail, code: f.code, secret }, noEmail);
+  await check("R13 two recovery completions produce one winner", async () => {
+    const f = await recoveryFixture(); const results: boolean[] = [];
+    const errors = await lockedScenario("support_cases", f.caseId, [() => finish(dbA, f).then(r => { results.push(r.ok); }), () => finish(dbB, f).then(r => { results.push(r.ok); })]);
+    assert(errors.every(e => !e)); assert.deepEqual(results.sort(), [false, true]);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activity_events WHERE support_case_id=$1 AND type='account_recovery_completed'", [f.caseId])).rows[0].n, 1);
+  });
+  await check("R14 recovery vs self-service email update has no lost update", async () => {
+    const f = await recoveryFixture(); const changed = `${randomUUID()}@example.test`; let completed = false;
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { completed = r.ok; }), () => dbB.execute(sql`UPDATE accounts SET email=${changed} WHERE id=${f.accountId}`)]);
+    assert(errors.every(e => !e));
+    assert.equal((await admin.query("SELECT email FROM accounts WHERE id=$1", [f.accountId])).rows[0].email, changed);
+    assert.equal((await admin.query("SELECT status FROM account_recoveries WHERE id=$1", [f.recoveryId])).rows[0].status, completed ? "completed" : "pending");
+  });
+  await check("R15 recovery vs same-Account Card claim waits without deadlock", async () => {
+    const f = await recoveryFixture(); const card = await fixture(); let recovered = false; let claimed = "";
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => claimCard(dbB, { credentialId: card.credentialId, accountId: f.accountId }).then(r => { claimed = r.status; })]);
+    assert(errors.every(e => !e)); assert(recovered); assert.equal(claimed, "claimed");
+    assert.equal((await admin.query("SELECT owner_account_id FROM cards WHERE id=$1", [card.cardId])).rows[0].owner_account_id, f.accountId);
+  });
+  await check("R16 two initiations for one Account produce one pending recovery", async () => {
+    const f = await recoveryTarget();
+    const other = await openCase(dbA, { actorId: owner, type: "account_recovery", summary: "Synthetic second recovery", accountId: f.accountId });
+    const errors = await lockedScenario("accounts", f.accountId, [() => initiateRecovery(dbA, f, noEmail), () => initiateRecovery(dbB, { ...f, caseId: other.caseId, newEmail: `${randomUUID()}@example.test` }, noEmail)]);
+    single(errors, "recovery_live");
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM account_recoveries WHERE account_id=$1 AND status='pending'", [f.accountId])).rows[0].n, 1);
+  });
+  await check("R16 two Accounts cannot reserve one new email", async () => {
+    const first = await recoveryTarget(), second = await recoveryTarget();
+    const errors = await lockedScenario("support_cases", first.caseId, [() => initiateRecovery(dbB, { ...second, newEmail: first.newEmail }, noEmail)], async holder => { await initiateRecovery(holder, first, noEmail); });
+    assert.equal(errorCode(errors[0]), "recovery_live");
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM account_recoveries WHERE new_email=$1 AND status='pending'", [first.newEmail])).rows[0].n, 1);
+  });
+  await check("R17 intake double submit creates one case and one acknowledgement", async () => {
+    const key = hmacHex(secret, "support-global", "all"); await consumeQuota(dbA, key, 100);
+    const input = { email: `${randomUUID()}@example.test`, category: "other", message: "Synthetic support request", clientKey: randomUUID() }; const results: boolean[] = [];
+    const errors = await lockedScenario("auth_otp_quotas", key, [() => submitSupportRequest(dbA, input, { secret, ip: "synthetic-a" }).then(r => { results.push(r.acknowledge); }), () => submitSupportRequest(dbB, input, { secret, ip: "synthetic-b" }).then(r => { results.push(r.acknowledge); })]);
+    assert(errors.every(e => !e)); assert.deepEqual(results.sort(), [false, true]);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM support_cases WHERE client_key=$1", [input.clientKey])).rows[0].n, 1);
+  });
+  await check("R18 recovery vs owner Card reset serializes without inversion", async () => {
+    const f = await recoveryFixture(), card = await fixture(); await claimCard(dbA, { credentialId: card.credentialId, accountId: f.accountId }); let recovered = false;
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => resetCardOwnership(dbB, { ...card, verificationNote: "Synthetic purchase verified", activationSecret: secret })]);
+    assert(errors.every(e => !e)); assert(recovered);
+    assert.deepEqual((await admin.query("SELECT owner_account_id,profile_id FROM cards WHERE id=$1", [card.cardId])).rows[0], { owner_account_id: null, profile_id: null });
+  });
+  await check("R19 recovery vs Account-then-Card profile setup has no deadlock", async () => {
+    const f = await recoveryFixture(), card = await fixture(); await claimCard(dbA, { credentialId: card.credentialId, accountId: f.accountId }); let recovered = false; let profileId = "";
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => createProfileFromStarter(dbB, { accountId: f.accountId, cardId: card.cardId, purpose: "network", essentials: { fullName: "Synthetic recovery profile", headline: null, bio: null, email: null, phone: null, link: null } }).then(r => { profileId = r.profileId; })]);
+    assert(errors.every(e => !e)); assert(recovered); assert(profileId);
+    assert.deepEqual((await admin.query("SELECT owner_account_id,profile_id FROM cards WHERE id=$1", [card.cardId])).rows[0], { owner_account_id: f.accountId, profile_id: profileId });
+  });
   assert.equal(failures.length, 0, `${failures.length} support concurrency checks failed`);
-  console.log("All R1–R12 support races passed (17 scenarios). No remote database accessed.");
+  console.log("All R1–R19 support races passed (25 scenarios). No remote database accessed.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));
