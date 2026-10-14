@@ -23,6 +23,7 @@ export function fakeGoogleIdToken(profile: GoogleProfile) {
 export async function createTestAuth({ baseURL = TEST_BASE_URL }: { baseURL?: string } = {}) {
   const db = await createTestDb();
   const sent: { email: string; code: string; type: string }[] = [];
+  const connected: { accountId: string; email: string }[] = [];
   const auth = betterAuth(
     authOptions({
       db,
@@ -32,9 +33,10 @@ export async function createTestAuth({ baseURL = TEST_BASE_URL }: { baseURL?: st
       sendAuthCode: async (message) => {
         sent.push(message);
       },
+      onGoogleConnected: async message => { connected.push(message); },
     }),
   );
-  return { auth, db, sent, baseURL, client: () => createClient(auth, baseURL) };
+  return { auth, db, sent, connected, baseURL, client: () => createClient(auth, baseURL) };
 }
 export type TestAuth = Awaited<ReturnType<typeof createTestAuth>>;
 

@@ -6,6 +6,7 @@ import { sendEmail } from "@/integrations/email/sender";
 import { prepareCaseMessage, dispatchCaseEmail } from "@/modules/support/email";
 import { initiateRecovery, cancelRecovery, resendRecoveryNotice } from "@/modules/accounts/recovery";
 import { secureAccount } from "@/modules/accounts/secure";
+import { resendCaseSecurityNotice } from "@/modules/accounts/security-notice";
 import { recoveryInitiationSchema, verificationSchema } from "@/modules/support/domain";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -103,6 +104,9 @@ export async function secureAccountAction(_previous: ActionState | undefined, da
 }
 export async function resendRecoveryNoticeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ caseId: id, recoveryId: id, kind: z.enum(["recovery_started", "recovery_completed"]) }), data, (input, actorId) => resendRecoveryNotice(db, { ...input, actorId }, sendEmail));
+}
+export async function resendSecurityNoticeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, eventId: id }), data, (input, actorId) => resendCaseSecurityNotice(db, { ...input, actorId }, sendEmail));
 }
 
 export async function setCaseStatusAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

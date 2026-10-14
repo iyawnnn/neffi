@@ -5,6 +5,8 @@ import type { EmailSender } from "@/integrations/email/resend";
 import { securityNoticeEmail, type NoticeKind } from "@/integrations/email/support-templates";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
+import { withCase } from "../support/case";
+import { SupportError } from "../support/errors";
 
 export type SecurityNotice = { accountId: string; caseId?: string; actorId: string | null; kind: NoticeKind; attemptId: string; at: Date; recipients: { to: string; slot: "old" | "new" | "current" }[] };
 export async function sendSecurityNotice(db: Db, input: SecurityNotice, send: EmailSender) {
@@ -22,4 +24,15 @@ export async function sendSecurityNotice(db: Db, input: SecurityNotice, send: Em
       }
     });
   } catch { /* A committed security change must remain successful if notice persistence fails. */ }
+}
+
+export async function resendCaseSecurityNotice(db: Db, input: { caseId: string; actorId: string; eventId: string }, send: EmailSender) {
+  const notice = await withCase(db, { ...input, requireActive: false }, async (tx, support) => {
+    const [event] = await tx.select().from(s.activityEvents).where(and(eq(s.activityEvents.id, input.eventId), eq(s.activityEvents.supportCaseId, support.id), eq(s.activityEvents.type, "security_notice_failed")));
+    if (!event || !event.accountId || !event.note?.startsWith("account_secured ")) throw new SupportError("invalid_input");
+    const [account] = await tx.select({ email: s.accounts.email }).from(s.accounts).where(eq(s.accounts.id, event.accountId));
+    if (!account) throw new SupportError("not_found");
+    return { accountId: event.accountId, email: account.email, at: event.createdAt };
+  });
+  await sendSecurityNotice(db, { accountId: notice.accountId, caseId: input.caseId, actorId: input.actorId, kind: "account_secured", attemptId: crypto.randomUUID(), at: notice.at, recipients: [{ to: notice.email, slot: "current" }] }, send);
 }

@@ -33,6 +33,7 @@ describe("Google sign-in", () => {
   });
 
   test("a new verified Google user gets a customer Account and identity, and no Google tokens are stored", async () => {
+    const noticesBefore = t.connected.length;
     const p = profile();
     const client = t.client();
     const { callback } = await googleFlow(client, p);
@@ -46,6 +47,7 @@ describe("Google sign-in", () => {
     expect(identity.accessToken).toBeNull();
     expect(identity.refreshToken).toBeNull();
     expect(identity.idToken).toBeNull();
+    expect(t.connected).toHaveLength(noticesBefore);
   });
 
   test("an unverified Google email is refused and creates nothing", async () => {
@@ -119,6 +121,7 @@ describe("Connect Google (deliberate linking)", () => {
     expect(location(callback).searchParams.get("error")).toBeNull();
     const [account] = await accountsWithEmail(p.email);
     expect((await identitiesFor(p.sub))[0].userId).toBe(account.id);
+    expect(t.connected).toContainEqual({ accountId: account.id, email: p.email });
   });
 
   test("refuses a Google account with a different email", async () => {
