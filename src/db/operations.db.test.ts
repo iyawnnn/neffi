@@ -49,6 +49,7 @@ describe("Support Cases", () => {
             refundedOn: "2026-10-10",
             recordedByAccountId: owner.id,
             supportCaseId: missing,
+            reason: "Synthetic support refund",
           }),
         "23503",
         "refunds_support_case_id_support_cases_id_fk",
