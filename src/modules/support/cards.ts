@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "../../db/schema";
-import { revokeUsableCredential, usableCredential } from "../activation/credentials";
+import { issueActivationCredential, revokeUsableCredential, usableCredential } from "../activation/credentials";
 import { recordActivity } from "../activity/record";
 import { lockCard } from "../cards/card";
 import type { Db } from "../db";
@@ -57,4 +57,31 @@ export async function releaseReplacementCard(db: Db, input: CaseMutation & { ord
     await recordActivity(tx, { type: "card_released", actorAccountId: input.actorId, cardId: card.id, orderId: item.orderId, supportCaseId: row.id });
     await settleOrderCompletion(tx, item.orderId, input.actorId);
   });
+}
+
+type RecoveryInput = CaseMutation & { cardId: string; verificationNote: string; activationSecret: string };
+
+async function recoverCredential(db: Db, input: RecoveryInput, reset: boolean) {
+  if (!z.string().trim().min(1).max(500).safeParse(input.verificationNote).success) throw new SupportError("invalid_input");
+  return withCase(db, input, async (tx, row) => {
+    const [linked] = await tx.select({ id: s.supportCaseCards.cardId }).from(s.supportCaseCards).where(and(eq(s.supportCaseCards.supportCaseId, row.id), eq(s.supportCaseCards.cardId, input.cardId)));
+    if (!linked) throw new SupportError("card_not_linked");
+    const card = await lockCard(tx, input.cardId);
+    if (card.kind !== "dbc" || card.state !== "released") throw new SupportError("card_unavailable");
+    if (reset && !card.ownerAccountId) throw new SupportError("card_unclaimed");
+    if (!reset && card.ownerAccountId) throw new SupportError("card_claimed");
+    if (reset) await tx.update(s.cards).set({ ownerAccountId: null, profileId: null, disabledAt: null }).where(eq(s.cards.id, card.id));
+    await revokeUsableCredential(tx, card.id);
+    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.activationSecret);
+    await recordActivity(tx, { type: reset ? "card_ownership_reset" : "activation_credential_reissued", actorAccountId: input.actorId, cardId: card.id, supportCaseId: row.id, accountId: card.ownerAccountId ?? undefined, note: input.verificationNote.trim() });
+    return { credentialId, activationCode: code };
+  });
+}
+
+export function reissueActivationCode(db: Db, input: RecoveryInput) {
+  return recoverCredential(db, input, false);
+}
+
+export function resetCardOwnership(db: Db, input: RecoveryInput) {
+  return recoverCredential(db, input, true);
 }

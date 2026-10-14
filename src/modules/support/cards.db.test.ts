@@ -4,11 +4,12 @@ import * as s from "@/db/schema";
 import { insertAccount, insertReleasedDbc, insertProvisioningDbc, insertProfile, insertProduct, insertStockPurchase } from "@/db/test-fixtures";
 import { createTestDb, expectPgError, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { issueActivationCredential } from "../activation/credentials";
-import { claimCard } from "../activation/claim";
+import { claimCard, checkActivationCode } from "../activation/claim";
+import { activationLookup } from "../activation/code";
 import { resolveCard } from "../cards/resolve";
 import { loadOrderFacts } from "../orders/order";
 import { openCase, linkCaseCard } from "./case";
-import { retireAffectedCard, releaseReplacementCard } from "./cards";
+import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, resetCardOwnership } from "./cards";
 
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
 
@@ -60,6 +61,50 @@ test.each([false, true])("retire claimed=%s clears routing, revokes only usable 
   expect(await claimCard(tx, { accountId: customer.id, credentialId: replacement.credential.credentialId })).toMatchObject({ status: "claimed", cardId: replacement.card.id });
   const [retired] = (await tx.select().from(s.activityEvents)).filter((event) => event.type === "card_retired");
   expect(retired).toMatchObject({ supportCaseId: f.caseId, orderId: f.order.id, accountId: claimed ? customer.id : null });
+}));
+
+test.each([false, true])("verified code recovery reset=%s keeps the URL and old credential history", (reset) => rollback(db, async (tx) => {
+  const f = await fixture(tx);
+  const a = await insertAccount(tx);
+  const b = await insertAccount(tx);
+  const profile = await insertProfile(tx, a.id);
+  if (reset) {
+    await claimCard(tx, { accountId: a.id, credentialId: f.credential.credentialId });
+    await tx.update(s.cards).set({ profileId: profile.id, disabledAt: new Date() }).where(eq(s.cards.id, f.card.id));
+  }
+  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Verified invoice and requester claim", activationSecret: SECRET };
+  const recover = reset ? resetCardOwnership : reissueActivationCode;
+  await expect(recover(tx, base)).rejects.toMatchObject({ code: "card_not_linked" });
+  await linkCaseCard(tx, { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id });
+  await expect(recover(tx, { ...base, verificationNote: " " })).rejects.toMatchObject({ code: "invalid_input" });
+  const result = await recover(tx, base);
+  const [card] = await tx.select().from(s.cards).where(eq(s.cards.id, f.card.id));
+  expect(card).toMatchObject({ publicToken: f.card.publicToken, state: "released", ownerAccountId: null, profileId: null, disabledAt: null });
+  const credentials = await tx.select().from(s.activationCredentials).where(eq(s.activationCredentials.cardId, card.id));
+  expect(credentials).toHaveLength(2);
+  expect(credentials.filter((c) => !c.usedAt && !c.revokedAt)).toHaveLength(1);
+  const old = credentials.find((c) => c.id === f.credential.credentialId)!;
+  expect(reset ? old.usedAt : old.revokedAt).toBeInstanceOf(Date);
+  expect(await checkActivationCode(tx, { secret: SECRET, code: f.credential.code })).toEqual({ status: "unavailable" });
+  expect(await checkActivationCode(tx, { secret: SECRET, code: result.activationCode })).toMatchObject({ status: "claimable", credentialId: result.credentialId });
+  expect(credentials.find((c) => c.id === result.credentialId)?.lookupHmac).toBe(activationLookup(SECRET, result.activationCode));
+  const events = await tx.select().from(s.activityEvents);
+  expect(JSON.stringify(events)).not.toContain(result.activationCode);
+  expect(JSON.stringify(credentials)).not.toContain(result.activationCode);
+  expect(await claimCard(tx, { accountId: b.id, credentialId: result.credentialId })).toMatchObject({ status: "claimed" });
+  expect((await tx.select().from(s.profiles).where(eq(s.profiles.id, profile.id)))[0].accountId).toBe(a.id);
+  const event = events.find((e) => e.type === (reset ? "card_ownership_reset" : "activation_credential_reissued"));
+  expect(event).toMatchObject({ supportCaseId: f.caseId, accountId: reset ? a.id : null, note: base.verificationNote });
+}));
+
+test("reissue refuses claimed cards and reset refuses unclaimed cards", () => rollback(db, async (tx) => {
+  const f = await fixture(tx);
+  await linkCaseCard(tx, { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id });
+  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Invoice checked", activationSecret: SECRET };
+  await expect(resetCardOwnership(tx, base)).rejects.toMatchObject({ code: "card_unclaimed" });
+  const customer = await insertAccount(tx);
+  await claimCard(tx, { accountId: customer.id, credentialId: f.credential.credentialId });
+  await expect(reissueActivationCode(tx, base)).rejects.toMatchObject({ code: "card_claimed" });
 }));
 
 test("retirement refuses a different order, cancelled order, and every unreleased state", () => rollback(db, async (tx) => {
