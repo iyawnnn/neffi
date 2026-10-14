@@ -29,7 +29,17 @@ test.each(["open", "waiting_on_customer", "resolved"])("owner workspace renders 
 test("queue renders empty state and Support navigation", async () => {
   const html = renderToStaticMarkup(await Queue({ searchParams: Promise.resolve({}) }));
   expect(html).toContain("No support cases match");
+  expect(html).toContain('name="source"');
   expect(renderToStaticMarkup(<AdminNav />)).toContain('href="/admin/support"');
+});
+
+test("public requester stays the displayed recipient when an Account is linked", async () => {
+  getCaseDetail.mockResolvedValue({ ...detail, source: "public", requesterEmail: "requester@example.test", requesterMessage: "Please help", account: { email: "account@example.test", methods: [] } });
+  const html = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  expect(html).toContain("Recipient: requester@example.test");
+  expect(html).toContain("Unverified contact");
+  expect(html).toContain("Send reply");
+  expect(html).toContain("Resolve with notice");
 });
 
 test("correction sheets follow case, order and linked-card state", async () => {

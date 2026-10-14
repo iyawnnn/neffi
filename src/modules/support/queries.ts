@@ -19,11 +19,11 @@ export async function caseLinkOptions(db: Db, query = "") {
 
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-export async function listCases(db: Db, { before, status }: { before?: string; status?: typeof s.supportCaseStatus.enumValues[number] } = {}) {
+export async function listCases(db: Db, { before, status, source }: { before?: string; status?: typeof s.supportCaseStatus.enumValues[number]; source?: typeof s.supportCaseSource.enumValues[number] } = {}) {
   const cursor = before ? CURSOR.exec(before) : null;
-  const rows = await db.select({ id: s.supportCases.id, type: s.supportCases.type, summary: s.supportCases.summary, status: s.supportCases.status, assignedToAccountId: s.supportCases.assignedToAccountId, createdAt: s.supportCases.createdAt,
+  const rows = await db.select({ id: s.supportCases.id, type: s.supportCases.type, summary: s.supportCases.summary, status: s.supportCases.status, source: s.supportCases.source, assignedToAccountId: s.supportCases.assignedToAccountId, createdAt: s.supportCases.createdAt,
     cursor: sql<string>`${s.supportCases.createdAt}::text || '|' || ${s.supportCases.id}::text`,
-  }).from(s.supportCases).where(and(status ? eq(s.supportCases.status, status) : undefined, cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(26);
+  }).from(s.supportCases).where(and(status ? eq(s.supportCases.status, status) : undefined, source ? eq(s.supportCases.source, source) : undefined, cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(26);
   const page = rows.slice(0, 25);
   return { cases: page, next: rows.length > 25 ? page[24].cursor : null };
 }

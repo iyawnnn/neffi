@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { sendEmail } from "@/integrations/email/sender";
+import { prepareCaseMessage, dispatchCaseEmail } from "@/modules/support/email";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
@@ -18,6 +21,7 @@ import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, rese
 import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
 
 const MESSAGES: Record<SupportErrorCode, string> = {
+  recovery_pending: "Cancel the pending recovery before resolving this case.",
   recipient_missing: "Link an Account or use a case with a requester email before sending.",
   activation_code_in_email: "Remove the activation code; give it to the customer directly",
   not_found: "That record was not found. Reload the case and try again.", invalid_input: "Check the fields and try again.",
@@ -65,6 +69,17 @@ export async function openCaseAction(_previous: ActionState | undefined, data: F
 
 export async function assignCaseAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ caseId: id, assignedToAccountId: id }), data, (input, actorId) => assignCase(db, { ...input, actorId }));
+}
+
+export async function sendCaseMessageAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, kind: z.enum(["reply", "resolution", "acknowledgement"]), attemptId: id, body: z.string().trim().max(2000).optional(), resend: z.preprocess(value => value === "on", z.boolean()) }), data, async (input, actorId) => {
+    await prepareCaseMessage(db, { ...input, actorId });
+    after(async () => {
+      try { await dispatchCaseEmail(db, { ...input, actorId }, sendEmail, env.supportReplyTo); }
+      catch { /* Status is persisted; delivery is best effort. */ }
+    });
+    return { ok: "Saved. Check the Activity timeline for the delivery result." };
+  });
 }
 
 export async function setCaseStatusAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

@@ -13,6 +13,8 @@ import { ActionSheet } from "../../orders/[orderId]/action-sheet";
 import { LinkSelect, linkChoices } from "../link-fields";
 import { assignCaseAction, setCaseStatusAction, reopenCaseAction, addCaseNoteAction, fillCaseLinkAction, linkCaseCardAction } from "./actions";
 import { CaseCorrections } from "./corrections";
+import { CaseEmails } from "./emails";
+import type { CaseEmailKind } from "@/modules/support/email";
 
 export const instant = false;
 
@@ -28,8 +30,12 @@ export default async function CasePage({ params, searchParams }: PageProps<"/adm
   const choices = linkChoices(await caseLinkOptions(db, q));
   const hidden = <input name="caseId" type="hidden" value={caseId} />;
   const active = support.status !== "resolved";
+  const recipient = support.requesterEmail ?? support.account?.email ?? null;
+  const failedKinds = [...new Set(support.timeline.filter(event => event.type === "support_email_failed").map(event => event.note?.split(" ")[0]).filter((kind): kind is CaseEmailKind => kind === "acknowledgement" || kind === "reply" || kind === "resolution"))];
   return <main data-admin-section="support" className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-4 sm:p-8">
     <header className="space-y-2"><Link className="flex min-h-11 items-center underline" href="/admin/support">Support</Link><h1 className="break-words text-2xl font-semibold">{support.summary}</h1><p>{support.type.replaceAll("_", " ")} · {support.status.replaceAll("_", " ")}</p><p className="text-sm text-muted-foreground">Opened {formatDateTime(support.createdAt)} · Updated {formatDateTime(support.updatedAt)}</p></header>
+    <section className="space-y-2"><h2 className="text-xl font-semibold">Requester</h2><p>Source: {support.source ?? "owner"}</p>{support.requesterEmail ? <p className="break-all">Unverified contact: {support.requesterEmail}</p> : null}{support.requesterName ? <p>{support.requesterName}</p> : null}{support.requesterMessage ? <p className="whitespace-pre-wrap break-words">{support.requesterMessage}</p> : null}</section>
+    <CaseEmails caseId={caseId} recipient={recipient} active={active} failedKinds={failedKinds} />
     <section className="space-y-4"><h2 className="text-xl font-semibold">Case status</h2><div className="flex flex-wrap gap-3">
       {active ? <><ActionForm action={setCaseStatusAction} submit={support.status === "open" ? "Wait on customer" : "Mark open"}>{hidden}<input type="hidden" name="status" value={support.status === "open" ? "waiting_on_customer" : "open"} /></ActionForm><ActionSheet title="Resolve case"><ActionForm action={setCaseStatusAction} submit="Resolve case">{hidden}<input type="hidden" name="status" value="resolved" /><label className="flex flex-col gap-1 text-sm">Resolution note (optional)<Textarea name="note" maxLength={500} /></label><p>Corrections are blocked while the case is resolved. You can reopen it later.</p></ActionForm></ActionSheet></> : <ActionForm action={reopenCaseAction} submit="Reopen case">{hidden}</ActionForm>}
     </div>{support.resolvedAt ? <p>Resolved {formatDateTime(support.resolvedAt)}</p> : null}
