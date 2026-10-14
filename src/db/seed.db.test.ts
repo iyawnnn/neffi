@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { accounts, activationCredentials, cards } from "./schema";
+import { accounts, accountRecoveries, activationCredentials, cards } from "./schema";
 import { countRows, SEED_IDS, seed } from "./seed";
 import { createTestDb, type TestDb } from "./testing";
 
@@ -57,7 +57,8 @@ test("the development seed is deterministic and re-runnable", async () => {
   expect(second).toEqual(first);
   // Every domain table is exercised; no sign-in exists yet, so identities, sessions and verifications stay empty.
   const authOnly = ["auth_identities", "auth_sessions", "auth_verifications", "auth_rate_limits", "auth_otp_quotas"];
-  expect(Object.entries(first).filter(([table, n]) => !authOnly.includes(table) && n === 0)).toEqual([]);
+  expect(Object.entries(first).filter(([table, n]) => !authOnly.includes(table) && table !== "account_recoveries" && n === 0)).toEqual([]);
+  expect(first.account_recoveries).toBe(0);
   expect(authOnly.map((table) => first[table])).toEqual([0, 0, 0, 0, 0]);
   const [owner] = await db.select().from(accounts).where(eq(accounts.id, SEED_IDS.ownerOne));
   expect(owner.email).toMatch(/@example\.test$/);
@@ -68,6 +69,13 @@ test("seeded credentials are lookup values only; no activation code exists for t
   const credentials = await db.select({ lookupHmac: activationCredentials.lookupHmac }).from(activationCredentials);
   expect(credentials.length).toBeGreaterThan(0);
   for (const { lookupHmac } of credentials) expect(lookupHmac).toMatch(/^5eed0{56}[0-9a-f]{4}$/);
+});
+
+test("seed cleanup includes recovery history without relying on cascade", async () => {
+  await seed(db);
+  await db.insert(accountRecoveries).values({ supportCaseId: SEED_IDS.supportCaseDefective, accountId: SEED_IDS.customerAna, oldEmail: "synthetic@example.test", newEmail: "recovery@example.test", codeHmac: "a".repeat(64), expiresAt: new Date(0), createdByAccountId: SEED_IDS.ownerOne });
+  await seed(db);
+  expect((await countRows(db)).account_recoveries).toBe(0);
 });
 
 test("seed refuses to reset an unlisted table linked by a foreign key", async () => {

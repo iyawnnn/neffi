@@ -75,6 +75,7 @@ const SEED_TABLES = [
   "form_submissions",
   "expenses",
   "support_cases",
+  "account_recoveries",
   "support_case_cards",
   "activity_events",
 ] as const;

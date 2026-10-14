@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { accounts } from "./auth";
 import { createdAt, timestamps } from "./columns";
 import { orders, purchasers } from "./commerce";
-import { expenseCategory, supportCaseCardRole, supportCaseStatus, supportCaseType } from "./enums";
+import { expenseCategory, supportCaseCardRole, supportCaseSource, supportCaseStatus, supportCaseType } from "./enums";
 import { cards, stockPurchases } from "./inventory";
 
 // Manually entered costs only. Stock-purchase and courier costs stay on their source rows and are combined
@@ -38,6 +38,11 @@ export const supportCases = pgTable(
     type: supportCaseType().notNull(),
     status: supportCaseStatus().notNull().default("open"),
     summary: text().notNull(),
+    source: supportCaseSource().notNull().default("owner"),
+    requesterEmail: text(),
+    requesterName: text(),
+    requesterMessage: text(),
+    clientKey: uuid(),
     purchaserId: uuid().references(() => purchasers.id),
     accountId: uuid().references(() => accounts.id),
     orderId: uuid().references(() => orders.id),
@@ -49,12 +54,43 @@ export const supportCases = pgTable(
   },
   (t) => [
     check("support_cases_resolved_at_matches_status", sql`(${t.status} = 'resolved') = (${t.resolvedAt} IS NOT NULL)`),
+    check("support_cases_public_contact", sql`${t.source} <> 'public' OR (${t.requesterEmail} IS NOT NULL AND ${t.openedByAccountId} IS NULL)`),
+    check("support_cases_requester_email", sql`${t.requesterEmail} = lower(${t.requesterEmail}) AND length(${t.requesterEmail}) <= 254`),
+    check("support_cases_requester_name", sql`length(${t.requesterName}) <= 100`),
+    check("support_cases_requester_message", sql`length(${t.requesterMessage}) <= 2000`),
+    uniqueIndex("support_cases_client_key_unique").on(t.clientKey).where(sql`${t.clientKey} IS NOT NULL`),
+    index("support_cases_source_status_idx").on(t.source, t.status),
+    index("support_cases_public_ack_idx").on(t.requesterEmail, t.createdAt).where(sql`${t.source} = 'public'`),
     index("support_cases_open_idx").on(t.status, t.createdAt).where(sql`${t.status} <> 'resolved'`),
     index("support_cases_order_id_idx").on(t.orderId).where(sql`${t.orderId} IS NOT NULL`),
     index("support_cases_account_id_idx").on(t.accountId).where(sql`${t.accountId} IS NOT NULL`),
     index("support_cases_purchaser_id_idx").on(t.purchaserId).where(sql`${t.purchaserId} IS NOT NULL`),
   ],
 );
+
+export const accountRecoveries = pgTable("account_recoveries", {
+  id: uuid().primaryKey().defaultRandom(),
+  supportCaseId: uuid().notNull().references(() => supportCases.id),
+  accountId: uuid().notNull().references(() => accounts.id),
+  oldEmail: text().notNull(),
+  newEmail: text().notNull(),
+  codeHmac: text().notNull(),
+  attempts: integer().notNull().default(0),
+  status: text().$type<"pending" | "completed" | "cancelled">().notNull().default("pending"),
+  unlinkGoogle: boolean().notNull().default(true),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+  createdByAccountId: uuid().notNull().references(() => accounts.id),
+  ...timestamps(),
+  completedAt: timestamp({ withTimezone: true }),
+  cancelledAt: timestamp({ withTimezone: true }),
+}, t => [
+  check("account_recoveries_new_email", sql`${t.newEmail} = lower(${t.newEmail}) AND length(${t.newEmail}) <= 254`),
+  check("account_recoveries_code_hmac", sql`${t.codeHmac} ~ '^[0-9a-f]{64}$'`),
+  check("account_recoveries_attempts", sql`${t.attempts} BETWEEN 0 AND 3`),
+  check("account_recoveries_status", sql`${t.status} IN ('pending', 'completed', 'cancelled')`),
+  uniqueIndex("account_recoveries_pending_account_unique").on(t.accountId).where(sql`${t.status} = 'pending'`),
+  uniqueIndex("account_recoveries_pending_email_unique").on(t.newEmail).where(sql`${t.status} = 'pending'`),
+]);
 
 export const supportCaseCards = pgTable(
   "support_case_cards",

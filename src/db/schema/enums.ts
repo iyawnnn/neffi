@@ -47,5 +47,6 @@ export const supportCaseType = pgEnum("support_case_type", [
   "other",
 ]);
 export const supportCaseStatus = pgEnum("support_case_status", ["open", "waiting_on_customer", "resolved"]);
+export const supportCaseSource = pgEnum("support_case_source", ["owner", "public", "account"]);
 // `replacement` marks a free/support replacement card; it stays linked to the case instead of becoming a sale.
 export const supportCaseCardRole = pgEnum("support_case_card_role", ["affected", "replacement"]);
