@@ -46,3 +46,6 @@ next-env.d.ts
 
 # local tool caches
 .impeccable/
+
+# local SDD ledgers and evidence (never committed)
+.superpowers/
