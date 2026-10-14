@@ -7,7 +7,7 @@ import Page from "./page";
 
 test("support streams a usable signed-out form with privacy and recovery guidance", async () => {
   getViewer.mockResolvedValue(null);
-  const stream = await renderToReadableStream(<Page searchParams={Promise.resolve({ topic: "activation" })} />);
+  const stream = await renderToReadableStream(<Page params={Promise.resolve({})} searchParams={Promise.resolve({ topic: "activation" })} />);
   await stream.allReady;
   const html = await new Response(stream).text();
   expect(html).toContain('name="email"');
@@ -18,7 +18,7 @@ test("support streams a usable signed-out form with privacy and recovery guidanc
 });
 test("signed-in form uses verified contact and drops malformed card identifiers", async () => {
   getViewer.mockResolvedValue({ email: "verified@example.test" });
-  const stream = await renderToReadableStream(<Page searchParams={Promise.resolve({ topic: "bad", cardId: "bad" })} />);
+  const stream = await renderToReadableStream(<Page params={Promise.resolve({})} searchParams={Promise.resolve({ topic: "bad", cardId: "bad" })} />);
   await stream.allReady;
   const html = await new Response(stream).text();
   expect(html).toContain("verified@example.test");
