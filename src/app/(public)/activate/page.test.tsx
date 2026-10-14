@@ -36,6 +36,7 @@ test("signed out: code entry with a way to sign in", async () => {
   expect(html).toContain("data-code-form");
   expect(html).toContain('href="/sign-in?next=/activate"');
   expect(html).not.toContain("Go to my Neffi");
+  expect(html).toContain('href="/support?topic=activation"');
 });
 
 test("signed in without cards: activate your Neffi, identity shown, easy way home", async () => {

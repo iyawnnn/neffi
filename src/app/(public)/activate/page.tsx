@@ -81,6 +81,7 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
     <main className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-16">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <h1 className="text-center text-2xl font-semibold tracking-tight">{heading}</h1>
+        <Link href="/support?topic=activation" className="flex min-h-11 items-center underline">Need help activating? Contact Neffi support</Link>
         {notice ? (
           <p role="status" className="w-full rounded-lg bg-muted px-3 py-2 text-sm">
             {notice}
