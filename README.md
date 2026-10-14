@@ -7,7 +7,7 @@ NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monol
 | **Digital Business Card** | An NFC card with a permanent URL that opens the customer's Neffi profile. Customers activate it with a package code and manage their profile and Scenes from a phone |
 | **Google Review Card** | An NFC card that opens a business's direct Google review page. Neffi records the sale; the tag is prepared by hand |
 
-Status: Milestones 1–8 are complete. M9A Support Cases and corrections are implemented on the feature branch; the software and local acceptance gates precede integration. M9B remains next. See [`docs/roadmap.md`](docs/roadmap.md).
+Status: Milestones 1–9A are merged. M9B public support, recovery and email are locally implemented; final software verification and separately approved Preview/user acceptance precede integration. No shared migration or deployment is implied. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Documentation
 
@@ -37,6 +37,7 @@ Start at [`docs/README.md`](docs/README.md), the map of which document is author
    - `BETTER_AUTH_URL`: `http://localhost:3000`
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: the development/Preview OAuth web client
    - `RESEND_API_KEY`, `AUTH_EMAIL_FROM`: the development/Preview send-only key and sender (see the [auth runbook](docs/operations.md#authentication-runbook))
+   - optional `SUPPORT_REPLY_TO`: valid support reply email; a verified Resend sending domain is required for M9B live two-inbox acceptance
    - `ACTIVATION_CODE_SECRET`: at least 32 random characters (`openssl rand -base64 32`); keys the activation-code lookup hash
    - `CARD_URL_ORIGIN`: bare origin written onto NFC cards, e.g. `http://localhost:3000` (see [card provisioning](docs/operations.md#physical-card-provisioning))
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: the development Cloudinary account (the secret stays server-only)

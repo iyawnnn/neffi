@@ -27,8 +27,14 @@ Identify people securely with the least friction, and keep customer data and own
 
 ## Owner view of Accounts (read-only)
 
-Allow-listed only: email, role, created date, sign-in method kinds (`google` / `email`), owned cards (state, turned-off flag, last 4 characters of the token, connected Profile name and status), and Profile names and statuses. Never shown: form submissions, Profile content or contact fields, sessions, provider identifiers, tokens or secrets. No Account can be changed from the owner area.
+Allow-listed only: email, role, created date, sign-in method kinds (`google` / `email`), owned cards (state, turned-off flag, last 4 characters of the token, connected Profile name and status), and Profile names and statuses. Never shown: form submissions, Profile content or contact fields, sessions, provider identifiers, tokens or secrets. The directory stays read-only with its unchanged DTO. Owner Account mutations are limited to audited recovery and secure actions through a linked Support Case; role grants remain operator-only.
 
 ## Non-goals (current)
 
-OWNER MFA or step-up and CSP (M10); account deletion or restriction, account merge, Profile moves, and the account-recovery support path (deferred or **Planned: M9B**); security-notification emails.
+OWNER MFA or step-up and CSP (M10); Account deletion, freeze/restriction, merge and Profile moves.
+
+## Recovery and notices (M9B, local implementation)
+
+See [support](support-and-corrections.md) and [0012](../decisions/0012-support-controlled-account-recovery.md) for owner verification followed by new-inbox proof. Owner Accounts and occupied new emails are refused. Do not sign in with a proposed address before completing `/support/recover`: email-code sign-in can create another Account and block recovery. Completion keeps Account id and business records, verifies the email and revokes sessions and optional Google.
+
+Self-service email changes notify old (captured before the Better Auth call) and new addresses. Google removal and sign-out-everywhere notify the Account. Google identity create-after notifies only when added to a pre-existing Account, never on new Google signup. Notices run via `after()` following the committed mutation, are best effort, and record Activity results. They reveal neither the other address, codes nor submitted support content. Live two-inbox acceptance remains pending.

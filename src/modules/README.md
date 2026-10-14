@@ -4,7 +4,7 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 
 | Module | Owns |
 |---|---|
-| `accounts` | Owner-role operator service; the read-only owner Account directory (allow-listed projection) |
+| `accounts` | Owner-role operator service; read-only directory (unchanged projection); verified recovery initiation/cancel/completion, secure account and security notices |
 | `activation` | Activation code format and HMAC lookup; credential issue, revoke and usable lookup; code check and atomic claim |
 | `activity` | `recordActivity` and the `ActivityType` set (immutable history) |
 | `cards` | Tokens and URLs; DBC provisioning, NFC check, package match, credential replacement; resolver for `/c/{token}`; customer routing, disable and enable; Sharing QR; legacy manual GRC utilities |
@@ -18,11 +18,13 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 | `search.ts` | Owner global search (limited groups, literal wildcard escaping) |
 | `db.ts` | The `Db` type shared by services |
 
-The `support` module is owner-side only ([spec](../../docs/specs/support-and-corrections.md)); public intake, recovery and email remain M9B.
+The `support` module also owns public/account intake, source filtering, acknowledgement throttling, deterministic case email and credential blocking ([spec](../../docs/specs/support-and-corrections.md)). Account mutations stay in `accounts`; intake never reuses owner-only case creation or unrestricted Card linking.
 
 Infrastructure outside `modules/`: `src/config` (validated environment, isolation), `src/db` (the only place that opens the database driver), `src/auth` (Better Auth, access checks, pure policy), `src/integrations/email` (Resend, plain text), `src/integrations/media` (Cloudinary signed uploads).
 
 ## Conventions
+
+M9B initiate/secure/completion lock case → Account `FOR UPDATE` → recovery (`FOR UPDATE` on completion); cancel skips Account. Resolve locks case then checks pending recovery. Recovery takes no Card/credential locks. Claim/reset `KEY SHARE` and setup `FOR UPDATE` wait on Account without a cycle. Wrong-code completion returns failure so attempts commit; the third cancels. Proof/code snapshots never reach Client Components or logs. Email results are separate best-effort Activity events after the mutation; notice dispatch serializes attempts on Account and does not mutate it.
 
 - Every mutation is one transaction that locks first, re-reads under the lock, and writes its Activity event in the same transaction. Order writers use `mutateOrder`: Order (`FOR NO KEY UPDATE`) → items → DBC Cards → activation credentials, then updated-by and system completion. Support uses case → Order → item (all `NO KEY UPDATE`) → former-owner Account (`KEY SHARE`, if claimed) → DBC Card → credential. Reset uses case → former-owner Account → Card → credential; unclaimed reissue uses case → Card → credential. Account-before-Card matches M6 setup; a changed owner snapshot is refused after locking Card. Support item locks serialize writers while allowing recovery's foreign-key checks. Nested services receive the open transaction. Other card services lock the card row first. See [decision 0009](../../docs/decisions/0009-database-invariants-and-lock-order.md).
 - Server-only modules start with `import "server-only"` and are listed in `src/server-only-boundary.test.ts`.

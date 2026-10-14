@@ -21,7 +21,7 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 |---|---|
 | Database | PostgreSQL (Neon in hosted environments), Drizzle ORM, reviewed forward-only SQL migrations in `drizzle/` |
 | Auth | Better Auth with Google and email one-time code; custom Drizzle adapter mapping onto `accounts`, `auth_identities`, `auth_sessions`, `auth_verifications`, `auth_rate_limits`; database-backed rate limits; no passwords or SMS |
-| Email | Resend over `fetch` (no SDK), plain text, behind `src/integrations/email`. Sends sign-in and change-email codes and owner notifications for form submissions |
+| Email | Resend over `fetch` (no SDK), plain text, behind `src/integrations/email`. Auth codes, form notifications, support acknowledgement/reply/resolution, one-time recovery codes and restricted security notices; no commerce email |
 | Media | Cloudinary signed direct uploads (no SDK), raster images only, verified server-side, never stored in PostgreSQL |
 | Errors | Sentry, errors only, personal-data collection off, request scrubbing |
 | Hosting | Vercel (Node 24); Neon pooled connections for runtime, direct URL for migrations |
@@ -46,14 +46,18 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 
 ## Caching
 
+- `/support` has a static help/privacy shell with a viewer-aware form behind Suspense. Submit and `/support/recover` are uncached request-time paths; no Account data enters shared static output.
+
 - `/c/{token}`: the Card is read fresh on every request. Only a published Scene's content is cached, by `(profile, scene, content_version)`; each visible edit bumps `content_version` in its own transaction ([0011](../decisions/0011-fresh-card-state-cached-scene-content.md)). Card routing, enabled flag and publish status are never cached.
 - The Proxy decides availability before rendering and forwards a signed, request-only snapshot to the page. Unavailable document requests are rewritten to a generic 404 page.
-- Everything else is dynamic.
+- Other operational and customer data remains dynamic.
 
 ## Security
 
+M9B recovery locks case → Account `FOR UPDATE` → proof; it never locks Card/credential rows. Resolve checks pending recovery under the case lock. Wrong attempts commit as returned failures; the third cancels. Occupied addresses and owner targets are refused, and no business records move. See [0012](../decisions/0012-support-controlled-account-recovery.md). Public support adds HMAC quotas, honeypot, bounded fields and an indexed 24-hour acknowledgement rule. Notices expose only event/time/reference/support guidance, and email attempts record opaque result events without bodies. No outbox or automatic retry is introduced.
+
 - No secret in client bundles, URLs, logs, Sentry or browser storage. Activation codes and OTPs are stored only as keyed HMACs.
-- Same-origin form posts (app origin and card origin), per-IP quotas, a honeypot and a body-size cap protect the one public write endpoint. IPs are stored only as HMACs in quota counters.
+- Same-origin checks, bounded fields, body caps and HMAC quotas protect public writes. Intake/forms use honeypots; recovery completion also has a per-proof attempt counter. IPs are stored only as HMACs in quota counters.
 - Customer-supplied URLs are https only and validated again at render time. No customer HTML, CSS or script.
 - Gaps accepted for now: OWNER MFA/step-up, a Content-Security-Policy and tuned rate limits belong to M10.
 

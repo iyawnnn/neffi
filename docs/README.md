@@ -52,6 +52,7 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 | [0009](decisions/0009-database-invariants-and-lock-order.md) | Database-level invariants and lock order |
 | [0010](decisions/0010-environment-isolation.md) | Environment isolation |
 | [0011](decisions/0011-fresh-card-state-cached-scene-content.md) | Fresh Card state, cached Scene content, noindex |
+| [0012](decisions/0012-support-controlled-account-recovery.md) | Owner verification and new-inbox proof preserve the Account; no merge or code resend |
 
 ## Current, planned and later
 

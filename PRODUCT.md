@@ -1,4 +1,4 @@
-# Neffi — product definition (current state: through Milestone 9A)
+# Neffi — product definition (local implementation: through Milestone 9B)
 
 This is the canonical description of what Neffi is and how it behaves today. Behavior that is approved but not yet built is labelled **Planned**. For detail, follow the links to [`docs/specs/`](docs/specs/) and [`docs/decisions/`](docs/decisions/). [`docs/README.md`](docs/README.md) is the map of which document is authoritative for what.
 
@@ -68,8 +68,10 @@ Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assi
 
 ## Planned and later (not current behavior)
 
-- **M9B (later):** public support intake, account recovery, and support/security/recovery email.
+- **M9B acceptance:** local implementation exists; final software verification, isolated Preview and two-inbox user acceptance precede integration. No shared migration or deployment is implied.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
 - **M10 and later:** OWNER MFA, CSP and rate-limit tuning, full verification, pilot readiness. See [the roadmap](docs/roadmap.md).
 
-Customer "contact support" text still has no in-product public form; public intake, account recovery and email are M9B.
+`/support` creates unassigned cases without sign-in. Public contact is unverified and never auto-links records; signed-in requests use the verified Account and link only its owned Cards. Quotas and a 24-hour acknowledgement throttle bound mail. Owners reply or resolve with notices; activation codes remain out of band and are blocked in email bodies.
+
+An owner verifies a linked customer Account, then sends an eight-digit, 24-hour recovery code to an unused new address. The customer completes `/support/recover` before signing in with it. Three wrong attempts cancel the proof. Completion preserves Account id and business records, verifies the new address and revokes sessions and optional Google. Pending recovery blocks resolution. Owner Accounts and occupied addresses are refused; no merge or deletion occurs. Secure account revokes sessions and optionally Google without changing ownership. Security notices reveal neither the other address nor codes. See [support](docs/specs/support-and-corrections.md) and [0012](docs/decisions/0012-support-controlled-account-recovery.md).

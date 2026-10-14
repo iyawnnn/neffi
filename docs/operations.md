@@ -151,7 +151,30 @@ With a local dev server using a loopback database and a Published Profile showin
 
 ## Concurrency suites
 
-Six two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` and `check:support-concurrency`. Each applies migrations and creates synthetic fixtures. The five existing suites cover 31 scenarios. Support adds R1–R9 (10 scenarios, including reset versus both customer connect and disable). All six use loopback only.
+Six two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` and `check:support-concurrency`. Each applies migrations and creates synthetic fixtures. The five earlier suites cover 31 scenarios. M9B support covers R1–R19 (25 scenarios), totaling 56 across all six. All use loopback only.
+
+## M9B support, recovery and email runbook
+
+Migration `0014_support_intake_recovery` adds public/account intake fields, indexes and an UPDATE-only freeze, plus immutable recovery history. The seed's explicit cleanup includes `account_recoveries`; synthetic seeds leave that table empty. Run `db:check`, clean `db:generate`, `db:erd`, PGlite guard/seed tests and loopback concurrency before any external gate. Never run a seed on shared data.
+
+Shared dev remains at `0012`; neither `0013` nor `0014` has been applied there. Any separately approved shared apply must take its own restore point and run the existing `0013` refund pre-check, then apply `0013` before `0014`. The additive `0014` pre-check must confirm no conflicting objects exist:
+
+```sql
+SELECT to_regclass('public.account_recoveries') AS existing_recovery_table;
+SELECT typname FROM pg_type WHERE typname = 'support_case_source';
+```
+
+Expect null and no rows before first application. Existing cases receive source `owner` and null contact fields. After application, inspect migration journal, new constraints/indexes/triggers and 27-table/16-enum ERD; do not rewrite applied SQL.
+
+Recovery procedure: open/link a customer recovery case, verify the claim off-platform, and **Secure account first if compromise is suspected**. Record a 10–300-character note without secrets. Enter an unused address and leave Google removal on unless appropriate evidence supports keeping it. Explain that the customer must not sign in with the new address before completing: OTP signup creates Accounts, and occupied addresses are refused (merge/deletion is unsupported). Live pending proofs need explicit cancellation. Code mail cannot be resent; failed delivery needs cancellation and new initiation. Three wrong codes cancel the proof. A pending proof blocks resolution; resolved cases cannot complete.
+
+Case email recipient is requester contact first, then current linked Account email. Owners see it before sending; contact remains unverified even after linking. Never email activation codes. Reply/resolution retries require body re-entry and a fresh attempt; no bodies or provider errors are stored. Recovery notices use saved address snapshots. Verify Activity result events separately from real inbox receipt; a successful API call is not user-observed delivery.
+
+Optional `SUPPORT_REPLY_TO` is validated as an email. `AUTH_EMAIL_FROM` must use a **verified Resend sending domain**, possibly a temporary subdomain, before live two-inbox acceptance; `onboarding@resend.dev` is insufficient. Domain/DNS configuration belongs to the user until explicitly approved.
+
+**T14 stop:** after explicit approval only, create a temporary Neon branch from dev, run pre-checks and apply `0013` then `0014` there, provision a dedicated Vercel Preview with isolated pooled/direct URLs and dev/Preview auth/media secrets, trusted auth/card origins and the verified sender. Confirm OAuth callback allow-list if Google is exercised. Never use shared dev or Production. T15 is guided user-observed acceptance with read-only SQL evidence recorded separately and no codes/tokens in evidence. Tear down temporary resources afterwards under approval. Push, PR and merge remain separate approvals.
+
+Notion reconciliation remains manual: mark M9A merged, record M9B local implementation and pending T14/T15, and keep the parked UI findings and out-of-scope work deferred. No Notion edit was performed.
 
 ## Owner business operations checks
 
