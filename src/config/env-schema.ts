@@ -13,6 +13,7 @@ export type ServerEnv = {
   googleClientSecret: string;
   resendApiKey: string;
   authEmailFrom: string;
+  supportReplyTo?: string;
   activationCodeSecret: string;
   cardUrlOrigin: string;
   cloudinaryCloudName: string;
@@ -55,6 +56,7 @@ const serverSchema = z.object({
   GOOGLE_CLIENT_SECRET: required("GOOGLE_CLIENT_SECRET"),
   RESEND_API_KEY: required("RESEND_API_KEY"),
   AUTH_EMAIL_FROM: required("AUTH_EMAIL_FROM"),
+  SUPPORT_REPLY_TO: blankAsMissing(z.email({ error: "SUPPORT_REPLY_TO must be a valid email" }).optional()),
   ACTIVATION_CODE_SECRET: blankAsMissing(
     z.string({ error: "ACTIVATION_CODE_SECRET is required" }).min(32, { error: "ACTIVATION_CODE_SECRET must be at least 32 characters" }),
   ),
@@ -103,6 +105,7 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     resendApiKey: env.RESEND_API_KEY,
     authEmailFrom: env.AUTH_EMAIL_FROM,
+    supportReplyTo: env.SUPPORT_REPLY_TO,
     activationCodeSecret: env.ACTIVATION_CODE_SECRET,
     cardUrlOrigin: env.CARD_URL_ORIGIN,
     cloudinaryCloudName: env.CLOUDINARY_CLOUD_NAME,

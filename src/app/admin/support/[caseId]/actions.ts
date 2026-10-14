@@ -18,6 +18,8 @@ import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, rese
 import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
 
 const MESSAGES: Record<SupportErrorCode, string> = {
+  recipient_missing: "Link an Account or use a case with a requester email before sending.",
+  activation_code_in_email: "Remove the activation code; give it to the customer directly",
   not_found: "That record was not found. Reload the case and try again.", invalid_input: "Check the fields and try again.",
   case_resolved: "This case is resolved. Reopen it before making a correction.", link_exists: "That link is already set and cannot be changed. Reload the case.",
   order_required: "Link an order to this case first.", wrong_order: "This action must use the order linked to this case.", wrong_status: "This action is unavailable for the order's current status.",
