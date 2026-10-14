@@ -38,11 +38,20 @@ export type ActivityType =
   | "support_order_linked"
   | "activation_credential_reissued"
   | "card_ownership_reset"
+  | "support_email_sent"
+  | "support_email_failed"
+  | "security_notice_sent"
+  | "security_notice_failed"
+  | "account_recovery_started"
+  | "account_recovery_cancelled"
+  | "account_recovery_completed"
+  | "account_sessions_revoked"
+  | "account_google_removed"
   | "note";
 
 type ActivityInput = {
   type: ActivityType;
-  actorAccountId: string;
+  actorAccountId: string | null;
   cardId?: string;
   accountId?: string;
   orderId?: string;

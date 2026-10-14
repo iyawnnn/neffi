@@ -48,7 +48,7 @@ export async function getCaseDetail(db: Db, id: string) {
     db.select().from(s.refunds).where(eq(s.refunds.supportCaseId, id)).orderBy(desc(s.refunds.createdAt), desc(s.refunds.id)),
     db.select().from(s.shipments).where(eq(s.shipments.supportCaseId, id)).orderBy(desc(s.shipments.createdAt), desc(s.shipments.id)),
     db.selectDistinct({ id: s.orders.id, number: s.orders.number, status: s.orders.status }).from(s.activityEvents).innerJoin(s.orders, eq(s.orders.id, s.activityEvents.orderId)).where(and(eq(s.activityEvents.supportCaseId, id), eq(s.activityEvents.type, "support_order_linked"))),
-    db.select({ id: s.activityEvents.id, type: s.activityEvents.type, note: s.activityEvents.note, createdAt: s.activityEvents.createdAt }).from(s.activityEvents).where(eq(s.activityEvents.supportCaseId, id)).orderBy(desc(s.activityEvents.createdAt), desc(s.activityEvents.id)),
+    db.select({ id: s.activityEvents.id, type: s.activityEvents.type, actorAccountId: s.activityEvents.actorAccountId, note: s.activityEvents.note, createdAt: s.activityEvents.createdAt }).from(s.activityEvents).where(eq(s.activityEvents.supportCaseId, id)).orderBy(desc(s.activityEvents.createdAt), desc(s.activityEvents.id)),
     orderAssignees(db),
   ]);
   return { ...support, order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees };
