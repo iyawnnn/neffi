@@ -68,7 +68,7 @@ Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assi
 
 ## Planned and later (not current behavior)
 
-- **M9B acceptance:** local implementation exists; final software verification, isolated Preview and two-inbox user acceptance precede integration. No shared migration or deployment is implied.
+- **M9B acceptance:** local software verification and independent review passed; isolated Preview and two-inbox user acceptance await T14 approval and a verified Resend sender. No shared migration or deployment is implied.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
 - **M10 and later:** OWNER MFA, CSP and rate-limit tuning, full verification, pilot readiness. See [the roadmap](docs/roadmap.md).
 

@@ -7,7 +7,7 @@ NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monol
 | **Digital Business Card** | An NFC card with a permanent URL that opens the customer's Neffi profile. Customers activate it with a package code and manage their profile and Scenes from a phone |
 | **Google Review Card** | An NFC card that opens a business's direct Google review page. Neffi records the sale; the tag is prepared by hand |
 
-Status: Milestones 1–9A are merged. M9B public support, recovery and email are locally implemented; final software verification and separately approved Preview/user acceptance precede integration. No shared migration or deployment is implied. See [`docs/roadmap.md`](docs/roadmap.md).
+Status: Milestones 1–9A are merged. M9B public support, recovery and email passed the local T0–T13 software gate and independent review. Work is stopped at T14 for separately approved Preview/user acceptance before integration. No shared migration or deployment is implied. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Documentation
 
