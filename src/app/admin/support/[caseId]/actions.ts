@@ -21,6 +21,9 @@ import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, rese
 import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
 
 const MESSAGES: Record<SupportErrorCode, string> = {
+  customer_required: "Link a customer Account. Owner Accounts cannot be recovered or secured here.",
+  email_taken: "That email belongs to an Account. Recovery cannot merge Accounts; use another address and keep this case open.",
+  recovery_live: "Cancel the live pending recovery before initiating another.",
   recovery_pending: "Cancel the pending recovery before resolving this case.",
   recipient_missing: "Link an Account or use a case with a requester email before sending.",
   activation_code_in_email: "Remove the activation code; give it to the customer directly",
