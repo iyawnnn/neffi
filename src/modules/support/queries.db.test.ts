@@ -7,7 +7,7 @@ import { loadOrderFacts } from "../orders/order";
 import { listOrders } from "../orders/queries";
 import { dashboard } from "../orders/dashboard";
 import { openCase } from "./case";
-import { casesForOrder, openCaseCount, listCases, getCaseDetail } from "./queries";
+import { casesForOrder, openCaseCount, listCases, getCaseDetail, caseLinkOptions } from "./queries";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -32,6 +32,14 @@ test.each(["in_progress", "completed", "cancelled"] as const)("money SQL agrees 
     expect((await listOrders(tx)).orders[0].balance).toBe(41000);
     expect(await dashboard(tx, "2026-10")).toMatchObject({ inProgress: 0, outstanding: 41000 });
   }
+}));
+
+test("related record choices search names and order numbers without exposing credentials", () => rollback(db, async (tx) => {
+  const { order } = await insertOrderItem(tx, "dbc");
+  const options = await caseLinkOptions(tx, String(order.number));
+  expect(options.orders).toMatchObject([{ id: order.id }]);
+  expect((await caseLinkOptions(tx, "no such buyer")).orders).toHaveLength(0);
+  expect(options.accounts.every((row) => Object.keys(row).sort().join(",") === "createdAt,email,id,role")).toBe(true);
 }));
 
 test("case queue pages tied timestamps, filters status, and counts non-resolved cases", () => rollback(db, async (tx) => {

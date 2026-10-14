@@ -6,6 +6,7 @@ const sections = [
   ["Inventory", "/admin/inventory", "group-has-[[data-admin-section=inventory]]:bg-muted", "group-has-[[data-admin-section=inventory]]:block"],
   ["Customers", "/admin/customers", "group-has-[[data-admin-section=customers]]:bg-muted", "group-has-[[data-admin-section=customers]]:block"],
   ["Expenses", "/admin/expenses", "group-has-[[data-admin-section=expenses]]:bg-muted", "group-has-[[data-admin-section=expenses]]:block"],
+  ["Support", "/admin/support", "group-has-[[data-admin-section=support]]:bg-muted", "group-has-[[data-admin-section=support]]:block"],
   ["Settings", "/admin/settings", "group-has-[[data-admin-section=settings]]:bg-muted", "group-has-[[data-admin-section=settings]]:block"],
 ] as const;
 export function AdminNav() {

@@ -1,9 +1,21 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import * as s from "../../db/schema";
 import { accountDirectoryDetail } from "../accounts/directory";
 import type { Db } from "../db";
 import { getOrderDetail, orderAssignees } from "../orders/queries";
+import { escapeLike, listPurchasers } from "../orders/purchasers";
+import { listAccounts } from "../accounts/directory";
+
+export async function caseLinkOptions(db: Db, query = "") {
+  const pattern = `%${escapeLike(query.slice(0, 100))}%`;
+  const [orders, purchasers, accounts, cards] = await Promise.all([
+    db.select({ id: s.orders.id, number: s.orders.number, purchaserName: s.purchasers.name }).from(s.orders).innerJoin(s.purchasers, eq(s.purchasers.id, s.orders.purchaserId)).where(or(ilike(sql`${s.orders.number}::text`, pattern), ilike(s.purchasers.name, pattern))).orderBy(desc(s.orders.createdAt), desc(s.orders.id)).limit(50),
+    listPurchasers(db, query.slice(0, 100)), listAccounts(db, query.slice(0, 100)),
+    db.select({ id: s.cards.id, kind: s.cards.kind, state: s.cards.state, suffix: sql<string>`right(coalesce(${s.cards.publicToken}, ${s.cards.id}::text), 4)` }).from(s.cards).where(ilike(sql`right(coalesce(${s.cards.publicToken}, ${s.cards.id}::text), 4)`, pattern)).orderBy(desc(s.cards.createdAt), desc(s.cards.id)).limit(50),
+  ]);
+  return { orders, purchasers, accounts, cards };
+}
 
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
