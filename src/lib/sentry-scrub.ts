@@ -6,8 +6,12 @@ import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
 const SAFE_HEADERS = new Set(["user-agent", "accept-language", "content-type"]);
 
 const stripQuery = (value: unknown) => (typeof value === "string" ? value.split(/[?#]/)[0] : value);
+const stripQueryParams = (text: string) => text.replace(/params:[\s\S]*/, "params: [scrubbed]");
 
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
+  for (const exception of event.exception?.values ?? []) {
+    if (exception.value) exception.value = stripQueryParams(exception.value);
+  }
   if (event.request) {
     const request = { ...event.request };
     delete request.cookies;
@@ -33,8 +37,10 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
 }
 
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+  if (breadcrumb.message) breadcrumb = { ...breadcrumb, message: stripQueryParams(breadcrumb.message) };
   if (!breadcrumb.data) return breadcrumb;
   const data = { ...breadcrumb.data };
+  if (breadcrumb.category === "console") delete data.arguments;
   for (const key of ["url", "from", "to"]) {
     if (key in data) data[key] = stripQuery(data[key]);
   }

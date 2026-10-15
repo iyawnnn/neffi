@@ -3,6 +3,18 @@ import { describe, expect, test } from "vitest";
 import { scrubBreadcrumb, scrubEvent, sentryOptions } from "./sentry-scrub";
 
 describe("scrubEvent", () => {
+  test("strips SQL parameters from every exception, including linked causes", () => {
+    const scrubbed = scrubEvent({ type: undefined, exception: { values: [
+      { type: "DrizzleQueryError", value: "Failed query: select * from accounts where email = $1\nparams: a@b.test,private\nmore private values" },
+      { type: "Error", value: "cause params: another@b.test" },
+      { type: "Error" },
+    ] } });
+    expect(scrubbed.exception?.values).toEqual([
+      { type: "DrizzleQueryError", value: "Failed query: select * from accounts where email = $1\nparams: [scrubbed]" },
+      { type: "Error", value: "cause params: [scrubbed]" },
+      { type: "Error" },
+    ]);
+  });
   const event = (): ErrorEvent => ({
     type: undefined,
     message: "boom",
@@ -53,6 +65,17 @@ describe("scrubEvent", () => {
 });
 
 describe("scrubBreadcrumb", () => {
+  test("strips console SQL parameters and drops raw logged arguments", () => {
+    const message = "Failed query: select * from accounts where email = $1\nparams: a@b.test,private\nmore private values";
+    const crumb = scrubBreadcrumb({ category: "console", message, data: { arguments: [message, { email: "a@b.test" }], logger: "console", url: "/support?secret=hidden" } });
+    expect(crumb.message).toBe("Failed query: select * from accounts where email = $1\nparams: [scrubbed]");
+    expect(crumb.data).toEqual({ logger: "console", url: "/support" });
+    expect(JSON.stringify(crumb)).not.toContain("a@b.test");
+  });
+
+  test("strips a breadcrumb message even without data", () => {
+    expect(scrubBreadcrumb({ message: "query params: a@b.test" }).message).toBe("query params: [scrubbed]");
+  });
   test("drops query strings from fetch/xhr breadcrumb URLs", () => {
     const crumb = scrubBreadcrumb({ category: "fetch", data: { url: "/api/x?code=ABC", method: "POST" } });
     expect(crumb.data).toEqual({ url: "/api/x", method: "POST" });
