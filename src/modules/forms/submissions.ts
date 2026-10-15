@@ -48,15 +48,15 @@ const inboxColumns = {
   readAt: schema.formSubmissions.readAt, formTitle: schema.formDefinitions.title, profileName: schema.profiles.fullName,
 };
 
-export async function listInbox(db: Db, input: { accountId: string; before?: { createdAt: Date; id: string } }): Promise<{ items: InboxItem[]; next: { createdAt: Date; id: string } | null }> {
-  const rows = await db.select(inboxColumns).from(schema.formSubmissions)
+export async function listInbox(db: Db, input: { accountId: string; before?: { createdAt: string; id: string } }): Promise<{ items: InboxItem[]; next: { createdAt: string; id: string } | null }> {
+  const rows = await db.select({ ...inboxColumns, cursorAt: sql<string>`${schema.formSubmissions.createdAt}::text` }).from(schema.formSubmissions)
     .innerJoin(schema.formDefinitions, eq(schema.formDefinitions.id, schema.formSubmissions.formId))
     .innerJoin(schema.profiles, eq(schema.profiles.id, schema.formSubmissions.profileId))
-    .where(and(eq(schema.profiles.accountId, input.accountId), input.before ? sql`(${schema.formSubmissions.createdAt}, ${schema.formSubmissions.id}) < (${input.before.createdAt.toISOString()}::timestamptz, ${input.before.id}::uuid)` : undefined))
+    .where(and(eq(schema.profiles.accountId, input.accountId), input.before ? sql`(${schema.formSubmissions.createdAt}, ${schema.formSubmissions.id}) < (${input.before.createdAt}::timestamptz, ${input.before.id}::uuid)` : undefined))
     .orderBy(desc(schema.formSubmissions.createdAt), desc(schema.formSubmissions.id)).limit(21);
   const items = rows.slice(0, 20).map(row => ({ id: row.id, profileName: row.profileName, formTitle: row.formTitle, createdAt: row.createdAt, unread: row.readAt === null, preview: (row.answers as Answer[])[0]?.value.slice(0, 80) ?? "" }));
-  const last = items[19];
-  return { items, next: rows.length > 20 ? { createdAt: last.createdAt, id: last.id } : null };
+  const last = rows[19];
+  return { items, next: rows.length > 20 ? { createdAt: last.cursorAt, id: last.id } : null };
 }
 
 export async function openSubmission(db: Db, input: { accountId: string; submissionId: string }): Promise<SubmissionDetail | null> {

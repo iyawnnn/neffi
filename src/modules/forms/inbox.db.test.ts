@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
 import { formDefinitions, formSubmissions } from "@/db/schema";
 import { insertAccount, insertProfileWithScene } from "@/db/test-fixtures";
@@ -15,6 +15,23 @@ async function form(tx: TestTx, accountId: string) {
 async function message(tx: TestTx, form: { id: string; profileId: string }, createdAt = new Date("2026-10-11T04:05:00Z")) {
   return (await tx.insert(formSubmissions).values({ formId: form.id, profileId: form.profileId, clientKey: randomUUID(), answers: [{ label: "Your name", value: "x".repeat(100) }, { label: "Email", value: "vic@e.test" }], createdAt }).returning())[0];
 }
+
+test("pagination keeps all 22 messages exactly once across a microsecond boundary", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const owned = await form(tx, owner.id);
+  const ids: string[] = [];
+  for (let i = 0; i < 22; i++) {
+    const row = await message(tx, owned, new Date(Date.UTC(2026, 9, 11, 0, 22 - i)));
+    ids.push(row.id);
+    if (i >= 19) await tx.update(formSubmissions).set({ createdAt: sql`('2026-10-11 00:00:00.000' || ${String(999 - i)} || '+00')::timestamptz` }).where(eq(formSubmissions.id, row.id));
+  }
+  const first = await listInbox(tx, { accountId: owner.id });
+  expect(first.items).toHaveLength(20);
+  const second = await listInbox(tx, { accountId: owner.id, before: first.next! });
+  expect([...first.items, ...second.items].map(item => item.id)).toEqual(ids);
+  expect(new Set([...first.items, ...second.items].map(item => item.id)).size).toBe(22);
+  expect(second.next).toBeNull();
+}));
 test("lists the account's messages newest first, 20 per page, across its profiles", () => rollback(db, async tx => {
   const owner = await insertAccount(tx); const first = await form(tx, owner.id); const second = await form(tx, owner.id);
   const ids: string[] = [];
