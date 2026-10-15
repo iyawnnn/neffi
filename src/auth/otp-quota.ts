@@ -9,6 +9,8 @@ export const hmacHex = (secret: string, domain: string, value: string) =>
 
 export const OTP_EMAIL_LIMIT = 3;
 export const OTP_EMAIL_WINDOW_MS = 10 * 60_000;
+export const OTP_EMAIL_DAILY_LIMIT = 10;
+export const OTP_IP_DAILY_LIMIT = 50;
 export const QUOTA_RETENTION_MS = 24 * 60 * 60_000;
 
 type QuotaDb = { execute: (query: SQL) => Promise<unknown> };

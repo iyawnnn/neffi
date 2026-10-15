@@ -101,6 +101,37 @@ describe("email OTP sign-in", () => {
 });
 
 describe("email OTP abuse limits", () => {
+  test("daily email cap sends only ten codes and refuses known and unknown addresses identically", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const start = Date.now(), refusals: [number, string][] = [];
+    for (const known of [false, true]) {
+      const email = freshEmail();
+      if (known) await test_.db.insert(accounts).values({ name: "Daily known", email, emailVerified: true });
+      const before = test_.sent.length;
+      for (let i = 0; i < 10; i++) {
+        vi.setSystemTime(start + Math.floor(i / 3) * 11 * 60_000);
+        expect((await send(client(), email)).status).toBe(200);
+      }
+      vi.setSystemTime(start + 44 * 60_000);
+      const blocked = await send(client(), email);
+      refusals.push([blocked.status, await blocked.text()]);
+      expect(blocked.status).toBe(429);
+      expect(test_.sent.length - before).toBe(10);
+    }
+    expect(refusals[0]).toEqual(refusals[1]);
+  });
+
+  test("one IP cannot send a fifty-first daily code across distinct emails", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const start = Date.now(), c = client(), before = test_.sent.length;
+    for (let i = 0; i < 51; i++) {
+      vi.setSystemTime(start + Math.floor(i / 3) * 11 * 60_000);
+      const response = await c.post("/email-otp/send-verification-otp", { ip: "198.51.100.200", body: { email: freshEmail(), type: "sign-in" } });
+      expect(response.status).toBe(i < 50 ? 200 : 429);
+    }
+    expect(test_.sent.length - before).toBe(50);
+  });
+
   test("known and unknown emails get identical send responses", async () => {
     const known = freshEmail();
     await test_.db.insert(accounts).values({ name: "Known", email: known, emailVerified: true });

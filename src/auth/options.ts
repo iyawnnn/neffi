@@ -6,7 +6,8 @@ import { emailOTP } from "better-auth/plugins";
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
 import { accounts, authIdentities, authRateLimits, authSessions, authVerifications } from "@/db/schema";
-import { consumeOtpQuota, hmacHex } from "./otp-quota";
+import { consumeOtpQuota, consumeQuota, hmacHex, OTP_EMAIL_DAILY_LIMIT, OTP_IP_DAILY_LIMIT, QUOTA_RETENTION_MS } from "./otp-quota";
+import { clientIp } from "@/lib/client-ip";
 
 type AuthOptionsInput = {
   db: Parameters<typeof drizzleAdapter>[0];
@@ -153,7 +154,11 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode, onGoogl
         const email = typeof body.email === "string" ? body.email.toLowerCase() : "";
         // Malformed addresses are rejected by Better Auth itself; counting them would only grow the table.
         if (!z.email().safeParse(email).success) return;
-        if (!(await consumeOtpQuota(db as Parameters<typeof consumeOtpQuota>[0], secret, email))) {
+        const quotaDb = db as Parameters<typeof consumeQuota>[0];
+        const now = new Date();
+        if (!(await consumeQuota(quotaDb, hmacHex(secret, "otp-ip-day", clientIp(ctx.request?.headers ?? ctx.headers!)), OTP_IP_DAILY_LIMIT, now, { windowMs: QUOTA_RETENTION_MS })) ||
+          !(await consumeOtpQuota(quotaDb, secret, email, now)) ||
+          !(await consumeQuota(quotaDb, hmacHex(secret, "otp-email-day", email), OTP_EMAIL_DAILY_LIMIT, now, { windowMs: QUOTA_RETENTION_MS }))) {
           throw new APIError("TOO_MANY_REQUESTS", { message: GENERIC_RATE_LIMIT_MESSAGE });
         }
       }),
