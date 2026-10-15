@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
-import { ACCENTS } from "@/modules/profiles/rules";
+import { ACCENTS } from "@/modules/profiles/appearance-options";
 import { Button } from "@/components/ui/button";
 import { confirmImageAction, removeImageAction, startImageUploadAction, updateAppearanceAction } from "./actions";
 

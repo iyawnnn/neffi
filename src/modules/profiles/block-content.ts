@@ -1,15 +1,9 @@
 import { z } from "zod";
-import { profileLinkType } from "@/db/schema/enums";
+import { LINK_KINDS } from "./block-options";
 import { linkSchema } from "./rules";
 
 export type BlockType = "about" | "project" | "link" | "contact" | "booking" | "form";
-export const LINK_KINDS = profileLinkType.enumValues;
-export type LinkKind = (typeof LINK_KINDS)[number];
-export const LINK_KIND_LABELS: Record<LinkKind, string> = {
-  facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn", youtube: "YouTube", github: "GitHub",
-  messenger: "Messenger", whatsapp: "WhatsApp", viber: "Viber", telegram: "Telegram", x: "X", portfolio: "Portfolio",
-  booking: "Booking", shop: "Shop", menu: "Menu", custom: "Other",
-};
+export { LINK_KINDS, LINK_KIND_LABELS, type LinkKind } from "./block-options";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const optional = (max: number) => z.string().trim().max(max).transform((value) => value || null);

@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, inputClass, Textarea } from "@/components/ui/input";
-import { LINK_KINDS, LINK_KIND_LABELS, type BlockType } from "@/modules/profiles/block-content";
+import { LINK_KINDS, LINK_KIND_LABELS } from "@/modules/profiles/block-options";
+import type { BlockType } from "@/modules/profiles/block-content";
 import { addBlockAction, deleteSceneAction, moveBlockAction, removeBlockAction, renameSceneAction, toggleBlockAction, updateBlockAction, type SceneActionState } from "./actions";
 
 type Target = { profileId: string; sceneId: string };
