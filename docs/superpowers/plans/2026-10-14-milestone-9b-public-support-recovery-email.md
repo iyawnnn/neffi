@@ -1,9 +1,9 @@
 # Milestone 9B: Public Support, Recovery & Email Implementation Plan
 
-> **Status: planned, NOT implemented; awaiting your explicit implementation approval.**
+> **Status (2026-10-15): T0-T13 implemented and approved; T14 temporary remote resources deleted and verified absent; reduced T15 approved; T16 push/PR authorized; merge requires separate approval.**
 > - **Decisions:** D1-D9 were ruled by you. N1 and N2 take the safe defaults you approved.
 > - **Audit:** the Opus pre-implementation audit corrections (I1-I9 and related minor items) are applied.
-> - **Changes so far:** no code, branch, migration, push, Neon, Vercel, Resend or Notion change has been made.
+> - **Approved revision:** D9 now permits pre-launch sandbox/injected-sender acceptance. Independent external two-inbox delivery remains a launch gate. Local implementation, T14 teardown and reduced T15 evidence are recorded in the SDD ledger. T16 push/PR is separately authorized; merge and shared-database migration remain gated.
 >
 > **Method.**
 > - The repository, docs, specs, ADRs, M9A code and tests, Notion pages and the Better Auth 1.7.7 email-OTP routes were read first.
@@ -83,7 +83,7 @@ The repository wins over Notion.
 | C4 | The M9A outline says "all email"; Step 5 excludes commerce email | M9B email covers only support ack/reply/resolution, the recovery code and security notices. |
 | C5 | Step 7 says "Turnstile where justified" | D3: deferred to M10. |
 | C6 | The M9A plan baseline said 0011 and 0012 were unapplied | Neon dev is at 0012 (applied 2026-10-14). |
-| C7 | M6 sign-in email change was never manually exercised | Closed by T15 under D9: a verified sending domain is required before T15. |
+| C7 | M6 sign-in email change was never manually exercised | T15 verifies application behavior; independent external inbox delivery is deferred to the revised D9 launch gate. |
 | C8 | UX finding 8 | This is the intentional `yours` branch. Left to the UI overhaul. |
 
 ## 2. Scope decisions
@@ -118,7 +118,7 @@ The repository wins over Notion.
 | D6 | Ruled | No waiting period. The old address gets notices at start and at completion. |
 | D7 | Ruled | "Secure account": revoke sessions, and remove a compromised Google identity where safe. No freeze, disable or restrict. |
 | D8 | Ruled | Email results are recorded as Activity events, with deterministic send keys and a manual Resend (not for recovery codes; see F6). No outbox, no automatic retry, no stored bodies. |
-| D9 | Ruled | A verified Resend sending domain (a temporary subdomain is fine) is required before the T15 real-email acceptance. It is **requested at T0** so DNS setup runs in parallel. Building and automated tests do not wait for it. |
+| D9 | Revised by user, 2026-10-15 | A verified custom domain is not required for pre-launch M9B development acceptance. Use the existing Resend testing sender only within its supported limits and the existing injected sender for deterministic automated verification. Real delivery from a Neffi-owned domain to two independent external inboxes is a launch gate: **DEFERRED — requires verified Neffi domain**. Email content, recipients, idempotency, failures, recovery state, session revocation and Activity remain required; no security behavior is weakened. Do not fabricate/purchase a domain or change unrelated DNS. |
 | N1 | Approved default | If the proposed new email already belongs to any Account, recovery is **refused**, at initiation and at completion. Nothing is deleted, merged or moved, and the case stays open. The owner sees an explanation. The customer is instructed **not to sign in with the proposed new address until recovery completes**, because an email-code sign-in creates a new Account for an unknown email. |
 | N2 | Approved default | Public-request personal data is covered by an inline privacy notice on `/support`. **No DELETE-blocking guard is added to `support_cases`.** A broader retention and deletion policy stays deferred. |
 | D10 | Plan default | Optional env `SUPPORT_REPLY_TO`. No inbound email-to-case. |
@@ -409,7 +409,7 @@ This is proposed, plain additive DDL. The final SQL is reviewed at T2, and it is
 
 | Task | Content | Commit |
 |---|---|---|
-| **T0** | Update `main`; confirm the M9A merge; cut the branch; set up the ledger; read the Next docs. **Ask you to start D9 (Resend domain DNS) now**, in parallel and non-blocking. | none |
+| **T0** | Update `main`; confirm the M9A merge; cut the branch; set up the ledger; read the Next docs. Originally request D9 domain setup; the user revised D9 on 2026-10-15 to defer owned-domain delivery until launch. | none |
 | **T1** | Pure domain:<br>• zod schemas (public form, recovery, reply);<br>• category→type map;<br>• constants;<br>• plain-text templates with notice-content tests;<br>• generic copy, including the N1 instruction;<br>• the activation-code-shaped detector;<br>• a reference helper. | `feat(support): intake schemas and email templates` |
 | **T2** | Migration `0014`; schema; ERD; `SEED_TABLES`; guard tests. | `feat(db): support intake and recovery tables` |
 | **T3** | Activity: nullable actor in the TypeScript type, new types, system-event rendering; tests. | `feat(activity): system actor and recovery event types` |
@@ -425,8 +425,8 @@ This is proposed, plain additive DDL. The final SQL is reviewed at T2, and it is
 | **T11** | Concurrency scenarios R13-R19 in `check-support-concurrency.mts`. | `test(support): intake and recovery races` |
 | **T12** | Docs (§10). | `docs(m9b): public support, recovery and email` |
 | **T13** | Software gate (§9) and an independent whole-branch review. | fixes in separate commits |
-| **T14** | **STOP: needs your approval.** Confirm the D9 domain is verified. On approval: create a temporary Neon branch from dev, apply `0013` and `0014` there only, and set up a Vercel Preview with an isolated env and that sender. Tear it down afterwards. | none |
-| **T15** | **STOP: needs you.** Guided user-observed acceptance on the local production build and the Preview (§8.4); read-only SQL by me. Does not start without the D9 domain. | ledger |
+| **T14** | **STOP: needs your approval.** Under revised D9, use the supported Resend testing sender. On approval: create a temporary Neon branch from dev, apply `0013` and `0014` there only, and set up a Vercel Preview with an isolated env. Stop before T15; tear down only after acceptance and explicit approval. | none |
+| **T15** | **STOP: needs you.** Guided user-observed acceptance on the local production build and the Preview (§8.4); read-only SQL by me. Starts only on explicit user instruction. Revised D9 allows sandbox/injected-sender verification; unsupported real delivery observations remain deferred to launch. | ledger |
 | **T16** | Integration: push or PR only after explicit approval. | none |
 
 ## 8. Testing strategy
@@ -500,11 +500,14 @@ Runs on loopback `neffi_m2_test` only, with real `pg_blocking_pids` waits.
 | A9 | Refusals | A customer session cannot reach owner actions; an owner Account is not recoverable; every `/support/recover` failure has identical copy; rate limits answer politely |
 | A10 | Phone width | `/support` and `/support/recover` are usable at 390 px |
 
-- A6 and A8 need two real inboxes, so T15 starts only after the D9 domain is verified (requested at T0).
+- **Approved D9 revision (2026-10-15):** T15 may proceed on explicit user instruction without a custom domain. The Resend testing sender supports delivery only to the Resend account owner; do not assume aliases or a second inbox are supported. Existing injected-sender automated tests verify contents, recipient selection, idempotency, failures, recovery transitions, session revocation and Activity without sending real mail. Do not deploy a fake sender or expose codes to work around sandbox limits.
+- A1 acknowledgement, A4 reply/resolution/retry, A5 resolution, A6 new-inbox recovery code and old-inbox notice, A7 secure-account notice, and A8 security notices: delivery to unsupported recipients and all independent two-inbox observations are **DEFERRED — requires verified Neffi domain**. Supported account-owner inbox delivery may be observed, but never counts as two-inbox proof.
+- A1-A10 application/UI/security behavior remains required. A6 recovery behavior and A8 multi-address notice behavior retain deterministic injected-sender coverage; any manual path that cannot obtain its code through the supported sandbox must be recorded as not observed, with automated evidence separate. No recovery/security rule is relaxed. Launch requires a verified Neffi-owned sender and real two-independent-inbox acceptance, including recovery and email-change notices.
 - Observed and SQL evidence are kept separate, and no secrets are recorded.
+- **Final user-approved reduced T15 scope (2026-10-15):** A1 basic public submission was observed; A4 core reply/resolution was observed and passed. A6 full live recovery is **DEFERRED — requires verified Neffi domain / independent destination inbox**. A7, A2/A3/A5/A8/A9/A10 and remaining edge subchecks are **NOT MANUALLY EXERCISED — covered by automated/integration/concurrency evidence** where applicable, with evidence limits recorded separately. Real phone usability and other skipped manual outcomes are not proven by rendering tests. This reduced development acceptance is sufficient to request cleanup/T16 approval; it is not a full original-matrix or launch pass. No security rule is weakened and no cleanup/push/PR/merge is authorized by this closure.
 
 ### 8.5 Preview and remote
-- **Needed for:** real Resend, a public route and a Better Auth mutation.
+- **Needed for:** supported Resend sandbox delivery, a public route and a Better Auth mutation. Independent external inbox delivery remains the revised D9 launch gate.
 - **Where:** a temporary Neon branch only, torn down afterwards. Never `neffi-dev` or Production.
 
 ## 9. Final software gate (T13)
@@ -573,13 +576,13 @@ Runs on loopback `neffi_m2_test` only, with real `pg_blocking_pids` waits.
 3. Recovery completes only with owner initiation plus proof of the new inbox. It refuses resolved cases, occupied emails (N1) and owner Accounts. Wrong attempts commit and the third consumes the recovery. Sessions are revoked.
 4. Email effects are idempotent per attempt. Failures never lose a case or block a security change. Notices follow the content rule. No activation code can be emailed.
 5. The `0014` guards are proven, and R13-R19 pass alongside the existing 48 scenarios.
-6. The T13 gate is green and the independent review is approved. The T15 matrix (with the D9 domain verified) passes, with observed and SQL evidence kept separate.
+6. The T13 gate is green and the independent review is approved. The runnable T15 matrix passes, with observed, SQL and injected-sender evidence kept separate. Unsupported real-delivery observations are explicitly deferred under revised D9 and must pass with a verified Neffi domain before launch.
 7. Docs are updated, and the M9A UX findings are recorded as deferred.
 
 ## 13. Risks and residuals
 
 - **R1:** there is no owner MFA or step-up before recovery (M10). Mitigated by proof of the new inbox and by the notices.
-- **R2:** the final public domain is not locked. D9 uses a verified (possibly temporary) sending domain for acceptance.
+- **R2:** Neffi does not yet own its public domain. Revised D9 permits pre-launch sandbox acceptance; real delivery from a Neffi-owned domain to two independent external inboxes remains a launch gate.
 - **R3:** an unverified public email can receive one ack per 24 hours.
 - **R4:** there is no Account disable, so a compromised mailbox holder keeps access until the swap (D7). The mitigation is to secure the account first.
 - **R5:** there is no automatic email retry. Owners Resend case and notice emails, and recovery codes require re-initiation.
@@ -591,7 +594,7 @@ Runs on loopback `neffi_m2_test` only, with real `pg_blocking_pids` waits.
 
 ## 14. Recommended workflow after approval
 
-1. T0, including the D9 domain request, which runs in parallel.
+1. T0 is complete. The original D9 domain request is superseded by the user-approved 2026-10-15 pre-launch sandbox ruling.
 2. One agent task at a time, with a per-task review. The ledger stays local.
 3. T13: independent review.
 4. T14: stop for Neon, Vercel and Resend approval.
