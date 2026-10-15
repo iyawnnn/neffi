@@ -1,8 +1,40 @@
-import type { ErrorEvent } from "@sentry/nextjs";
+import { format } from "node:util";
+import { PGlite } from "@electric-sql/pglite";
+import { linkedErrorsIntegration, type ErrorEvent } from "@sentry/nextjs";
+import { DrizzleQueryError, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/pglite";
 import { describe, expect, test } from "vitest";
 import { scrubBreadcrumb, scrubEvent, sentryOptions } from "./sentry-scrub";
 
 describe("scrubEvent", () => {
+  test("scrubs real driver causes linked to SQL errors without erasing unrelated exceptions", async () => {
+    const client = new PGlite();
+    try {
+      const privateValue = "synthetic-private@example.test";
+      const error: unknown = await drizzle(client).execute(sql`select ${privateValue}::uuid`).catch((error: unknown) => error);
+      expect(error).toBeInstanceOf(DrizzleQueryError);
+      if (!(error instanceof DrizzleQueryError)) throw error;
+      expect((error.cause as Error).message).toBe(`invalid input syntax for type uuid: "${privateValue}"`);
+      expect((error.cause as Error).message).not.toContain("params:");
+      const originalException = new AggregateError([error, new Error("unrelated failure")], "operation failed");
+      const event: ErrorEvent = { type: undefined, exception: { values: [{ type: originalException.name, value: originalException.message }] } };
+      linkedErrorsIntegration().preprocessEvent!(event, { originalException }, { getOptions: () => ({ stackParser: () => [] }) } as never);
+      expect(event.exception?.values?.some(value => value.value?.includes(privateValue))).toBe(true);
+      const scrubbed = scrubEvent(event);
+      expect(JSON.stringify(scrubbed.exception)).not.toContain(privateValue);
+      expect(scrubbed.exception?.values?.map(value => value.value)).toEqual(expect.arrayContaining([
+        "Failed query: select $1::uuid\nparams: [scrubbed]", "unrelated failure", "operation failed",
+      ]));
+      for (const message of [String(error), format(error)]) {
+        const crumb = scrubBreadcrumb({ category: "console", message, data: { arguments: [error] } });
+        expect(JSON.stringify(crumb)).not.toContain(privateValue);
+        expect(crumb.message).toContain("select $1::uuid");
+        expect(crumb.data).not.toHaveProperty("arguments");
+      }
+    } finally {
+      await client.close();
+    }
+  });
   test("strips SQL parameters from every exception, including linked causes", () => {
     const scrubbed = scrubEvent({ type: undefined, exception: { values: [
       { type: "DrizzleQueryError", value: "Failed query: select * from accounts where email = $1\nparams: a@b.test,private\nmore private values" },

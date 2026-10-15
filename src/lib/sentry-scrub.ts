@@ -6,11 +6,20 @@ import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
 const SAFE_HEADERS = new Set(["user-agent", "accept-language", "content-type"]);
 
 const stripQuery = (value: unknown) => (typeof value === "string" ? value.split(/[?#]/)[0] : value);
-const stripQueryParams = (text: string) => text.replace(/params:[\s\S]*/, "params: [scrubbed]");
+const stripQueryParams = (text: string, sqlCause = false) => sqlCause ? "[scrubbed SQL cause]" : text.replace(/params:[\s\S]*/, "params: [scrubbed]");
 
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
-  for (const exception of event.exception?.values ?? []) {
-    if (exception.value) exception.value = stripQueryParams(exception.value);
+  const exceptions = event.exception?.values ?? [];
+  for (const exception of exceptions) {
+    let parentId = exception.mechanism?.parent_id;
+    let sqlCause = false;
+    // Driver causes can echo parameters without Drizzle's params marker; follow only their SQL ancestry.
+    while (parentId !== undefined) {
+      const parent = exceptions.find(value => value.mechanism?.exception_id === parentId);
+      if (parent?.value?.startsWith("Failed query:") && parent.value.includes("\nparams:")) { sqlCause = true; break; }
+      parentId = parent?.mechanism?.parent_id;
+    }
+    if (exception.value) exception.value = stripQueryParams(exception.value, sqlCause);
   }
   if (event.request) {
     const request = { ...event.request };
