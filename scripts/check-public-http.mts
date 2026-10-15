@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import pg from "pg";
+import { securityHeaders } from "../src/config/security-headers";
 
 const require = createRequire(import.meta.url);
 const { setCacheBustingSearchParam } = require("next/dist/client/components/router-reducer/set-cache-busting-search-param.js") as {
@@ -29,8 +30,15 @@ type Fixture = {
 };
 
 const generic = "This Neffi isn\u2019t available right now";
+const assertSecurityHeaders = (response: Response) => {
+  for (const { key, value } of securityHeaders({ dev: false, sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN })) {
+    assert.equal(response.headers.get(key), value, `${key} missing or incorrect on ${response.url}`);
+  }
+  assert(!/unsafe-eval|wss?:|\*/.test(response.headers.get("content-security-policy")!), "production policy must not contain dev sources or wildcards");
+};
 const request = async (path: string | URL, init: RequestInit = {}) => {
   const response = await fetch(new URL(path, origin), { redirect: "manual", ...init });
+  assertSecurityHeaders(response);
   return { response, body: await response.text() };
 };
 const assertPrivate = (body: string, fixture: Fixture) => {
@@ -176,6 +184,14 @@ async function main() {
   const ownerHeaders = { cookie: signedCookie(fixture.ownerSession) };
   const otherHeaders = { cookie: signedCookie(fixture.otherSession) };
   try {
+    for (const path of ["/", "/sign-in", "/activate", "/api/health"]) await request(path);
+    const support = await request("/support");
+    assert.equal(support.response.status, 200, "Support must render successfully");
+    assert.match(support.body, /<form[ >]/, "Support must stream its form");
+    for (const field of ["email", "message", "clientKey"]) assert(support.body.includes(`name="${field}"`), `Support is missing ${field}`);
+    assert(!/<template[^>]*data-dgst/.test(support.body), "Support must not stream an error fallback");
+    const forbidden = await request(`/api/forms/${id()}/submissions`, { method: "POST", headers: { origin: "https://foreign.example.test" }, body: "{}" });
+    assert.equal(forbidden.response.status, 403);
     await expectUnavailable("unknown visitor card", `/c/${token("UNKNOWN")}`, {}, fixture);
     await expectUnavailable("disabled visitor card", `/c/${fixture.disabledToken}`, {}, fixture);
     await expectUnavailable("draft visitor card", `/c/${fixture.draftToken}`, {}, fixture);
