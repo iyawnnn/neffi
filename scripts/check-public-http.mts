@@ -99,7 +99,7 @@ async function insertFixture(): Promise<Fixture> {
     await client.query("INSERT INTO accounts(id,name,email,email_verified) VALUES ($1,$2,$3,true),($4,$5,$6,true)", [
       fixture.ownerId, `${marker} owner`, `${marker.toLowerCase()}@example.test`, fixture.otherId, `${marker} other`, `${marker.toLowerCase()}-other@example.test`,
     ]);
-    await client.query("INSERT INTO products(id,kind,name,price) VALUES ($1,'dbc',$2,50000)", [fixture.productId, `${marker} DBC`]);
+    await client.query("INSERT INTO products(id,kind,name,price,active) VALUES ($1,'dbc',$2,50000,false)", [fixture.productId, `${marker} DBC`]);
     await client.query("INSERT INTO stock_purchases(id,received_on,created_by_account_id) VALUES ($1,'2026-10-12',$2)", [fixture.stockId, fixture.ownerId]);
     await client.query("INSERT INTO purchasers(id,name) VALUES ($1,$2)", [fixture.purchaserId, `${marker} purchaser`]);
     await client.query("INSERT INTO orders(id,purchaser_id,created_by_account_id,assigned_to_account_id) VALUES ($1,$2,$3,$3)", [fixture.orderId, fixture.purchaserId, fixture.ownerId]);
