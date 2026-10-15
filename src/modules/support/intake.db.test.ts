@@ -76,6 +76,15 @@ test("one refused source cannot consume the global allowance for other requester
   expect(await tx.select().from(s.supportCases)).toHaveLength(6);
 }));
 
+test("the twenty-first daily request from one source is not stored", () => rollback(db, async tx => {
+  for (let n = 0; n < 21; n++) {
+    const now = new Date(+options.now + Math.floor(n / 5) * 11 * 60_000);
+    const result = await submitSupportRequest(tx, { ...data(), email: `daily${n}@example.test` }, { ...options, now });
+    expect(Boolean(result.caseId)).toBe(n < 20);
+  }
+  expect(await tx.select().from(s.supportCases)).toHaveLength(20);
+}));
+
 test("quota pruning finishes before the intake transaction and no cleanup DELETE occurs inside it", async () => {
   const expired = hmacHex(options.secret, "test", "expired");
   await db.insert(s.authOtpQuotas).values({ key: expired, count: 1, windowStartedAt: new Date(+options.now - 25 * 60 * 60_000) });

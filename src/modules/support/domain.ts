@@ -26,7 +26,7 @@ export const replySchema = z.object({ body: z.string().trim().min(1).max(2000), 
 export const caseReference = (id: string) => id.slice(0, 8);
 export const ACK_WINDOW_MS = 24 * 60 * 60_000;
 export const RECOVERY_LIFETIME_MS = ACK_WINDOW_MS;
-export const SUPPORT_LIMITS = { ip: 5, email: 3, global: 100, recoveryIp: 10 } as const;
+export const SUPPORT_LIMITS = { ip: 5, ipDay: 20, email: 3, global: 100, recoveryIp: 10 } as const;
 export const SUPPORT_SUCCESS = "Your request has been received. Neffi support will contact you if more information is needed.";
 export const RECOVERY_FAILURE = "We could not complete recovery. Check your details or contact Neffi support.";
 export const RECOVERY_INSTRUCTION = "Do not sign in with the new address until recovery completes. Signing in early can create another Account and block recovery.";

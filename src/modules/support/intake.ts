@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, gt } from "drizzle-orm";
 import type { Viewer } from "@/auth/policy";
-import { consumeQuota, hmacHex, pruneQuotas } from "@/auth/otp-quota";
+import { consumeQuota, hmacHex, pruneQuotas, QUOTA_RETENTION_MS } from "@/auth/otp-quota";
 import * as s from "@/db/schema";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
@@ -20,8 +20,8 @@ export async function submitSupportRequest(db: Db, input: unknown, { ip, secret,
   return db.transaction(async tx => {
     const [existing] = await tx.select({ id: s.supportCases.id }).from(s.supportCases).where(eq(s.supportCases.clientKey, data.clientKey));
     if (existing) return { caseId: existing.id, acknowledge: false };
-    for (const [domain, value, limit] of [["support-ip", ip, SUPPORT_LIMITS.ip], ["support-email", email, SUPPORT_LIMITS.email], ["support-global", "all", SUPPORT_LIMITS.global]] as const) {
-      if (!await consumeQuota(tx, hmacHex(secret, domain, value), limit, now, { prune: false })) return { acknowledge: false };
+    for (const [domain, value, limit] of [["support-ip", ip, SUPPORT_LIMITS.ip], ["support-ip-day", ip, SUPPORT_LIMITS.ipDay], ["support-email", email, SUPPORT_LIMITS.email], ["support-global", "all", SUPPORT_LIMITS.global]] as const) {
+      if (!await consumeQuota(tx, hmacHex(secret, domain, value), limit, now, { prune: false, windowMs: domain === "support-ip-day" ? QUOTA_RETENTION_MS : undefined })) return { acknowledge: false };
     }
     const [prior] = await tx.select({ id: s.supportCases.id }).from(s.supportCases).where(and(
       eq(s.supportCases.source, viewer ? "account" : "public"),
