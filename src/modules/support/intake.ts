@@ -19,7 +19,7 @@ export async function submitSupportRequest(db: Db, input: unknown, { ip, secret,
   return db.transaction(async tx => {
     const [existing] = await tx.select({ id: s.supportCases.id }).from(s.supportCases).where(eq(s.supportCases.clientKey, data.clientKey));
     if (existing) return { caseId: existing.id, acknowledge: false };
-    for (const [domain, value, limit] of [["support-global", "all", SUPPORT_LIMITS.global], ["support-ip", ip, SUPPORT_LIMITS.ip], ["support-email", email, SUPPORT_LIMITS.email]] as const) {
+    for (const [domain, value, limit] of [["support-ip", ip, SUPPORT_LIMITS.ip], ["support-email", email, SUPPORT_LIMITS.email], ["support-global", "all", SUPPORT_LIMITS.global]] as const) {
       if (!await consumeQuota(tx, hmacHex(secret, domain, value), limit, now)) return { acknowledge: false };
     }
     const [prior] = await tx.select({ id: s.supportCases.id }).from(s.supportCases).where(and(

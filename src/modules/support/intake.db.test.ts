@@ -66,3 +66,10 @@ test("IP and global quotas bound intake across distinct contact addresses", () =
   for (let n = 0; n < 101; n++) await submitSupportRequest(tx, { ...data(), email: `global${n}@example.test` }, { ...options, now: later, ip: `synthetic-ip-${n}` });
   expect(await tx.select().from(s.supportCases)).toHaveLength(105);
 }));
+
+test("one refused source cannot consume the global allowance for other requesters", () => rollback(db, async tx => {
+  for (let n = 0; n < 101; n++) await submitSupportRequest(tx, { ...data(), email: `blocked${n}@example.test` }, options);
+  const result = await submitSupportRequest(tx, { ...data(), email: "genuine@example.test" }, { ...options, ip: "synthetic-other-source" });
+  expect(result.caseId).toBeDefined();
+  expect(await tx.select().from(s.supportCases)).toHaveLength(6);
+}));
