@@ -35,11 +35,31 @@ PostgreSQL is the source of truth; Neon is replaceable hosting.
 3. Run `pnpm test`, `pnpm db:check`, and `pnpm db:erd`; commit the regenerated ERD with any migration change. Separate custom SQL statements with `--> statement-breakpoint` so PGlite and the live migrator apply the same sequence.
 4. After the live-database approval gate, run `pnpm db:migrate` against the development database. Running it again should make no changes.
 
-There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; Migrations `0001`–`0014` are all committed (accounts/auth, commerce, inventory/profiles, operations, integrity guards, credential serialization, auth abuse limits and cleanup, card provisioning, scenes/forms, profile content version, owner operations). CI generates the schema and rejects a diff in `drizzle/`.
+There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; Migrations `0001`–`0015` are all committed (accounts/auth, commerce, inventory/profiles, operations, integrity guards, credential serialization, auth abuse limits and cleanup, card provisioning, scenes/forms, profile content version, owner operations). CI generates the schema and rejects a diff in `drizzle/`.
 
 **Live-database gate.** Applying pending migrations, running roles or resets on `neffi-dev`, or any other live change needs a confirmed restore point (Neon branch or snapshot) and explicit approval; approval for one change does not authorize another. Do not migrate or reset restore branches. After approval, migrate twice (the second run must be a no-op) and inspect the journal. Shared Neon development is migrated through `0014_support_intake_recovery`: `0013_support_guards` and `0014_support_intake_recovery` were applied successfully, in that order, on 2026-10-15 with a separate restore point before each. Both reruns were no-ops; the 15-entry journal and the 27-table / 16-enum schema were verified. The production database is not created or configured, and Production is untouched.
 
 **Recovery:** Drizzle has no down migrations. Before applying migrations to a shared database, keep a restore branch or snapshot. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
+
+### Pending migration 0015 gate
+
+`0015_validate_dbc_ready_checks` contains only `VALIDATE CONSTRAINT` for the 0009 DBC Ready-check constraint. It is verified locally, not applied to shared Neon development. Before any separately approved shared application, confirm the target, journal through `0014`, and a restore point, then run:
+
+```sql
+SELECT count(*) FROM cards
+WHERE kind = 'dbc' AND state = 'ready'
+  AND (nfc_verified_at IS NULL OR package_matched_at IS NULL);
+```
+
+The count must be zero. Any non-zero result is a STOP; never invent physical evidence. After explicit approval, apply `0015`, verify `pg_constraint.convalidated = true` and the 16-entry migration journal, then rerun to prove a no-op. Production remains untouched and unconfigured.
+
+## Browser security headers
+
+Every response receives an enforced static Content-Security-Policy and `X-Content-Type-Options: nosniff` from `src/config/security-headers.ts` via Next config. The policy preserves Cache Components/PPR: scripts and styles allow inline content; images allow self, data and Cloudinary delivery; connections allow self, Cloudinary upload and only the configured Sentry DSN origin. Embedding this app in a frame, plugins and base URL overrides are blocked, and form actions are same-origin. Inline scripts remain an accepted limitation; reconsider nonces when compatible with PPR or stable SRI is available.
+
+Only `PHASE_DEVELOPMENT_SERVER` adds `unsafe-eval`; production permits no eval, WebSocket scheme or wildcard source. No extra dev WebSocket source is configured. The browser HMR/edit/no-CSP observation remains pending T12 because browser automation could not retain a tab. Add a dev-only WebSocket source only after an observed block. Vercel Toolbar (`vercel.live`) is intentionally unsupported and blocked; do not widen the policy for it. On the next separately approved Preview, observe CSP/nosniff on normal pages and unavailable Card document/RSC responses, plus Vercel's HSTS default.
+
+To allow a genuinely required origin, update the shared policy and its exact-policy and integration coupling tests after scope approval. Do not put DSN credentials or paths in CSP. Sentry exceptions and console messages strip Drizzle `params:` tails; raw console arguments are dropped. Source-map upload remains deferred to Production setup / M12.
 
 ## Synthetic development seed
 
@@ -74,13 +94,13 @@ Use a single development/Preview Google OAuth **web** client. Keep its consent s
 
 Use a development/Preview Resend key with send-only permission. Until a sender domain is verified, set `AUTH_EMAIL_FROM` to `Neffi <onboarding@resend.dev>`; this test sender reaches only the Resend account owner's inbox. Domain verification and SPF/DKIM/DMARC are required before the pilot. Mail contains plain text with a random idempotency key per delivery; codes and provider responses are never logged.
 
-At `/sign-in`, choose Google or request a six-digit email code. Codes expire after five minutes, work once and allow three failed attempts; they are stored as keyed HMACs. Sends are limited to three per email per ten minutes and ten per IP per minute; code submissions also have a ten-per-minute IP limit. Limits persist in PostgreSQL. Known and unknown emails receive the same send response. Passwords, SMS and account-settings endpoints are disabled.
+At `/sign-in`, choose Google or request a six-digit email code. Codes expire after five minutes, work once and allow three failed attempts; they are stored as keyed HMACs. Sends are limited to three per email per ten minutes, ten per email per 24 hours, fifty per IP per 24 hours and ten per IP per minute; code submissions also have a ten-per-minute IP limit. App per-IP keys use the IPv6 /64 network; IPv4-mapped addresses share the plain IPv4 key. Limits persist in PostgreSQL. Known and unknown emails receive the same send response. Passwords, SMS and account-settings endpoints are disabled.
 
-Only the exact exposed auth paths create IP counters; arbitrary paths and blocked reset-token paths return 404 without adding counters. New traffic to allowed paths removes counters older than the longest active window (60 seconds) using the `last_request` index. Active counters and the separate ten-minute email quota are preserved. Google sign-in retains Better Auth's three-per-ten-second IP limit; other allowed paths retain their existing limits. Keep the cleanup bound aligned when adding longer-window rules or upgrading auth plugins.
+Only the exact exposed auth paths create IP counters; arbitrary paths and blocked reset-token paths return 404 without adding counters. New traffic to allowed paths removes counters older than the longest active window (60 seconds) using the `last_request` index. Active counters and separate app quotas are preserved. App quotas use fixed windows starting at the first hit, retain rows for 24 hours, and reject windows longer than that retention. Cleanup skips locked rows; support runs cleanup before its transaction and disables cleanup within quota upserts. Google sign-in retains Better Auth's three-per-ten-second IP limit; other allowed paths retain their existing limits. Keep the cleanup bound aligned when adding longer-window rules or upgrading auth plugins.
 
 A successful email code verifies the address and resolves its existing Account or creates a customer. A linked Google identity resolves its permanent Account even if the provider email changes. A new Google identity matching an existing Account is refused: sign in with an email code, then use **Connect Google** in `/app`. Linking requires a verified matching email and refuses an identity already owned by another Account. Google tokens are not persisted. Different verified emails may represent separate Accounts; merging is a deferred support exception (not planned in M9A).
 
-Sessions roll for 30 days, with renewal after one day through a server action called by the protected shell. Server rendering reads without refreshing; authorization reads the current database role without a cookie cache. Sign-out deletes the session, and expired/deleted sessions lose access. Cookies are HttpOnly and SameSite=Lax, plus Secure on HTTPS. `/get-session` is disabled over HTTP; the email-code sign-in response still contains Better Auth's session token. CSP and owner MFA/step-up remain M10 work.
+Sessions roll for 30 days, with renewal after one day through a server action called by the protected shell. Server rendering reads without refreshing; authorization reads the current database role without a cookie cache. Sign-out deletes the session, and expired/deleted sessions lose access. Cookies are HttpOnly and SameSite=Lax, plus Secure on HTTPS. `/get-session` is disabled over HTTP; the email-code sign-in response still contains Better Auth's session token. Static CSP and nosniff are enforced (see Browser security headers). OWNER MFA/step-up is deferred while the team is 2–3 trusted people; revisit at team growth or Production setup.
 
 Both protected layouts and pages validate access on the server. `/app` requires a verified Account; `/admin` requires OWNER. Route handlers/actions use `authorize()` for 401/403 denials and explicit ownership checks; OWNER does not implicitly grant access to another customer's private data. Post-sign-in destinations pass through `safeNext()` and stay inside `/app` or `/admin`.
 
@@ -105,7 +125,7 @@ Local tests use fresh PGlite databases and mocked Google/Resend responses; they 
 
 At an approved live check, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Application Production remains untouched.
 
-Accepted abuse limits: another person can consume an email's send quota or invalidate its outstanding code; delivery failures also consume quota. Defaults allow up to nine incorrect guesses across three sends per ten minutes. Google is a fallback; stronger anti-abuse measures are M10 work.
+Accepted abuse limits: another person can consume an email's send quota or invalidate its outstanding code; delivery failures also consume quota. Defaults allow up to nine incorrect guesses across three sends per ten minutes. An email daily cap can deny email-code access for up to 24 hours; Google and Support remain fallbacks. M10 uses daily caps instead of Turnstile. Add Turnstile to OTP send only if distributed abuse causes TOO_MANY_REQUESTS spikes or Resend quota alerts. Shared carrier IPs can hit daily caps; tune the constants if pilot traffic warrants it.
 
 ## Physical card provisioning
 
@@ -129,7 +149,7 @@ OWNER-only screens at `/admin/inventory` receive stock, provision Digital Busine
 
 **Physical evidence.** `nfc_verified_at` and `package_matched_at` exist only after a real physical check. A DBC cannot be Ready without both (a database constraint), and issuing any new usable credential clears the package match. The development seed contains no Ready DBC and no physical evidence by design; only isolated automated tests and disposable loopback activation fixtures use synthetic timestamps. Never record a check you did not perform, including on `neffi-dev`.
 
-**Migration 0009.** Adds the two columns and `cards_dbc_ready_checks_recorded`, created `NOT VALID` so a pre-M4 development row that was seeded as Ready (with no physical evidence) is not given invented timestamps. New and updated rows are still checked, and a database migrated from zero has no legacy rows. M10 is expected to validate the constraint. It also replaces the `activation_credentials_guard` function; the serialization with retirement from `0006` is unchanged.
+**Migration 0009.** Adds the two columns and `cards_dbc_ready_checks_recorded`, created `NOT VALID` so a pre-M4 development row that was seeded as Ready (with no physical evidence) is not given invented timestamps. New and updated rows are still checked, and a database migrated from zero has no legacy rows. The local migration chain validates the constraint with `0015_validate_dbc_ready_checks`; shared development remains at `0014` until separately approved. It also replaces the `activation_credentials_guard` function; the serialization with retirement from `0006` is unchanged.
 
 **Physical acceptance.** Real-hardware acceptance of provisioning, packaged-card activation and the public tap passed on 2026-10-12 (M4, M5) and later for M7; see [the roadmap](roadmap.md). Repeat it for any new card batch or origin change, using engineering cards labelled TEST: write the exact URL with NFC Tools, read it back identical, tap it on a real phone, confirm the tag is still writable, record the NFC check, match the package, and confirm Ready. Record device, date and card id, never a code or a photo showing one. Engineering cards written against localhost or another development origin must never be sold. Customer and pilot packages must use the common activation insert, the unique printed code label for the exact Card inside the sealed package, and the final long-lived origin.
 
@@ -137,7 +157,7 @@ OWNER-only screens at `/admin/inventory` receive stock, provision Digital Busine
 
 The customer flow is `/activate` → activation code → sign in with Google or email code if needed → **Add to my account** → `/app`. Only Released DBCs can be claimed; owners release cards from an Order. Claiming assigns ownership, consumes the credential and records Activity atomically. `/app` lists owned cards **Ready to set up** as the resumable M6 handoff; activation creates no Profile or Scene.
 
-An accepted code sets the 15-minute `neffi_activation` cookie (`HttpOnly`, `SameSite=Lax`, `Path=/activate`, secure over HTTPS). It contains only a signed opaque credential reference and expiry, never the activation code. Checks allow 20 attempts per IP and claims allow 10 attempts per Account per 10 minutes, using the existing HMAC-keyed quota counters.
+An accepted code sets the 15-minute `neffi_activation` cookie (`HttpOnly`, `SameSite=Lax`, `Path=/activate`, secure over HTTPS). It contains only a signed opaque credential reference and expiry, never the activation code. Checks allow 20 attempts per IP (IPv6 /64) and claims allow 10 attempts per Account per 10 minutes, using the existing HMAC-keyed quota counters.
 
 `pnpm check:claim-concurrency` proves single-winner claims using `DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test` only. `pnpm dev:activation-fixture` creates synthetic claimable and unavailable cases and prints their synthetic codes for private local browser acceptance. It requires a loopback `DATABASE_URL` and the same `ACTIVATION_CODE_SECRET` as the dev server; it never loads `.env.local` itself and must never target Neon. Its synthetic Ready timestamps are software test inputs, never evidence of physical acceptance.
 
@@ -149,9 +169,19 @@ Run `DATABASE_URL=<loopback> pnpm dev` with the process environment overriding `
 
 With a local dev server using a loopback database and a Published Profile showing a Form, run `DATABASE_URL=<loopback> pnpm dev:form-submission`. It never loads `.env.local`, refuses non-loopback database/app hosts and Neon, and prints only HTTP status codes. `APP_ORIGIN` defaults to `http://localhost:3000`; `VISITOR_EMAIL` can be a controlled reply address. It sends synthetic name/message/question answers and a fixed synthetic phone so Required Phone works. `--repeat-key` submits the same message twice: expect `201 201` and one new Inbox message. Notification delivery uses the dev server's email configuration; real inbox acceptance is manual.
 
+## M10 forms and Inbox limits
+
+Public form POSTs keep their ten-per-IP/ten-minute ceiling and add thirty per IP per 24 hours, keyed by IPv6 /64 (IPv4-mapped addresses normalize to IPv4). Form notification attempts are capped at fifty per Profile per 24 hours; another Profile on the same Account has a separate allowance. A capped notification leaves the stored submission visible in Inbox with no `notified_at`, without retry. Inbox keyset cursors carry the database timestamp text so microseconds survive; displayed dates are unchanged.
+
+## Performance and deferred hardening
+
+No speculative indexes or query refactors were added. Revisit lists/search above about 10k rows, dashboards above about 2k orders, or measured p95 above 500 ms: owner outstanding-order scans, date/ID casts and substring search, unindexed created-at sorts, role lookup, unread aggregates and support-detail query rounds are the known ceilings. Add a quota cleanup timestamp index only above about 10k quota rows.
+
+Non-UUID customer paths returning 500, Inbox mailto answer validation, unsigned Cloudinary overwrite, owner-note credential detection and possible mark-read prefetch effects remain deferred; M11 should check the prefetch behavior. Recovery security and M4/M5/M7 behavior are unchanged.
+
 ## Concurrency suites
 
-Six two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` and `check:support-concurrency`. Each applies migrations and creates synthetic fixtures. The five earlier suites cover 31 scenarios. M9B support covers R1–R19 (25 scenarios), totaling 56 across all six. All use loopback only.
+Six two-session suites run against a disposable loopback PostgreSQL only (`DATABASE_URL_TEST=postgres://postgres@127.0.0.1:55432/neffi_m2_test`; never Neon, and not run in CI): `check:db-concurrency`, `check:provisioning-concurrency`, `check:claim-concurrency`, `check:profile-concurrency`, `check:orders-concurrency` and `check:support-concurrency`. Each applies migrations and creates synthetic fixtures. The five earlier suites cover 31 scenarios. M10 support covers R1–R20 (26 scenarios), totaling 57 across all six. R20 proves that a locked expired quota row does not block support intake cleanup. All use loopback only.
 
 ## M9B support, recovery and email runbook
 

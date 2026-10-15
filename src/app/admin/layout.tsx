@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 // OWNER-only, decided on the server before anything renders; everyone else gets a 404 or the sign-in page.
-// Pages check again (layouts do not re-run on client-side navigation). MFA/step-up arrives in Milestone 10.
+// Pages check again (layouts do not re-run on client-side navigation). MFA/step-up is deferred until team growth or Production setup.
 export const instant = false;
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {

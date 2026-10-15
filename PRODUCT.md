@@ -68,9 +68,9 @@ Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assi
 
 ## Planned and later (not current behavior)
 
-- **M9B acceptance:** software verification, independent review and user-approved reduced acceptance passed; PR #11 awaits merge approval. Shared Neon development is verified through `0014_support_intake_recovery` as of 2026-10-15. Full recovery with a verified Neffi-owned sender and two independent inboxes remains a launch gate; Production remains untouched/unconfigured. See [operations](docs/operations.md#m9b-support-recovery-and-email-runbook) for the acceptance limits.
+- **M9B acceptance:** software verification, independent review and user-approved reduced acceptance passed; PR #11 merged into main. Shared Neon development is verified through `0014_support_intake_recovery` as of 2026-10-15. Full recovery with a verified Neffi-owned sender and two independent inboxes remains a launch gate; Production remains untouched/unconfigured. See [operations](docs/operations.md#m9b-support-recovery-and-email-runbook) for the acceptance limits.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
-- **M10 and later:** OWNER MFA, CSP and rate-limit tuning, full verification, pilot readiness. See [the roadmap](docs/roadmap.md).
+- **M10:** IPv6 /64 quotas, daily caps, non-blocking cleanup, static CSP/nosniff, Sentry SQL-parameter scrubbing, precise Inbox cursors and local constraint validation migration 0015. Browser acceptance and shared migration approval remain pending. OWNER MFA/step-up and Turnstile are deferred. M11 full verification and M12 pilot readiness follow; see [the roadmap](docs/roadmap.md).
 
 `/support` creates unassigned cases without sign-in. Public contact is unverified and never auto-links records; signed-in requests use the verified Account and link only its owned Cards. Quotas and a 24-hour acknowledgement throttle bound mail. Owners reply or resolve with notices; activation codes remain out of band and are blocked in email bodies.
 
