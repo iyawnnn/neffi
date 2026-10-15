@@ -9,19 +9,32 @@ export const hmacHex = (secret: string, domain: string, value: string) =>
 
 export const OTP_EMAIL_LIMIT = 3;
 export const OTP_EMAIL_WINDOW_MS = 10 * 60_000;
+export const OTP_EMAIL_DAILY_LIMIT = 10;
+export const OTP_IP_DAILY_LIMIT = 50;
+export const QUOTA_RETENTION_MS = 24 * 60 * 60_000;
 
 type QuotaDb = { execute: (query: SQL) => Promise<unknown> };
 
-// Counts one hit for an HMAC key and says whether it is still within `limit`. One atomic upsert, so concurrent
-// requests cannot both slip under. Shared by every 10-minute counter (OTP email, activation); keys are
-// domain-separated HMACs, never raw emails or IPs, and expired rows are removed in the same pass.
-export async function consumeQuota(db: QuotaDb, key: string, limit: number, now = new Date()): Promise<boolean> {
-  const windowStart = new Date(now.getTime() - OTP_EMAIL_WINDOW_MS);
-  await db.execute(sql`delete from auth_otp_quotas where window_started_at <= ${windowStart.toISOString()}::timestamptz`);
+// shortcut: cleanup scans the quota table; add a window_started_at index above about 10k rows.
+export async function pruneQuotas(db: QuotaDb, now = new Date()): Promise<void> {
+  const cutoff = new Date(now.getTime() - QUOTA_RETENTION_MS);
+  await db.execute(sql`delete from auth_otp_quotas where key in (
+    select key from auth_otp_quotas where window_started_at <= ${cutoff.toISOString()}::timestamptz
+    for update skip locked
+  )`);
+}
+
+// Keys are domain-separated HMACs with one window per key. The atomic upsert resets expired windows.
+export async function consumeQuota(db: QuotaDb, key: string, limit: number, now = new Date(), { windowMs = OTP_EMAIL_WINDOW_MS, prune = true } = {}): Promise<boolean> {
+  if (windowMs > QUOTA_RETENTION_MS) throw new Error("Quota window exceeds retention");
+  if (prune) await pruneQuotas(db, now);
+  const windowStart = new Date(now.getTime() - windowMs);
   const result = (await db.execute(sql`
     insert into auth_otp_quotas (key, count, window_started_at)
     values (${key}, 1, ${now.toISOString()}::timestamptz)
-    on conflict (key) do update set count = auth_otp_quotas.count + 1
+    on conflict (key) do update set
+      count = case when auth_otp_quotas.window_started_at <= ${windowStart.toISOString()}::timestamptz then 1 else auth_otp_quotas.count + 1 end,
+      window_started_at = case when auth_otp_quotas.window_started_at <= ${windowStart.toISOString()}::timestamptz then excluded.window_started_at else auth_otp_quotas.window_started_at end
     returning count
   `)) as { rows: { count: number }[] };
   return Number(result.rows[0].count) <= limit;

@@ -9,7 +9,7 @@ Identify people securely with the least friction, and keep customer data and own
 ## Sign-in
 
 - Methods: **Google** or a **six-digit email code**. No passwords, no SMS. A correct code both verifies the address and signs in; no separate verification email.
-- Codes expire after 5 minutes, work once, allow 3 wrong attempts, and are stored as keyed hashes. Sends are limited to 3 per email per 10 minutes and 10 per IP per minute; code submissions are limited per IP. Limits persist in PostgreSQL. Known and unknown emails get the same response.
+- Codes expire after 5 minutes, work once, allow 3 wrong attempts, and are stored as keyed hashes. Sends are limited to 3 per email per 10 minutes, 10 per email per 24 hours, 50 per IP per 24 hours and 10 per IP per minute; code submissions are limited per IP. Limits persist in PostgreSQL. App per-IP keys normalize IPv6 to /64 and mapped IPv4 to plain IPv4. Known and unknown emails get the same response.
 - Sessions last 30 days and renew daily; authorization reads the current database role on every check.
 
 ## Identity rules
@@ -31,7 +31,7 @@ Allow-listed only: email, role, created date, sign-in method kinds (`google` / `
 
 ## Non-goals (current)
 
-OWNER MFA or step-up and CSP (M10); Account deletion, freeze/restriction, merge and Profile moves.
+OWNER MFA or step-up (revisit when the trusted 2–3-person team grows or at Production setup); Turnstile on distributed-abuse evidence; Account deletion, freeze/restriction, merge and Profile moves. Static CSP/nosniff and daily caps are implemented in M10.
 
 ## Recovery and notices (M9B, local implementation)
 

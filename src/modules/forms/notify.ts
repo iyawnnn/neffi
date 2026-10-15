@@ -4,6 +4,9 @@ import * as schema from "../../db/schema";
 import type { EmailSender } from "../../integrations/email/resend";
 import type { Db } from "../db";
 import type { Answer } from "./config";
+import { consumeQuota, hmacHex, QUOTA_RETENTION_MS } from "@/auth/otp-quota";
+
+const NOTIFICATIONS_PER_PROFILE_DAY = 50;
 
 export function submissionEmail(input: { profileName: string | null; formTitle: string; answers: Answer[]; link: string; canReply: boolean }) {
   const lines = input.answers.map((answer) => `${answer.label}: ${answer.value}`).join("\n");
@@ -19,16 +22,17 @@ export function submissionEmail(input: { profileName: string | null; formTitle: 
 }
 
 // The submission is already stored (D12). Email is a courtesy: one attempt, deduplicated by Resend, never thrown.
-export async function notifySubmission(db: Db, send: EmailSender, input: { submissionId: string; appOrigin: string; replyTo: string | null }): Promise<void> {
+export async function notifySubmission(db: Db, send: EmailSender, input: { submissionId: string; appOrigin: string; replyTo: string | null; secret: string }): Promise<void> {
   try {
     const [row] = await db
-      .select({ answers: schema.formSubmissions.answers, notifiedAt: schema.formSubmissions.notifiedAt, formTitle: schema.formDefinitions.title, profileName: schema.profiles.fullName, to: schema.accounts.email })
+      .select({ profileId: schema.formSubmissions.profileId, answers: schema.formSubmissions.answers, notifiedAt: schema.formSubmissions.notifiedAt, formTitle: schema.formDefinitions.title, profileName: schema.profiles.fullName, to: schema.accounts.email })
       .from(schema.formSubmissions)
       .innerJoin(schema.formDefinitions, eq(schema.formDefinitions.id, schema.formSubmissions.formId))
       .innerJoin(schema.profiles, eq(schema.profiles.id, schema.formSubmissions.profileId))
       .innerJoin(schema.accounts, eq(schema.accounts.id, schema.profiles.accountId))
       .where(eq(schema.formSubmissions.id, input.submissionId));
     if (!row || row.notifiedAt) return;
+    if (!await consumeQuota(db, hmacHex(input.secret, "form-notify-profile", row.profileId), NOTIFICATIONS_PER_PROFILE_DAY, new Date(), { windowMs: QUOTA_RETENTION_MS })) return;
     const email = submissionEmail({ ...row, answers: row.answers as Answer[], link: `${input.appOrigin}/app/inbox/${input.submissionId}`, canReply: Boolean(input.replyTo) });
     await send({ to: row.to, ...email, replyTo: input.replyTo ?? undefined, idempotencyKey: `form-submission-${input.submissionId}` });
     await db.update(schema.formSubmissions).set({ notifiedAt: new Date() }).where(and(eq(schema.formSubmissions.id, input.submissionId), isNull(schema.formSubmissions.notifiedAt)));

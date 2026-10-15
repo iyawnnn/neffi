@@ -59,7 +59,7 @@ M9B recovery locks case → Account `FOR UPDATE` → proof; it never locks Card/
 - No secret in client bundles, URLs, logs, Sentry or browser storage. Activation codes and OTPs are stored only as keyed HMACs.
 - Same-origin checks, bounded fields, body caps and HMAC quotas protect public writes. Intake/forms use honeypots; recovery completion also has a per-proof attempt counter. IPs are stored only as HMACs in quota counters.
 - Customer-supplied URLs are https only and validated again at render time. No customer HTML, CSS or script.
-- Gaps accepted for now: OWNER MFA/step-up, a Content-Security-Policy and tuned rate limits belong to M10.
+- M10 enforces static CSP/nosniff, daily HMAC quotas (IPv6 /64), non-blocking quota cleanup and shared Sentry SQL-parameter scrubbing. Inbox cursors retain database timestamp microseconds. OWNER MFA/step-up remains deferred until team growth or Production setup; Turnstile awaits distributed-abuse evidence. No speculative indexes were added.
 
 ## Environments
 

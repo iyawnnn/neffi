@@ -671,7 +671,7 @@ Foreign keys without an explicit delete action use PostgreSQL's `NO ACTION` defa
 |---|---|---|
 | `cards_committed_states_need_product` | Check | `CHECK ((state = ANY (ARRAY['blank'::card_state, 'retired'::card_state])) OR product_id IS NOT NULL)` |
 | `cards_dbc_only_fields` | Check | `CHECK (COALESCE(kind = 'dbc'::product_kind, false) OR public_token IS NULL AND owner_account_id IS NULL AND profile_id IS NULL AND disabled_at IS NULL)` |
-| `cards_dbc_ready_checks_recorded` | Check | `CHECK (kind IS DISTINCT FROM 'dbc'::product_kind OR state <> 'ready'::card_state OR nfc_verified_at IS NOT NULL AND package_matched_at IS NOT NULL) NOT VALID` |
+| `cards_dbc_ready_checks_recorded` | Check | `CHECK (kind IS DISTINCT FROM 'dbc'::product_kind OR state <> 'ready'::card_state OR nfc_verified_at IS NOT NULL AND package_matched_at IS NOT NULL)` |
 | `cards_dbc_token_when_provisioned` | Check | `CHECK (kind IS DISTINCT FROM 'dbc'::product_kind OR (state = ANY (ARRAY['blank'::card_state, 'retired'::card_state])) OR public_token IS NOT NULL)` |
 | `cards_disabled_needs_owner` | Check | `CHECK (disabled_at IS NULL OR owner_account_id IS NOT NULL)` |
 | `cards_fulfillment_needs_order_item` | Check | `CHECK ((state <> ALL (ARRAY['reserved'::card_state, 'released'::card_state])) OR order_item_id IS NOT NULL)` |

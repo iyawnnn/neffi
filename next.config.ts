@@ -1,5 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
+import { securityHeaders } from "./src/config/security-headers";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -16,10 +18,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default (phase: string): NextConfig => withSentryConfig({
+  ...nextConfig,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders({ dev: phase === PHASE_DEVELOPMENT_SERVER, sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN }) }];
+  },
+}, {
   silent: true,
   telemetry: false,
-  // Source-map upload needs SENTRY_AUTH_TOKEN; deferred to Security & Performance Hardening (Milestone 10).
+  // Source-map upload needs SENTRY_AUTH_TOKEN; deferred to Production setup / M12.
   sourcemaps: { disable: true },
   release: { create: false },
 });

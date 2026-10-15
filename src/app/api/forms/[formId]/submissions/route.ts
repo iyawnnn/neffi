@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { sendEmail } from "@/integrations/email/sender";
 import { notifySubmission } from "@/modules/forms/notify";
 import { z } from "zod";
-import { consumeQuota, hmacHex } from "@/auth/otp-quota";
+import { consumeQuota, hmacHex, QUOTA_RETENTION_MS } from "@/auth/otp-quota";
 import { env } from "@/config/env";
 import { db } from "@/db";
 import { clientIp } from "@/lib/client-ip";
@@ -11,6 +11,7 @@ import { submitForm } from "@/modules/forms/submissions";
 const ORIGINS = new Set([new URL(env.authBaseUrl).origin, new URL(env.cardUrlOrigin).origin]);
 const MAX_BODY = 16_000;
 const SUBMISSIONS_PER_IP = 10;
+const SUBMISSIONS_PER_IP_DAY = 30;
 const body = z.object({ key: z.uuid(), answers: z.record(z.string(), z.string().max(2000)), website: z.string().max(200).optional() });
 const json = (data: object, status: number) => Response.json(data, { status });
 
@@ -18,6 +19,9 @@ const json = (data: object, status: number) => Response.json(data, { status });
 export async function POST(request: Request, { params }: RouteContext<"/api/forms/[formId]/submissions">) {
   if (!ORIGINS.has(request.headers.get("origin") ?? "")) return json({ error: "forbidden" }, 403);
   if (!(await consumeQuota(db, hmacHex(env.betterAuthSecret, "form-ip", clientIp(request.headers)), SUBMISSIONS_PER_IP))) {
+    return json({ error: "rate_limited" }, 429);
+  }
+  if (!(await consumeQuota(db, hmacHex(env.betterAuthSecret, "form-ip-day", clientIp(request.headers)), SUBMISSIONS_PER_IP_DAY, new Date(), { windowMs: QUOTA_RETENTION_MS }))) {
     return json({ error: "rate_limited" }, 429);
   }
   const reader = request.body?.getReader();
@@ -54,7 +58,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/form
   if (result.status === "invalid") return json({ error: "invalid", fields: result.fields }, 400);
   if (result.status === "created") {
     const appOrigin = new URL(env.authBaseUrl).origin;
-    after(() => notifySubmission(db, sendEmail, { submissionId: result.submissionId, appOrigin, replyTo: result.replyTo }));
+    after(() => notifySubmission(db, sendEmail, { submissionId: result.submissionId, appOrigin, replyTo: result.replyTo, secret: env.betterAuthSecret }));
   }
   return json({ ok: true }, 201);
 }

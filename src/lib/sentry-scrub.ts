@@ -6,8 +6,21 @@ import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
 const SAFE_HEADERS = new Set(["user-agent", "accept-language", "content-type"]);
 
 const stripQuery = (value: unknown) => (typeof value === "string" ? value.split(/[?#]/)[0] : value);
+const stripQueryParams = (text: string, sqlCause = false) => sqlCause ? "[scrubbed SQL cause]" : text.replace(/params:[\s\S]*/, "params: [scrubbed]");
 
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
+  const exceptions = event.exception?.values ?? [];
+  for (const exception of exceptions) {
+    let parentId = exception.mechanism?.parent_id;
+    let sqlCause = false;
+    // Driver causes can echo parameters without Drizzle's params marker; follow only their SQL ancestry.
+    while (parentId !== undefined) {
+      const parent = exceptions.find(value => value.mechanism?.exception_id === parentId);
+      if (parent?.value?.startsWith("Failed query:") && parent.value.includes("\nparams:")) { sqlCause = true; break; }
+      parentId = parent?.mechanism?.parent_id;
+    }
+    if (exception.value) exception.value = stripQueryParams(exception.value, sqlCause);
+  }
   if (event.request) {
     const request = { ...event.request };
     delete request.cookies;
@@ -33,8 +46,10 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
 }
 
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+  if (breadcrumb.message) breadcrumb = { ...breadcrumb, message: stripQueryParams(breadcrumb.message) };
   if (!breadcrumb.data) return breadcrumb;
   const data = { ...breadcrumb.data };
+  if (breadcrumb.category === "console") delete data.arguments;
   for (const key of ["url", "from", "to"]) {
     if (key in data) data[key] = stripQuery(data[key]);
   }
