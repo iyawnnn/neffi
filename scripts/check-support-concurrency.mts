@@ -308,8 +308,24 @@ try {
     assert(errors.every(e => !e)); assert(recovered); assert(profileId);
     assert.deepEqual((await admin.query("SELECT owner_account_id,profile_id FROM cards WHERE id=$1", [card.cardId])).rows[0], { owner_account_id: f.accountId, profile_id: profileId });
   });
+  await check("R20 an expired locked quota row does not block support intake", async () => {
+    const key = hmacHex(secret, "expired-r20", randomUUID());
+    await admin.query("INSERT INTO auth_otp_quotas(key,count,window_started_at) VALUES($1,1,now()-interval '25 hours')", [key]);
+    const holder = await connect(), worker = await connect();
+    await worker.query("SET statement_timeout = '1500ms'");
+    await holder.query("BEGIN");
+    try {
+      await holder.query("SELECT key FROM auth_otp_quotas WHERE key=$1 FOR UPDATE", [key]);
+      const db = drizzle({ client: worker, schema, casing: "snake_case" });
+      const result = await submitSupportRequest(db, { email: `${randomUUID()}@example.test`, category: "other", message: "Synthetic cleanup request", clientKey: randomUUID() }, { secret, ip: "synthetic-r20" });
+      assert(result.caseId);
+      assert.equal((await admin.query("SELECT count(*)::int AS n FROM auth_otp_quotas WHERE key=$1", [key])).rows[0].n, 1);
+    } finally { await holder.query("COMMIT"); }
+    await consumeQuota(dbA, hmacHex(secret, "after-r20", "prune"), 1);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM auth_otp_quotas WHERE key=$1", [key])).rows[0].n, 0);
+  });
   assert.equal(failures.length, 0, `${failures.length} support concurrency checks failed`);
-  console.log("All R1–R19 support races passed (25 scenarios). No remote database accessed.");
+  console.log("All R1–R20 support races passed (26 scenarios). No remote database accessed.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));

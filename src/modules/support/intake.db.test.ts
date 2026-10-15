@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { hmacHex } from "@/auth/otp-quota";
 import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
 import { insertAccount, insertReleasedDbc } from "@/db/test-fixtures";
@@ -73,3 +75,26 @@ test("one refused source cannot consume the global allowance for other requester
   expect(result.caseId).toBeDefined();
   expect(await tx.select().from(s.supportCases)).toHaveLength(6);
 }));
+
+test("quota pruning finishes before the intake transaction and no cleanup DELETE occurs inside it", async () => {
+  const expired = hmacHex(options.secret, "test", "expired");
+  await db.insert(s.authOtpQuotas).values({ key: expired, count: 1, windowStartedAt: new Date(+options.now - 25 * 60 * 60_000) });
+  const transaction = db.transaction.bind(db);
+  const statements: string[] = [];
+  const spy = vi.spyOn(db, "transaction").mockImplementation(async (run, config) => {
+    expect(await db.select().from(s.authOtpQuotas).where(eq(s.authOtpQuotas.key, expired))).toHaveLength(0);
+    return transaction(async tx => {
+      const execute = tx.execute.bind(tx);
+      vi.spyOn(tx, "execute").mockImplementation((query) => {
+        statements.push(typeof query === "string" ? query : new PgDialect().sqlToQuery(query.getSQL()).sql);
+        return execute(query);
+      });
+      return run(tx);
+    }, config);
+  });
+  try {
+    expect((await submitSupportRequest(db, { ...data(), email: "pruning@example.test" }, options)).caseId).toBeDefined();
+    expect(statements.some(query => /insert into auth_otp_quotas/i.test(query))).toBe(true);
+    expect(statements.join("\n")).not.toMatch(/delete from auth_otp_quotas/i);
+  } finally { spy.mockRestore(); }
+});
