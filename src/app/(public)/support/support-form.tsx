@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
-import { categories } from "@/modules/support/domain";
+import { categories } from "@/modules/support/categories";
 import { submitSupportAction } from "./actions";
 
 export function SupportForm({ email, clientKey, topic, cardId }: { email?: string; clientKey: string; topic: keyof typeof categories; cardId?: string }) {
