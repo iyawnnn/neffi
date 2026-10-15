@@ -56,10 +56,10 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 
 ## Current, planned and later
 
-- **Current:** M1–M8 are merged. M9A is implemented on the feature branch, with software/local acceptance gates before integration; the specs describe its behavior.
-- **Later:** M9B and M10–M12 (see [roadmap](roadmap.md)).
+- **Current:** M1–M9A are merged. M9B passed software verification and user-approved reduced acceptance; PR #11 awaits merge approval.
+- **Later:** M10–M12 (see [roadmap](roadmap.md)).
 
-M9A uses the existing Support tables and subject links, with the additive guards in migration `0013`. Neon development remains through `0012` pending separate apply approval.
+Shared Neon development is verified through `0014_support_intake_recovery`. Migrations `0013_support_guards` and `0014_support_intake_recovery` were applied successfully on 2026-10-15; both reruns were no-ops, with 27 tables / 16 enums verified. Production remains untouched/unconfigured. Verified-domain and two-independent-inbox recovery acceptance remain launch gates; see [operations](operations.md#m9b-support-recovery-and-email-runbook).
 
 ## Milestone plans
 

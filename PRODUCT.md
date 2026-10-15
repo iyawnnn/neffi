@@ -68,7 +68,7 @@ Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assi
 
 ## Planned and later (not current behavior)
 
-- **M9B acceptance:** local software verification and independent review passed; isolated Preview and two-inbox user acceptance await T14 approval and a verified Resend sender. No shared migration or deployment is implied.
+- **M9B acceptance:** software verification, independent review and user-approved reduced acceptance passed; PR #11 awaits merge approval. Shared Neon development is verified through `0014_support_intake_recovery` as of 2026-10-15. Full recovery with a verified Neffi-owned sender and two independent inboxes remains a launch gate; Production remains untouched/unconfigured. See [operations](docs/operations.md#m9b-support-recovery-and-email-runbook) for the acceptance limits.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
 - **M10 and later:** OWNER MFA, CSP and rate-limit tuning, full verification, pilot readiness. See [the roadmap](docs/roadmap.md).
 

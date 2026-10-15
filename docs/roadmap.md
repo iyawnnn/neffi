@@ -1,6 +1,6 @@
 # Roadmap and milestone status
 
-Status as of 2026-10-14. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification. Current behavior is described in [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/).
+Status as of 2026-10-15. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification. Current behavior is described in [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/).
 
 | Milestone | Scope | Status |
 |---|---|---|
@@ -13,12 +13,12 @@ Status as of 2026-10-14. Implementation plans for each milestone are kept as his
 | M7 | Public NFC / active Scene experience (`/c/{token}`) | Complete, merged. Physical NFC acceptance passed |
 | M8 | Owner business operations (Orders, payments, fulfilment, inventory, expenses, customers, dashboard, search, Settings) | Complete, merged (PR #8). Local acceptance and isolated Preview acceptance passed. The optional real-card chain (T20) and the physical-phone scenario were not run |
 | **M9A** | Support Cases, corrections to Completed Orders, DBC card corrections, free and paid replacements, shipping exceptions | **Merged (PR #10).** [Plan](superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md) |
-| **M9B** | Public support intake, account-recovery support path, support/security/recovery email | **T0–T13 local implementation/software gate passed on feat/m9b-public-support-recovery: 1,227 tests, build, lint/types, DB/bundle checks, 56 concurrency scenarios and independent review. Stopped at T14; isolated Preview and user acceptance require approval and a verified Resend sender.** [Approved plan](superpowers/plans/2026-10-14-milestone-9b-public-support-recovery-email.md) |
+| **M9B** | Public support intake, account-recovery support path, support/security/recovery email | **T0–T13 local implementation/software gate passed on feat/m9b-public-support-recovery: 1,227 tests, build, lint/types, DB/bundle checks, 56 concurrency scenarios and independent review. Reduced T15 accepted: A1 basic/A4 core manually passed; A6 deferred under revised D9; remaining manual checks not exercised. Acceptance resources removed; shared development verified through 0014; PR #11 awaits merge approval.** [Approved plan](superpowers/plans/2026-10-14-milestone-9b-public-support-recovery-email.md) |
 | M10 | Security and performance hardening (OWNER MFA/step-up, rate-limit tuning, CSP, query review) | Later |
 | M11 | Full verification | Later |
 | M12 | Pilot readiness gate | Later. It cannot pass while any required physical acceptance is pending |
 
-No production deployment exists yet. Neon development is migrated through `0012`. Migrations `0013_support_guards` and `0014_support_intake_recovery` are local-only; shared application requires separate explicit approval, restore points and that order. M9B has not modified Neon, Vercel, live Resend or Production.
+Production remains untouched and unconfigured. Shared Neon development is migrated through `0014_support_intake_recovery`: `0013_support_guards` then `0014_support_intake_recovery` applied successfully on 2026-10-15, each with its own restore point and a no-op rerun. Journal/schema verification passed: 15 migration entries, 27 tables / 16 enums. Full recovery acceptance with a verified Neffi-owned sending domain and two independent external inboxes remains a launch gate.
 
 ## Deliberately deferred
 
