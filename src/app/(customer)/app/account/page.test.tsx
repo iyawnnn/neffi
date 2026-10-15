@@ -16,6 +16,7 @@ const render = async (changed?: string) => renderToStaticMarkup(await AccountPag
 beforeEach(() => { vi.clearAllMocks(); m.account.mockResolvedValue({ accountId: "a1", email: "a@example.test" }); m.methods.mockResolvedValue({ google: true }); });
 test("account has sign-in methods, changes, session controls and support deletion", async () => {
   const html = await render("1"); for (const copy of ["Signed in as", "a@example.test", "Sign-in methods", "Email code", "Google", "Remove Google", "You can still sign in with an email code.", "Change sign-in email", "Send code", "Sign out everywhere", "To delete your account, please contact Neffi support.", "Your sign-in email has been changed."]) expect(html).toContain(copy);
+  expect(html).toContain('href="/support?topic=recovery"');
 });
 test("unlinked account offers Connect Google", async () => { m.methods.mockResolvedValue({ google: false }); const html = await render(); expect(html).toContain("Connect Google"); expect(html).not.toContain("Remove Google"); });
 

@@ -66,6 +66,10 @@ export async function setCaseStatus(db: Db, input: CaseMutation & { status: "ope
   if (!z.enum(s.supportCaseStatus.enumValues).safeParse(input.status).success || !z.string().trim().max(500).optional().safeParse(input.note).success) throw new SupportError("invalid_input");
   return withCase(db, input, async (tx, row) => {
     if (row.status === input.status) throw new SupportError("invalid_input");
+    if (input.status === "resolved") {
+      const [pending] = await tx.select({ id: s.accountRecoveries.id }).from(s.accountRecoveries).where(and(eq(s.accountRecoveries.supportCaseId, row.id), eq(s.accountRecoveries.status, "pending"))).limit(1);
+      if (pending) throw new SupportError("recovery_pending");
+    }
     await tx.update(s.supportCases).set({ status: input.status, resolvedAt: input.status === "resolved" ? new Date() : null }).where(eq(s.supportCases.id, row.id));
     await recordActivity(tx, { type: input.status === "resolved" ? "support_case_resolved" : input.status === "waiting_on_customer" ? "support_case_waiting" : "support_case_reopened", actorAccountId: input.actorId, supportCaseId: row.id, note: input.note?.trim() });
   });

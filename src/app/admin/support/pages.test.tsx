@@ -29,7 +29,25 @@ test.each(["open", "waiting_on_customer", "resolved"])("owner workspace renders 
 test("queue renders empty state and Support navigation", async () => {
   const html = renderToStaticMarkup(await Queue({ searchParams: Promise.resolve({}) }));
   expect(html).toContain("No support cases match");
+  expect(html).toContain('name="source"');
   expect(renderToStaticMarkup(<AdminNav />)).toContain('href="/admin/support"');
+});
+
+test("public requester stays the displayed recipient when an Account is linked", async () => {
+  getCaseDetail.mockResolvedValue({ ...detail, source: "public", requesterEmail: "requester@example.test", requesterMessage: "Please help", account: { email: "account@example.test", methods: [] } });
+  const html = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  expect(html).toContain("Recipient: requester@example.test");
+  expect(html).toContain("Unverified contact");
+  expect(html).toContain("Send reply");
+  expect(html).toContain("Resolve with notice");
+});
+
+test("linked customer recovery offers initiate, secure and cancel but no recovery-code resend", async () => {
+  getCaseDetail.mockResolvedValue({ ...detail, type: "account_recovery", account: { email: "account@example.test", role: "customer", methods: ["email"] }, recoveries: [{ id, newEmail: "new@example.test", status: "pending", attempts: 0, expiresAt: new Date("2026-10-15") }] });
+  const html = renderToStaticMarkup(await Detail({ params: Promise.resolve({ caseId: id }), searchParams: Promise.resolve({}) }));
+  for (const label of ["Initiate recovery", "Secure account", "Cancel recovery", "Also remove Google sign-in"]) expect(html).toContain(label);
+  expect(html).toContain('name="unlinkGoogle" checked');
+  expect(html).not.toContain("Resend recovery code");
 });
 
 test("correction sheets follow case, order and linked-card state", async () => {

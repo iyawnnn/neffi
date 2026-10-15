@@ -14,6 +14,7 @@ const render = async () => renderToStaticMarkup(await CardPage({ params: Promise
 beforeEach(() => { vi.resetAllMocks(); m.account.mockResolvedValue({ accountId: "a1" }); m.card.mockResolvedValue({ id: "c1", suffix: "AAAA", publicToken: token, profileId: "p1", profileName: "Ana", disabled: false }); m.profiles.mockResolvedValue([{ id: "p1", fullName: "Ana" }, { id: "p2", fullName: "Work" }]); });
 test("connected card shows owned profiles, off confirmation and permanent Sharing QR", async () => {
   const html = await render();
+  expect(html).toContain('href="/support?cardId=c1"');
   expect(html).toContain('name="profileId"'); expect(html).toContain('value="p1" selected=""'); expect(html).toContain("Work");
   for (const text of ["Shows", "Turn off this card", "When it&#x27;s off, tapping it won&#x27;t show your profile.", "Download QR code", "Anyone who scans this opens the same page as tapping your card."]) expect(html).toContain(text);
   expect(html).toContain('alt="QR code for your Neffi link"'); expect(html).toContain('src="data:image/svg+xml'); expect(html).toContain('download="neffi-qr.svg"'); expect(html).toContain(`https://tap.example.test/c/${token}`);

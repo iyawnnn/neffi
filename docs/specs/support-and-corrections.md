@@ -1,6 +1,6 @@
 # Spec: Support and corrections
 
-**Status:** implemented (M9A), owner-side only. Related: [money and costs](money-and-costs.md), [orders](orders-and-fulfillment.md), [cards](cards-and-activation.md). M9B public intake, recovery and email remain later work.
+**Status:** M9A merged; M9B locally implemented, acceptance pending. Related: [money and costs](money-and-costs.md), [orders](orders-and-fulfillment.md), [cards](cards-and-activation.md), [accounts](accounts-and-access.md).
 
 ## Cases
 
@@ -48,4 +48,26 @@ Migration `0013_support_guards` freezes refund sale/support classification, requ
 
 ## Deferred
 
-No public `/support`, customer portal or visible case status; no support/security/recovery email; no account recovery mutation, merge, Profile move or customer deletion. Owner MFA/step-up is M10. Partial payments still have no idempotency key; balance caps and reasoned voids remain the correction path.
+No customer portal or visible case status, Account merge, Profile move, customer deletion/restriction, inbound email, outbox, automatic retry or commerce email. Owner MFA/step-up and Turnstile are M10. Partial payments still have no idempotency key; balance caps and reasoned voids remain the correction path. M9A UX findings 1–9 remain deferred to the UI overhaul.
+
+## Public intake and email (M9B)
+
+`/support` accepts contact email, optional name (100 characters), category and message (2,000 characters), with inline privacy notice. Public intake performs no Account lookup, auto-links nothing and creates unassigned cases with null actor/opener and a category-label summary. Signed-in intake derives identity from the verified session and links a supplied Card only if owned; unknown or foreign Cards are ignored. It does not reuse owner-only `openCase` or unrestricted `linkCaseCard`.
+
+The client UUID dedupes case creation. A honeypot silently drops bots. HMAC quotas cap 10-minute intake at 5/IP, 3/email and 100 globally. A prior public case at the address in the previous 24 hours suppresses acknowledgement; signed-in acknowledgement is keyed on Account. The indexed query runs in the same transaction as quota upserts and insertion. Persist first, then best-effort acknowledgement; duplicate, quota and bot drops have the same public success. Ack never repeats the submitted name/message.
+
+Reply recipient is requester email when present, otherwise the linked Account's current email, otherwise unavailable. Linking an Account does not change public contact. Replies set Waiting; resolution may send a notice. Bodies are capped at 2,000 characters and activation-code-shaped credentials are blocked server-side. Delivery uses `case-<caseId>-<kind>-<attemptId>` and exactly one result Activity per attempt, with no body or provider error. Resend uses a fresh attempt; reply/resolution bodies are re-entered because they are not stored.
+
+## Account recovery and security (M9B)
+
+Recovery requires an active `account_recovery` case linked to a customer Account, owner confirmation and a 10–300-character verification note without secrets. New email is lowercased and must be unused case-insensitively (N1). Live pending recovery for the Account or address requires explicit cancellation; expired rows may be cancelled during initiation. Google removal defaults on. If compromise is suspected, Secure account first.
+
+Initiate/secure lock case → Account `FOR UPDATE`; completion looks up without locking then locks case → Account `FOR UPDATE` → recovery. Completion rechecks case, proof status/expiry/attempts, customer role, old-email snapshot and unused address. Wrong attempts return rather than throw so increments commit; the third cancels. Unique-email races roll back with the same public failure. Success verifies the new email, revokes sessions and optional Google, marks terminal completion and writes anonymous Activity while preserving business records. Pending recovery blocks resolution; resolved cases cannot complete.
+
+Proof is HMAC-only, eight digits and valid for 24 hours. Code is emailed only to the new address, once, without a resend path; failed delivery requires cancellation and fresh initiation. Started notice goes to the old address, completion notices to both. Customers must not sign in at the proposed address beforehand: email-code signup may create an occupied Account, which recovery refuses without merging or deleting.
+
+Intake free text and recovery/secure verification notes reject activation-shaped credentials and standalone eight-digit recovery-shaped strings before persistence. The any-16-character-run filter can also reject numeric references or long words composed of the accepted code alphabet; provide blocked evidence through the owner's verified channel without pasting codes into Neffi.
+
+Secure account uses the same verification on any active linked customer case, revokes sessions and optionally removes Google only when verified email remains. It changes no email or business records. Recovery notices retry from saved address snapshots; secure notices target Account email rather than public contact. Notices contain only event, time, optional case reference and support guidance, never the other address, codes or submitted support text. Delivery failure never undoes committed changes. Recovery routes are dynamic and noindex.
+
+Migration `0014` freezes intake fields on UPDATE only, with no DELETE-blocking case trigger (N2). Recovery history is immutable after terminal status and cannot be deleted. Public-data retention and full privacy/terms pages remain deferred.

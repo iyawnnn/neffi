@@ -19,11 +19,11 @@ export async function caseLinkOptions(db: Db, query = "") {
 
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-export async function listCases(db: Db, { before, status }: { before?: string; status?: typeof s.supportCaseStatus.enumValues[number] } = {}) {
+export async function listCases(db: Db, { before, status, source }: { before?: string; status?: typeof s.supportCaseStatus.enumValues[number]; source?: typeof s.supportCaseSource.enumValues[number] } = {}) {
   const cursor = before ? CURSOR.exec(before) : null;
-  const rows = await db.select({ id: s.supportCases.id, type: s.supportCases.type, summary: s.supportCases.summary, status: s.supportCases.status, assignedToAccountId: s.supportCases.assignedToAccountId, createdAt: s.supportCases.createdAt,
+  const rows = await db.select({ id: s.supportCases.id, type: s.supportCases.type, summary: s.supportCases.summary, status: s.supportCases.status, source: s.supportCases.source, assignedToAccountId: s.supportCases.assignedToAccountId, createdAt: s.supportCases.createdAt,
     cursor: sql<string>`${s.supportCases.createdAt}::text || '|' || ${s.supportCases.id}::text`,
-  }).from(s.supportCases).where(and(status ? eq(s.supportCases.status, status) : undefined, cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(26);
+  }).from(s.supportCases).where(and(status ? eq(s.supportCases.status, status) : undefined, source ? eq(s.supportCases.source, source) : undefined, cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(26);
   const page = rows.slice(0, 25);
   return { cases: page, next: rows.length > 25 ? page[24].cursor : null };
 }
@@ -40,7 +40,7 @@ export async function openCaseCount(db: Db) {
 export async function getCaseDetail(db: Db, id: string) {
   const [support] = await db.select().from(s.supportCases).where(eq(s.supportCases.id, id));
   if (!support) return null;
-  const [order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees] = await Promise.all([
+  const [order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees, recoveries] = await Promise.all([
     support.orderId ? getOrderDetail(db, support.orderId) : null,
     support.accountId ? accountDirectoryDetail(db, support.accountId) : null,
     support.purchaserId ? db.select({ id: s.purchasers.id, name: s.purchasers.name, contactNumber: s.purchasers.contactNumber }).from(s.purchasers).where(eq(s.purchasers.id, support.purchaserId)).then((rows) => rows[0]) : null,
@@ -48,8 +48,9 @@ export async function getCaseDetail(db: Db, id: string) {
     db.select().from(s.refunds).where(eq(s.refunds.supportCaseId, id)).orderBy(desc(s.refunds.createdAt), desc(s.refunds.id)),
     db.select().from(s.shipments).where(eq(s.shipments.supportCaseId, id)).orderBy(desc(s.shipments.createdAt), desc(s.shipments.id)),
     db.selectDistinct({ id: s.orders.id, number: s.orders.number, status: s.orders.status }).from(s.activityEvents).innerJoin(s.orders, eq(s.orders.id, s.activityEvents.orderId)).where(and(eq(s.activityEvents.supportCaseId, id), eq(s.activityEvents.type, "support_order_linked"))),
-    db.select({ id: s.activityEvents.id, type: s.activityEvents.type, note: s.activityEvents.note, createdAt: s.activityEvents.createdAt }).from(s.activityEvents).where(eq(s.activityEvents.supportCaseId, id)).orderBy(desc(s.activityEvents.createdAt), desc(s.activityEvents.id)),
+    db.select({ id: s.activityEvents.id, type: s.activityEvents.type, actorAccountId: s.activityEvents.actorAccountId, note: s.activityEvents.note, createdAt: s.activityEvents.createdAt }).from(s.activityEvents).where(eq(s.activityEvents.supportCaseId, id)).orderBy(desc(s.activityEvents.createdAt), desc(s.activityEvents.id)),
     orderAssignees(db),
+    db.select({ id: s.accountRecoveries.id, newEmail: s.accountRecoveries.newEmail, status: s.accountRecoveries.status, attempts: s.accountRecoveries.attempts, expiresAt: s.accountRecoveries.expiresAt, createdAt: s.accountRecoveries.createdAt }).from(s.accountRecoveries).where(eq(s.accountRecoveries.supportCaseId, id)).orderBy(desc(s.accountRecoveries.createdAt), desc(s.accountRecoveries.id)),
   ]);
-  return { ...support, order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees };
+  return { ...support, order, account, purchaser, cards, refunds, shipments, linkedOrders, timeline, assignees, recoveries };
 }

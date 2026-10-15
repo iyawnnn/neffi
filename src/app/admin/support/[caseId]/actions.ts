@@ -1,6 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { sendEmail } from "@/integrations/email/sender";
+import { prepareCaseMessage, dispatchCaseEmail } from "@/modules/support/email";
+import { initiateRecovery, cancelRecovery, resendRecoveryNotice } from "@/modules/accounts/recovery";
+import { secureAccount } from "@/modules/accounts/secure";
+import { resendCaseSecurityNotice } from "@/modules/accounts/security-notice";
+import { recoveryInitiationSchema, verificationSchema } from "@/modules/support/domain";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
@@ -18,6 +25,12 @@ import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, rese
 import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
 
 const MESSAGES: Record<SupportErrorCode, string> = {
+  customer_required: "Link a customer Account. Owner Accounts cannot be recovered or secured here.",
+  email_taken: "That email belongs to an Account. Recovery cannot merge Accounts; use another address and keep this case open.",
+  recovery_live: "Cancel the live pending recovery before initiating another.",
+  recovery_pending: "Cancel the pending recovery before resolving this case.",
+  recipient_missing: "Link an Account or use a case with a requester email before sending.",
+  activation_code_in_email: "Remove the activation code; give it to the customer directly",
   not_found: "That record was not found. Reload the case and try again.", invalid_input: "Check the fields and try again.",
   case_resolved: "This case is resolved. Reopen it before making a correction.", link_exists: "That link is already set and cannot be changed. Reload the case.",
   order_required: "Link an order to this case first.", wrong_order: "This action must use the order linked to this case.", wrong_status: "This action is unavailable for the order's current status.",
@@ -63,6 +76,37 @@ export async function openCaseAction(_previous: ActionState | undefined, data: F
 
 export async function assignCaseAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ caseId: id, assignedToAccountId: id }), data, (input, actorId) => assignCase(db, { ...input, actorId }));
+}
+
+export async function sendCaseMessageAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, kind: z.enum(["reply", "resolution", "acknowledgement"]), attemptId: id, body: z.string().trim().max(2000).optional(), resend: z.preprocess(value => value === "on", z.boolean()) }), data, async (input, actorId) => {
+    await prepareCaseMessage(db, { ...input, actorId });
+    after(async () => {
+      try { await dispatchCaseEmail(db, { ...input, actorId }, sendEmail, env.supportReplyTo); }
+      catch { /* Status is persisted; delivery is best effort. */ }
+    });
+    return { ok: "Saved. Check the Activity timeline for the delivery result." };
+  });
+}
+
+const accountVerified = verificationSchema.extend({ caseId: id, confirmed: z.preprocess(value => value === "on", z.literal(true)), unlinkGoogle: z.preprocess(value => value === "on", z.boolean()) });
+export async function initiateRecoveryAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(accountVerified.extend({ newEmail: recoveryInitiationSchema.shape.newEmail }), data, async (input, actorId) => {
+    await initiateRecovery(db, { ...input, actorId, secret: env.betterAuthSecret }, sendEmail);
+    return { ok: "Recovery started. Check Activity for delivery. Do not sign in with the proposed new address before completion." };
+  });
+}
+export async function cancelRecoveryAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, recoveryId: id }), data, (input, actorId) => cancelRecovery(db, { ...input, actorId }));
+}
+export async function secureAccountAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(accountVerified, data, (input, actorId) => secureAccount(db, { ...input, actorId }, sendEmail));
+}
+export async function resendRecoveryNoticeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, recoveryId: id, kind: z.enum(["recovery_started", "recovery_completed"]) }), data, (input, actorId) => resendRecoveryNotice(db, { ...input, actorId }, sendEmail));
+}
+export async function resendSecurityNoticeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ caseId: id, eventId: id }), data, (input, actorId) => resendCaseSecurityNotice(db, { ...input, actorId }, sendEmail));
 }
 
 export async function setCaseStatusAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

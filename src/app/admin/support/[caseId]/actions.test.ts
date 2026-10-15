@@ -1,5 +1,12 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const { authorize, openCase, addCaseNote, setCaseStatus, revalidatePath, reissueActivationCode } = vi.hoisted(() => ({ authorize: vi.fn(), openCase: vi.fn(), addCaseNote: vi.fn(), setCaseStatus: vi.fn(), revalidatePath: vi.fn(), reissueActivationCode: vi.fn() }));
+const email = vi.hoisted(() => ({ prepare: vi.fn(), dispatch: vi.fn(), after: vi.fn() }));
+const recovery = vi.hoisted(() => ({ initiate: vi.fn(), cancel: vi.fn(), secure: vi.fn() }));
+vi.mock("@/modules/accounts/recovery", () => ({ initiateRecovery: recovery.initiate, cancelRecovery: recovery.cancel }));
+vi.mock("@/modules/accounts/secure", () => ({ secureAccount: recovery.secure }));
+vi.mock("@/modules/support/email", () => ({ prepareCaseMessage: email.prepare, dispatchCaseEmail: email.dispatch }));
+vi.mock("@/integrations/email/sender", () => ({ sendEmail: vi.fn() }));
+vi.mock("next/server", () => ({ after: email.after }));
 vi.mock("@/auth/access", () => ({ authorize }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "synthetic" } }));
@@ -18,6 +25,27 @@ test("customer is denied before input or service access", async () => {
   authorize.mockResolvedValue({ ok: false });
   expect(await addCaseNoteAction(undefined, form({ caseId: id, note: "Test" }))).toHaveProperty("error");
   expect(addCaseNote).not.toHaveBeenCalled();
+});
+
+test("reply saves first, schedules delivery and maps unsafe-code refusals", async () => {
+  const data = form({ caseId: id, kind: "reply", body: "Please provide evidence.", attemptId: id });
+  expect(await actions.sendCaseMessageAction(undefined, data)).toHaveProperty("ok");
+  expect(email.dispatch).not.toHaveBeenCalled();
+  await email.after.mock.calls[0][0]();
+  expect(email.dispatch).toHaveBeenCalled();
+  email.prepare.mockRejectedValueOnce(new SupportError("activation_code_in_email"));
+  expect(await actions.sendCaseMessageAction(undefined, data)).toEqual({ error: "Remove the activation code; give it to the customer directly" });
+});
+
+test("recovery owner actions require verification and never return a recovery code", async () => {
+  const fields = { caseId: id, newEmail: "new@example.test", verificationNote: "Verified purchase evidence", unlinkGoogle: "on" };
+  expect(await actions.initiateRecoveryAction(undefined, form(fields))).toHaveProperty("error");
+  expect(recovery.initiate).not.toHaveBeenCalled();
+  recovery.initiate.mockResolvedValue({ recoveryId: id });
+  const result = await actions.initiateRecoveryAction(undefined, form({ ...fields, confirmed: "on" }));
+  expect(result).toHaveProperty("ok");
+  expect(result).not.toHaveProperty("reveal");
+  expect(recovery.initiate.mock.calls[0][1]).toMatchObject({ actorId: id, unlinkGoogle: true, confirmed: true });
 });
 
 test("case schemas reject bad ids and oversized summaries and notes", async () => {

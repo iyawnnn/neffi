@@ -1,0 +1,30 @@
+import { eq } from "drizzle-orm";
+import { beforeAll, expect, test } from "vitest";
+import * as s from "@/db/schema";
+import { insertAccount } from "@/db/test-fixtures";
+import { createTestDb, rollback, type TestDb } from "@/db/testing";
+import { setCaseStatus } from "./case";
+import { prepareCaseMessage } from "./email";
+import { listCases } from "./queries";
+let db: TestDb;
+beforeAll(async () => { db = await createTestDb(); });
+test("pending recovery blocks case resolution until explicitly cancelled", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx, "owner"); const account = await insertAccount(tx);
+  const [row] = await tx.insert(s.supportCases).values({ type: "account_recovery", summary: "Recovery", accountId: account.id }).returning();
+  const [recovery] = await tx.insert(s.accountRecoveries).values({ supportCaseId: row.id, accountId: account.id, oldEmail: account.email, newEmail: "new@example.test", codeHmac: "a".repeat(64), expiresAt: new Date(0), createdByAccountId: owner.id }).returning();
+  await expect(setCaseStatus(tx, { caseId: row.id, actorId: owner.id, status: "resolved" })).rejects.toMatchObject({ code: "recovery_pending" });
+  await tx.update(s.accountRecoveries).set({ status: "cancelled" }).where(eq(s.accountRecoveries.id, recovery.id));
+  await setCaseStatus(tx, { caseId: row.id, actorId: owner.id, status: "resolved" });
+}));
+test("reply preparation validates before persisting status and supports duplicate attempts", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx, "owner");
+  const [row] = await tx.insert(s.supportCases).values({ type: "other", summary: "Other", requesterEmail: "contact@example.test" }).returning();
+  const input = { caseId: row.id, actorId: owner.id, kind: "reply" as const, attemptId: crypto.randomUUID(), body: "Please send purchase evidence." };
+  await expect(prepareCaseMessage(tx, { ...input, body: "0123-4567-89AB-CDEF" })).rejects.toMatchObject({ code: "activation_code_in_email" });
+  expect((await tx.select().from(s.supportCases))[0].status).toBe("open");
+  await prepareCaseMessage(tx, input); await prepareCaseMessage(tx, input);
+  expect((await tx.select().from(s.supportCases))[0].status).toBe("waiting_on_customer");
+  expect(await tx.select().from(s.activityEvents)).toHaveLength(1);
+  expect((await listCases(tx, { source: "public" })).cases).toHaveLength(0);
+  expect((await listCases(tx, { source: "owner" })).cases).toHaveLength(1);
+}));

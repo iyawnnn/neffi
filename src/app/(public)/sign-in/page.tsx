@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/auth/access";
 import { authErrorMessage } from "@/auth/messages";
@@ -26,6 +27,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         <p className="text-muted-foreground">Use Google or an email code. No password needed.</p>
       </div>
       <SignInForm next={next} notice={authErrorMessage(error)} />
+      <Link href="/support" className="flex min-h-11 items-center underline">Cannot sign in? Contact Neffi support</Link>
     </main>
   );
 }

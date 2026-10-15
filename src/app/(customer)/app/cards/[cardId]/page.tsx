@@ -24,6 +24,7 @@ export default async function CardPage({ params }: PageProps<"/app/cards/[cardId
   return (
     <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10"><div className="flex w-full max-w-sm flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Neffi ending in {card.suffix}</h1>
+      <Link href={`/support?cardId=${card.id}`} className="flex min-h-11 items-center underline">Get help with this Card</Link>
       {card.profileId ? <form action={async data => { "use server"; await connectCardAction(undefined, data); }} className="flex flex-col gap-3">
         <input type="hidden" name="cardId" value={card.id} />
         <label className="flex flex-col gap-1 text-sm font-medium">Shows<select name="profileId" className={inputClass} defaultValue={card.profileId}>{profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.fullName ?? "Untitled profile"}</option>)}</select></label>

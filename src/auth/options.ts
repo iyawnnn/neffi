@@ -4,7 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { accounts, authIdentities, authRateLimits, authSessions, authVerifications } from "@/db/schema";
 import { consumeOtpQuota, hmacHex } from "./otp-quota";
 
@@ -15,6 +15,7 @@ type AuthOptionsInput = {
   google: { clientId: string; clientSecret: string };
   // Delivers a one-time sign-in code. Injected so tests can capture it and production can use Resend.
   sendAuthCode: (message: { email: string; code: string; type: string }) => Promise<void>;
+  onGoogleConnected?: (message: { accountId: string; email: string }) => Promise<void>;
 };
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
@@ -70,7 +71,8 @@ const withoutProviderTokens = <T extends object>(identity: T) => ({
 const GENERIC_RATE_LIMIT_MESSAGE = "Too many requests. Please try again later.";
 
 // Shared by the server instance and the database tests, so tests exercise the real persistence and security wiring.
-export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthOptionsInput) {
+export function authOptions({ db, secret, baseURL, google, sendAuthCode, onGoogleConnected }: AuthOptionsInput) {
+  const newAccountRequests = new WeakSet<object>();
   // First match wins. Unknown paths must not create IP/path counters before Better Auth returns 404.
   const rateLimitRules = {
     "/email-otp/send-verification-otp": { window: RATE_LIMIT_WINDOW_SECONDS, max: 10 },
@@ -159,15 +161,25 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode }: AuthO
     databaseHooks: {
       user: {
         create: {
-          before: async (user) => {
+          before: async (user, context) => {
             // Defense in depth: nothing may create an Account with an unverified email, or with a chosen role.
             if (user.emailVerified !== true) return false;
+            if (context) newAccountRequests.add(context);
             return { data: { ...user, role: "customer" } };
           },
         },
       },
       account: {
-        create: { before: async (identity) => ({ data: withoutProviderTokens(identity) }) },
+        create: {
+          before: async (identity) => ({ data: withoutProviderTokens(identity) }),
+          after: async (identity, context) => {
+            if (!onGoogleConnected || identity.providerId !== "google" || !context || newAccountRequests.has(context)) return;
+            try {
+              const [account] = await db.select({ email: accounts.email }).from(accounts).where(eq(accounts.id, identity.userId));
+              if (account) await onGoogleConnected({ accountId: identity.userId, email: account.email });
+            } catch { /* Adding Google stays successful if the notice cannot be scheduled. */ }
+          },
+        },
         // Connecting Google a second time updates the stored identity instead of creating one.
         update: { before: async (identity) => ({ data: withoutProviderTokens(identity) }) },
       },

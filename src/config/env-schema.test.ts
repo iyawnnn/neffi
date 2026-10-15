@@ -29,6 +29,13 @@ function errorMessage(fn: () => unknown): string {
 }
 
 describe("parseServerEnv", () => {
+  test("support reply-to is optional and rejects header injection without echoing it", () => {
+    expect(parseServerEnv({ ...base, SUPPORT_REPLY_TO: "help@example.test" }).supportReplyTo).toBe("help@example.test");
+    expect(parseServerEnv({ ...base, SUPPORT_REPLY_TO: "" }).supportReplyTo).toBeUndefined();
+    const message = errorMessage(() => parseServerEnv({ ...base, SUPPORT_REPLY_TO: "help@example.test\r\nBcc: stolen@example.test" }));
+    expect(message).toContain("SUPPORT_REPLY_TO");
+    expect(message).not.toContain("stolen@example.test");
+  });
   test("requires the Cloudinary secret without echoing values", () => {
     const message = errorMessage(() => parseServerEnv({ ...base, CLOUDINARY_API_SECRET: undefined }));
     expect(message).toContain("CLOUDINARY_API_SECRET is required");
@@ -45,6 +52,7 @@ describe("parseServerEnv", () => {
       googleClientSecret: base.GOOGLE_CLIENT_SECRET,
       resendApiKey: base.RESEND_API_KEY,
       authEmailFrom: base.AUTH_EMAIL_FROM,
+      supportReplyTo: undefined,
       activationCodeSecret: "a".repeat(40),
       cardUrlOrigin: "http://localhost:3000",
       cloudinaryCloudName: base.CLOUDINARY_CLOUD_NAME,

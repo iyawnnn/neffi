@@ -52,13 +52,14 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 | [0009](decisions/0009-database-invariants-and-lock-order.md) | Database-level invariants and lock order |
 | [0010](decisions/0010-environment-isolation.md) | Environment isolation |
 | [0011](decisions/0011-fresh-card-state-cached-scene-content.md) | Fresh Card state, cached Scene content, noindex |
+| [0012](decisions/0012-support-controlled-account-recovery.md) | Owner verification and new-inbox proof preserve the Account; no merge or code resend |
 
 ## Current, planned and later
 
-- **Current:** M1–M8 are merged. M9A is implemented on the feature branch, with software/local acceptance gates before integration; the specs describe its behavior.
-- **Later:** M9B and M10–M12 (see [roadmap](roadmap.md)).
+- **Current:** M1–M9A are merged. M9B passed software verification and user-approved reduced acceptance; PR #11 awaits merge approval.
+- **Later:** M10–M12 (see [roadmap](roadmap.md)).
 
-M9A uses the existing Support tables and subject links, with the additive guards in migration `0013`. Neon development remains through `0012` pending separate apply approval.
+Shared Neon development is verified through `0014_support_intake_recovery`. Migrations `0013_support_guards` and `0014_support_intake_recovery` were applied successfully on 2026-10-15; both reruns were no-ops, with 27 tables / 16 enums verified. Production remains untouched/unconfigured. Verified-domain and two-independent-inbox recovery acceptance remain launch gates; see [operations](operations.md#m9b-support-recovery-and-email-runbook).
 
 ## Milestone plans
 
