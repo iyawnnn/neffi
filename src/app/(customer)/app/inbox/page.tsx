@@ -6,13 +6,16 @@ import { listInbox } from "@/modules/forms/submissions";
 
 export const instant = false;
 
-const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-](?:0\d|1[0-5])(:[0-5]\d)?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 export default async function InboxPage({ searchParams }: PageProps<"/app/inbox">) {
   const viewer = await requireAccount("/app");
   const { before: raw } = await searchParams;
   const cursor = typeof raw === "string" ? CURSOR.exec(raw) : null;
-  const before = cursor ? { createdAt: cursor[1], id: cursor[4] } : undefined;
+  const localTime = cursor?.[1].slice(0, 19).replace(" ", "T");
+  const date = localTime ? new Date(`${localTime}Z`) : null;
+  const valid = date && Number.isFinite(date.getTime()) && date.getUTCFullYear() > 0 && date.toISOString().slice(0, 19) === localTime;
+  const before = cursor && valid ? { createdAt: cursor[1], id: cursor[4] } : undefined;
   const { items, next } = await listInbox(db, { accountId: viewer.accountId, before });
   return (
     <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10">
