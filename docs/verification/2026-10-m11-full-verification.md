@@ -2,7 +2,7 @@
 
 Verified locally on 2026-10-15–16, from post-M10 `origin/main` (`9b8aecf`), on `feat/m11-full-verification`. Execution follows the [canonical M11 plan](../superpowers/plans/2026-10-15-milestone-11-full-verification.md), with explicit user-approved corrections recorded below. Implemented code, schema and existing tests take precedence over historical plan wording.
 
-**Result: local verification passed; Vercel edge observation NOT EXERCISED (access).** T0–T12 are complete; T13 independent whole-branch review is pending at report creation. Push/PR and merge require separate approvals. M11 does not establish pilot readiness.
+**Result: local verification passed; Vercel edge observation NOT EXERCISED (access).** T0–T13 are complete, including an approved independent whole-branch review. T10 is closed as an access-limited evidence gap under the plan, not a fresh external pass. Push/PR and merge require separate approvals. M11 does not establish pilot readiness.
 
 ## Final gates and evidence classes
 
@@ -166,4 +166,4 @@ No unresolved blocker or important application defect was found in the exercised
 
 ## Independent review and release gate
 
-T13 independent whole-branch review: **pending** at this report's initial commit. It must check plan §10, the approved application/fixture exceptions, evidence integrity and all M11 changes since `9b8aecf`. Final verdict will be recorded here before requesting push/PR approval. No push, PR, merge, deployment or external mutation is part of this report.
+T13 independent whole-branch review: **APPROVED, no findings**, by the read-only `code_reviewer` agent `m11_independent_review` on 2026-10-16. It reviewed the complete `9b8aecf..ef1110e` diff, relevant surrounding code, canonical plan and local evidence against §10. It confirmed approved scope, preserved validation/re-exports, test integrity, fail-closed environment guards, honest evidence classes and the T10 access limitation. This final editorial change records that verdict; application/test code is unchanged. A final documentation-delta check and history secret scan precede the release approval request. No push, PR, merge, deployment or external mutation was performed. The next gate is explicit approval to push `feat/m11-full-verification` and open a PR targeting `main`; merge requires separate approval.
