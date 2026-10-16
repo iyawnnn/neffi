@@ -1,13 +1,12 @@
 import { z } from "zod";
+import { FIELD_LABELS, FORM_FIELDS, MAX_QUESTIONS, type FormField } from "./fields";
+
+export { FIELD_LABELS, FORM_FIELDS, MAX_QUESTIONS, type FormField } from "./fields";
 
 // Native Neffi forms stay small: a fixed field catalogue, three modes, up to three short custom questions.
-export const FORM_FIELDS = ["name", "email", "phone", "company", "message"] as const;
-export type FormField = (typeof FORM_FIELDS)[number];
 export type FieldMode = "hidden" | "optional" | "required";
-export const FIELD_LABELS: Record<FormField, string> = { name: "Your name", email: "Email", phone: "Phone", company: "Company", message: "Message" };
 const FIELD_KIND = { name: "text", email: "email", phone: "tel", company: "text", message: "long" } as const;
 const FIELD_MAX: Record<FormField, number> = { name: 80, email: 254, phone: 30, company: 80, message: 2000 };
-export const MAX_QUESTIONS = 3;
 
 const mode = z.enum(["hidden", "optional", "required"]);
 const configSchema = z

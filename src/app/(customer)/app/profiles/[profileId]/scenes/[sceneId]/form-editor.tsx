@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, inputClass } from "@/components/ui/input";
-import { FIELD_LABELS, FORM_FIELDS, MAX_QUESTIONS, type FormConfig } from "@/modules/forms/config";
+import { FIELD_LABELS, FORM_FIELDS, MAX_QUESTIONS } from "@/modules/forms/fields";
+import type { FormConfig } from "@/modules/forms/config";
 import { updateFormAction } from "./actions";
 
 export function FormEditor({ profileId, sceneId, form }: { profileId: string; sceneId: string; form: { id: string; title: string; config: FormConfig } }) {
