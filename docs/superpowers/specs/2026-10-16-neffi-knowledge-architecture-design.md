@@ -143,7 +143,7 @@ The current shared NFC Technical Research and Market & Competitor Research pages
 ## 13. Anti-duplication rules
 
 1. Each fact has one home, and every other place links to it.
-2. Engineering status (milestones, PRs, migration and test counts) lives only in `docs/roadmap.md` and `docs/verification/`.
+2. `docs/roadmap.md` is the only place current engineering milestone status (milestones, PRs, migration and test counts) is maintained. Historical verification and operations records may still contain dated evidence.
 3. Product intent is not copied into GitHub. Specs state the technical requirement and link the decision.
 4. Engineering detail is not maintained in Notion. Notion links GitHub.
 5. Agent guidance lives only in `AGENTS.md`.
@@ -153,7 +153,7 @@ The current shared NFC Technical Research and Market & Competitor Research pages
 ## 14. Validation and success criteria
 
 GitHub pass:
-- `git diff --name-status` against the baseline shows only `M`/`A` on `AGENTS.md`, `CLAUDE.md`, `README.md`, `PRODUCT.md`, `docs/README.md` and `docs/roadmap.md`, with no `D`/`R` and no non-Markdown files.
+- `git diff --name-status` against the planning-stage commit (the execution baseline that already holds this spec and its plans), not against `main`, shows only `M`/`A` on `AGENTS.md`, `CLAUDE.md`, `README.md`, `PRODUCT.md`, `docs/README.md` and `docs/roadmap.md`, with no `D`/`R` and no non-Markdown files.
 - The Next.js block in `AGENTS.md` is byte-identical to the baseline, and `next dev` leaves `AGENTS.md` unchanged.
 - `docs/README.md` no longer ranks Notion and no longer says the repository is the source of truth for everything.
 - Milestone status wording (PR numbers, "awaits merge", "through Milestone 10") appears only in `docs/roadmap.md` and `docs/verification/`.

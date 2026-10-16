@@ -16,7 +16,7 @@
 - Only these files change: `AGENTS.md`, `CLAUDE.md` (new), `README.md`, `PRODUCT.md`, `docs/README.md` and `docs/roadmap.md`.
 - The `<!-- BEGIN:nextjs-agent-rules -->` … `<!-- END:nextjs-agent-rules -->` block in `AGENTS.md` stays byte-for-byte unchanged.
 - Use LF line endings (`.gitattributes` sets `* text=auto eol=lf`).
-- Engineering status (PR numbers, migration and test counts, merge state) lives only in `docs/roadmap.md` and `docs/verification/`.
+- `docs/roadmap.md` is the only place current engineering milestone status (PR numbers, migration and test counts, merge state) is maintained. Historical verification and operations records may still contain dated evidence.
 - Do not change application code, Notion or Obsidian, and do not move or delete files. These stay untouched: specs, ADRs, architecture, `database/erd.md`, `verification/`, `operations.md`, `src/modules/README.md` and the milestone plans.
 - Do not run the application test suite. These are documentation-only changes.
 - Two interpretations of the spec are deliberate:
@@ -67,7 +67,7 @@ Everything needed to implement Neffi is in this repository. Read Notion (read-on
 - Never use any of these as a specification: historical milestone plans (`docs/superpowers/plans/`), design records (`docs/superpowers/specs/`), Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI Build Handoff), or the engineering details of other Notion pages.
 - If a product decision you need is in neither this repository nor Notion, stop and ask. Do not invent business rules.
 - If an approved Notion decision disagrees with implemented behavior, report it as drift. Do not silently change code to match Notion, and do not treat the code as overriding the decision.
-- Milestone status lives only in [`docs/roadmap.md`](docs/roadmap.md). Do not restate it elsewhere.
+- Current engineering milestone status is maintained only in [`docs/roadmap.md`](docs/roadmap.md). Do not restate it elsewhere.
 - Follow the [security rules](README.md#security-rules) and the runbooks in [`docs/operations.md`](docs/operations.md).
 ```
 
@@ -120,7 +120,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 
 - [ ] **Step 2:** Make three changes to the "Authority map" table:
   - Replace the PRODUCT.md row with `| How does Neffi behave **today**? Terms and principles | [PRODUCT.md](../PRODUCT.md) | Current, normative summary. Specs win on detail |`.
-  - Replace the roadmap row with `| Engineering milestone status, launch gates and deferred engineering scope | [roadmap.md](roadmap.md) | Status (the only place it is recorded, besides verification reports) |`.
+  - Replace the roadmap row with `| Engineering milestone status, launch gates and deferred engineering scope | [roadmap.md](roadmap.md) | Status (the only place current status is maintained; verification and operations records keep dated evidence) |`.
   - After the `superpowers/plans/` row, insert `| Why and how a documentation or architecture change was designed | [`superpowers/specs/`](superpowers/specs/) | Design record. Historical once implemented. Not a specification |`.
 - [ ] **Step 3:** Delete the whole `## Precedence when sources disagree` section. It runs from its heading through the line `The repository is the source of truth. Do not rebuild core behavior from old plans or Notion pages.`, and Step 1 replaces it.
 - [ ] **Step 4:** Replace the whole `## Current, planned and later` section with the text below. That section is its heading, both bullets and the paragraph starting "Shared Neon development is verified…".
@@ -128,7 +128,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 ```markdown
 ## Status
 
-Engineering milestone status, launch gates and deferred scope are recorded only in [roadmap.md](roadmap.md). Product release direction is owned by Notion.
+Current engineering milestone status, launch gates and deferred scope are maintained only in [roadmap.md](roadmap.md). Verification and operations records may still contain dated evidence. Product release direction is owned by Notion.
 ```
 
 - [ ] **Step 5:** Replace the body of `## Milestone plans` with the text below:
@@ -145,7 +145,7 @@ Engineering milestone status, launch gates and deferred scope are recorded only 
 These Notion statements disagree with the repository or are stale. Notion is not edited from the repository, so reconciliation is manual.
 
 - Older Notion material still describes the superseded GRC lifecycle (Blank, Reserved, encode and test, Released) and a narrow GRC provisioning capability in M4. [Decision 0006](decisions/0006-grc-simple-commercial-line.md) is authoritative.
-- Engineering status in Notion lags the repository: the hub callout, the AI Build Handoff, Locked Plan step 9, and Step 9 (which records M9A, M9B and M10 as "not started"). [roadmap.md](roadmap.md) is authoritative.
+- Engineering status in Notion lags the repository: the hub callout, the AI Build Handoff, Locked Plan step 9, and Step 9, whose Milestone Progress Record is stale (for example, M7 and M10 are still marked "Not started"). [roadmap.md](roadmap.md) is authoritative.
 - Step 7 says OWNER MFA/step-up is enabled, the Locked Plan's Step 7 section proposes TOTP/step-up before commercial launch, and Step 8 lists Turnstile and migration rehearsal as M10 deliverables. MFA/step-up and Turnstile are deferred ([roadmap](roadmap.md#deliberately-deferred)).
 - Examples use `tapcard.ph` or `neffi.ph`. No source has locked the final public domain, so use `CARD_URL_ORIGIN`.
 - "Quick Demo" and "Standard vs Custom package" are not part of the implemented product.
@@ -191,13 +191,13 @@ Abuse limits use per-IPv6-/64 quotas and daily caps, with non-blocking cleanup. 
 - [ ] **Step 1:** In `docs/roadmap.md`, rename the title to `# Engineering roadmap and milestone status` and replace the intro paragraph with the text below:
 
 ```markdown
-Engineering delivery status as of 2026-10-16: milestones, launch gates and deferred engineering scope. Status is recorded only here and in the reports in [`verification/`](verification/). Notion owns product release direction and priority. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification; [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/) describe current behavior.
+Engineering delivery status as of 2026-10-16: milestones, launch gates and deferred engineering scope. This is the only place current engineering milestone status is maintained; the reports in [`verification/`](verification/) and [operations.md](operations.md) keep dated evidence. Notion owns product release direction and priority. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification; [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/) describe current behavior.
 ```
 
 - [ ] **Step 2:** Replace the M9A row's status cell with `Merged (PR #10). [Plan](superpowers/plans/2026-10-14-milestone-9a-support-and-corrections.md)`, and remove the bold from its milestone cell.
 - [ ] **Step 3:** Replace the M9B row's status cell with `Merged (PR #11). Software gate and independent review passed. Reduced manual acceptance approved: A1 basic and A4 core passed, A6 deferred, remaining manual checks not exercised. [Approved plan](superpowers/plans/2026-10-14-milestone-9b-public-support-recovery-email.md)`, and remove the bold from its milestone cell.
 - [ ] **Step 4:** Replace the M11 row's status cell with `Merged (PR #13). Local full gate passed: 161 files / 1,481 tests, build/bundle, six concurrency suites, HTTP and 37 browser checkpoints. Shared-development evidence carried forward. Vercel edge observation not exercised (no access) and handed to M12. [Report](verification/2026-10-m11-full-verification.md)`.
-- [ ] **Step 5:** In the M10 row, delete `. MFA/step-up and Turnstile deferred`. Then, under `## Deliberately deferred`, insert `OWNER MFA/step-up, Turnstile, ` at the start of the list.
+- [ ] **Step 5:** In the M10 row, delete `. MFA/step-up and Turnstile deferred`. Then, under `## Deliberately deferred`, replace the opening `Account deletion or restriction,` with `OWNER MFA/step-up, Turnstile, account deletion or restriction,`.
 - [ ] **Step 6:** Replace the `## Release mapping` heading and table with the text below:
 
 ```markdown
