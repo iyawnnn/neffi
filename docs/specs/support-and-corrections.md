@@ -1,6 +1,6 @@
 # Spec: Support and corrections
 
-**Status:** M9A merged; M9B locally implemented, acceptance pending. Related: [money and costs](money-and-costs.md), [orders](orders-and-fulfillment.md), [cards](cards-and-activation.md), [accounts](accounts-and-access.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [money and costs](money-and-costs.md), [orders](orders-and-fulfillment.md), [cards](cards-and-activation.md), [accounts](accounts-and-access.md).
 
 ## Cases
 

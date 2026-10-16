@@ -1,6 +1,6 @@
 # Domain model
 
-Current through M9A. Column-level detail and constraints are in the generated [ERD](../database/erd.md); this document explains the concepts and state machines.
+For current engineering milestone status, see [the roadmap](../roadmap.md). Column-level detail and constraints are in the generated [ERD](../database/erd.md); this document explains the concepts and state machines.
 
 ## Entities
 
