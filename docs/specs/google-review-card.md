@@ -1,6 +1,6 @@
 # Spec: Google Review Card (GRC)
 
-**Status:** implemented (M8, amended A7). Decision: [0006](../decisions/0006-grc-simple-commercial-line.md). This is the single source of GRC truth; it supersedes the earlier Card-lifecycle design that still appears in historical milestone plans and in Notion.
+For current engineering milestone status, see [the roadmap](../roadmap.md). Decision: [0006](../decisions/0006-grc-simple-commercial-line.md). This is the single source of GRC truth; it supersedes the earlier Card-lifecycle design that still appears in historical milestone plans and in Notion.
 
 ## What a GRC is
 

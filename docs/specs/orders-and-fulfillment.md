@@ -1,6 +1,6 @@
 # Spec: Orders and fulfilment
 
-**Status:** implemented through M9A. Related: [money and costs](money-and-costs.md), [cards and activation](cards-and-activation.md), [GRC](google-review-card.md), [0006](../decisions/0006-grc-simple-commercial-line.md), [0007](../decisions/0007-price-snapshots-single-active-product.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [money and costs](money-and-costs.md), [cards and activation](cards-and-activation.md), [GRC](google-review-card.md), [0006](../decisions/0006-grc-simple-commercial-line.md), [0007](../decisions/0007-price-snapshots-single-active-product.md).
 
 ## Purpose
 
