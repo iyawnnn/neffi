@@ -1,10 +1,10 @@
-# Neffi — product definition (local implementation: through Milestone 10)
+# Neffi — implemented product behavior
 
-This is the canonical description of what Neffi is and how it behaves today. Behavior that is approved but not yet built is labelled **Planned**. For detail, follow the links to [`docs/specs/`](docs/specs/) and [`docs/decisions/`](docs/decisions/). [`docs/README.md`](docs/README.md) is the map of which document is authoritative for what.
+This is the engineering-facing summary of how Neffi behaves **today**. It covers vocabulary, states, principles and the main flows, with links to the specs and decisions that define each area. When this file and a spec disagree, the spec wins. Notion owns product intent: what Neffi sells and why, pricing, brand and the product roadmap (see [the sources of truth](docs/README.md#sources-of-truth)). Behavior that is approved but not built is labelled **Planned**. Milestone status is in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Identity
 
-Neffi sells NFC cards that turn one tap into an action. It is built for non-technical customers in the Philippines, and the two owners sell and fulfil through Facebook Messenger, with manual payment (GCash, bank transfer, cash) and manual courier recording. The brand is "Neffi" (the wordmark is lowercase `neffi`). Earlier planning material called it "TapCard". The final public domain is not yet locked; the code uses `CARD_URL_ORIGIN`.
+Neffi sells NFC cards that turn one tap into an action. It is built for non-technical customers in the Philippines, and the two owners sell and fulfil through Facebook Messenger, with manual payment (GCash, bank transfer, cash) and manual courier recording. The brand is "Neffi" (the wordmark is lowercase `neffi`). Earlier planning material called it "TapCard". The final public domain is not yet locked; the code uses `CARD_URL_ORIGIN`. Brand, naming, pricing and the business model are owned by Notion.
 
 Two product lines:
 
@@ -62,16 +62,20 @@ OWNER accounts see Dashboard, Orders, Inventory, Customers, Expenses, Support an
 - **Dashboard and search.** In Progress count, outstanding balances, collected and expenses this month, stock counts, recent activity; search across orders, purchasers, accounts, cards and tracking numbers.
 - **Settings.** Products and pricing (one active product per kind; changes affect future orders only) and the read-only list of owners. Owner roles are changed only by a guarded command-line tool.
 
-## Support and corrections (M9A)
+## Support and corrections
 
 Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assignment, Open/Waiting/Resolved status, reopen, immutable related links, internal notes and Activity. Guided actions correct Completed-order money, retire defective Released DBCs, release verified free replacements against the original item, link real paid replacement orders and record support shipments. Reissue and wrong-account reset require purchase/claim verification and a note; the code is revealed once for delivery outside Neffi. Reset keeps the permanent URL and leaves the former Account’s Profile intact. See [support and corrections](docs/specs/support-and-corrections.md).
 
-## Planned and later (not current behavior)
-
-- **M9B acceptance:** software verification, independent review and user-approved reduced acceptance passed; PR #11 merged into main. Shared Neon development is now verified through `0015_validate_dbc_ready_checks` as of 2026-10-15. Full recovery with a verified Neffi-owned sender and two independent inboxes remains a launch gate; Production remains untouched/unconfigured. See [operations](docs/operations.md#m9b-support-recovery-and-email-runbook) for the acceptance limits.
-- **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
-- **M10:** IPv6 /64 quotas, daily caps, non-blocking cleanup, static CSP/nosniff, Sentry SQL-parameter scrubbing, precise Inbox cursors and constraint validation migration 0015. Merged in PR #12. Software verification and T12 browser acceptance passed; shared development is through 0015 with a 16-entry journal and the Ready-check constraint validated. Schema remains 27 tables / 16 enums; both M10 restore points remain retained. OWNER MFA/step-up and Turnstile are deferred. M11 local full verification passed, with Vercel edge observation not exercised for lack of access; see [the report](docs/verification/2026-10-m11-full-verification.md) and [roadmap](docs/roadmap.md). M12 pilot readiness remains open.
+### Public support and account recovery
 
 `/support` creates unassigned cases without sign-in. Public contact is unverified and never auto-links records; signed-in requests use the verified Account and link only its owned Cards. Quotas and a 24-hour acknowledgement throttle bound mail. Owners reply or resolve with notices; activation codes remain out of band and are blocked in email bodies.
 
 An owner verifies a linked customer Account, then sends an eight-digit, 24-hour recovery code to an unused new address. The customer completes `/support/recover` before signing in with it. Three wrong attempts cancel the proof. Completion preserves Account id and business records, verifies the new address and revokes sessions and optional Google. Pending recovery blocks resolution. Owner Accounts and occupied addresses are refused; no merge or deletion occurs. Secure account revokes sessions and optionally Google without changing ownership. Security notices reveal neither the other address nor codes. See [support](docs/specs/support-and-corrections.md) and [0012](docs/decisions/0012-support-controlled-account-recovery.md).
+
+## Abuse limits and hardening
+
+Abuse limits use per-IPv6-/64 quotas and daily caps, with non-blocking cleanup. Responses carry a static Content Security Policy and `nosniff`, Sentry scrubs SQL parameters, and Inbox pagination uses precise cursors. Detail: [architecture](docs/architecture/system.md), [browser security headers](docs/operations.md#browser-security-headers) and [forms and Inbox limits](docs/operations.md#m10-forms-and-inbox-limits).
+
+## Not built yet
+
+[`docs/roadmap.md`](docs/roadmap.md#deliberately-deferred) lists the deferred features (including OWNER MFA/step-up and Turnstile) and the remaining launch gates. Notion sets their product priority.
