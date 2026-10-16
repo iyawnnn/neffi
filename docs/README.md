@@ -14,6 +14,7 @@ Start with [PRODUCT.md](../PRODUCT.md) for what Neffi is and how it behaves toda
 | Why a long-lived choice was made | [`decisions/`](decisions/) (list below) | Normative. Do not reverse without a new record |
 | How to set up, migrate, deploy, provision and verify | [operations.md](operations.md) | Runbook |
 | Milestone status and what is planned or deferred | [roadmap.md](roadmap.md) | Status |
+| Verification results, evidence limits and launch handoffs | [`verification/`](verification/) | Recorded evidence, not a behavior specification |
 | How a milestone was or will be built | [`superpowers/plans/`](superpowers/plans/) | **Historical or planned. Not a specification** |
 | Per-task execution evidence | `.superpowers/sdd/` ledgers | Local and untracked. Never canonical |
 
@@ -56,10 +57,10 @@ The repository is the source of truth. Do not rebuild core behavior from old pla
 
 ## Current, planned and later
 
-- **Current:** M1–M9A are merged. M9B passed software verification and user-approved reduced acceptance; PR #11 awaits merge approval.
-- **Later:** M10–M12 (see [roadmap](roadmap.md)).
+- **Current:** M1–M10 are merged, including M9B PR #11 and M10 PR #12. M11 local verification passed; Vercel edge observation was not exercised because access was unavailable. See the [M11 report](verification/2026-10-m11-full-verification.md) for evidence limits and review/release status.
+- **Later:** M12 pilot readiness (see [roadmap](roadmap.md)).
 
-Shared Neon development is verified through `0014_support_intake_recovery`. Migrations `0013_support_guards` and `0014_support_intake_recovery` were applied successfully on 2026-10-15; both reruns were no-ops, with 27 tables / 16 enums verified. Production remains untouched/unconfigured. Verified-domain and two-independent-inbox recovery acceptance remain launch gates; see [operations](operations.md#m9b-support-recovery-and-email-runbook).
+Shared Neon development is verified through `0015_validate_dbc_ready_checks` as of 2026-10-15: 16 journal entries, the Ready-check constraint validated, and 27 tables / 16 enums. M11 carries that evidence forward without shared access and separately verified empty-to-0015 migration/parity on loopback PostgreSQL. Production remains untouched/unconfigured. Verified-domain and two-independent-inbox recovery acceptance remain launch gates; see [operations](operations.md#m9b-support-recovery-and-email-runbook).
 
 ## Milestone plans
 

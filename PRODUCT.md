@@ -1,4 +1,4 @@
-# Neffi — product definition (local implementation: through Milestone 9B)
+# Neffi — product definition (local implementation: through Milestone 10)
 
 This is the canonical description of what Neffi is and how it behaves today. Behavior that is approved but not yet built is labelled **Planned**. For detail, follow the links to [`docs/specs/`](docs/specs/) and [`docs/decisions/`](docs/decisions/). [`docs/README.md`](docs/README.md) is the map of which document is authoritative for what.
 
@@ -70,7 +70,7 @@ Owners open cases from the Dashboard, Orders, Cards or Accounts. Cases have assi
 
 - **M9B acceptance:** software verification, independent review and user-approved reduced acceptance passed; PR #11 merged into main. Shared Neon development is now verified through `0015_validate_dbc_ready_checks` as of 2026-10-15. Full recovery with a verified Neffi-owned sender and two independent inboxes remains a launch gate; Production remains untouched/unconfigured. See [operations](docs/operations.md#m9b-support-recovery-and-email-runbook) for the acceptance limits.
 - **Deferred:** account deletion, account merge or Profile move, Settings → Communications.
-- **M10:** IPv6 /64 quotas, daily caps, non-blocking cleanup, static CSP/nosniff, Sentry SQL-parameter scrubbing, precise Inbox cursors and constraint validation migration 0015. Software verification and T12 browser acceptance passed; shared development is through 0015 with a 16-entry journal and the Ready-check constraint validated. Schema remains 27 tables / 16 enums; both M10 restore points remain retained. PR #12 awaits merge approval. OWNER MFA/step-up and Turnstile are deferred. M11 full verification and M12 pilot readiness follow; see [the roadmap](docs/roadmap.md).
+- **M10:** IPv6 /64 quotas, daily caps, non-blocking cleanup, static CSP/nosniff, Sentry SQL-parameter scrubbing, precise Inbox cursors and constraint validation migration 0015. Merged in PR #12. Software verification and T12 browser acceptance passed; shared development is through 0015 with a 16-entry journal and the Ready-check constraint validated. Schema remains 27 tables / 16 enums; both M10 restore points remain retained. OWNER MFA/step-up and Turnstile are deferred. M11 local full verification passed, with Vercel edge observation not exercised for lack of access; see [the report](docs/verification/2026-10-m11-full-verification.md) and [roadmap](docs/roadmap.md). M12 pilot readiness remains open.
 
 `/support` creates unassigned cases without sign-in. Public contact is unverified and never auto-links records; signed-in requests use the verified Account and link only its owned Cards. Quotas and a 24-hour acknowledgement throttle bound mail. Owners reply or resolve with notices; activation codes remain out of band and are blocked in email bodies.
 
