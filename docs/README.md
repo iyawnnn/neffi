@@ -12,6 +12,8 @@ Start with [PRODUCT.md](../PRODUCT.md) for how Neffi behaves today. Then read th
 
 A Notion decision counts as approved when it is recorded in "Neffi — Locked Plan" or marked Locked on its page. Shared research pages in Notion (NFC, market and competitors) are reference material, not decisions.
 
+For DBC and GRC product intent, use Notion Step 1 — Product Catalog and Step 2 — Product Definitions.
+
 ## When sources disagree
 
 - **Business or product intent:** Notion is authoritative. The repository follows through a spec or decision record.
