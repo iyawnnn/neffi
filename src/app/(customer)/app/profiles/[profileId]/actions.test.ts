@@ -51,8 +51,18 @@ test("identity invalid email highlights the field and does not mutate", async ()
   expect(m.updateIdentity).not.toHaveBeenCalled();
 });
 test("identity saves normalized details", async () => {
-  expect(await updateIdentityAction(undefined, identityData())).toEqual({ ok: "Saved." });
-  expect(m.updateIdentity).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, identity: { fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null } });
+  const identity = { fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null };
+  expect(await updateIdentityAction(undefined, identityData())).toEqual({ ok: "Saved.", identity });
+  expect(m.updateIdentity).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, identity });
+});
+test("identity returns server-normalized email/URL values and rejects invalid fields without mutation", async () => {
+  const result = await updateIdentityAction(undefined, dataWith({ fullName: " Ana ", email: "ANA@EXAMPLE.COM", website: "example.com", phone: "+639171234567" }));
+  expect(result.identity).toMatchObject({ fullName: "Ana", email: "ana@example.com", website: "https://example.com/", phone: "+639171234567" });
+  m.updateIdentity.mockClear();
+  const invalid = await updateIdentityAction(undefined, dataWith({ fullName: "", email: "bad", website: "javascript:alert(1)", bio: "x".repeat(301) }));
+  expect(invalid.fields?.sort()).toEqual(["bio", "email", "fullName", "website"]);
+  expect(invalid.identity).toBeUndefined();
+  expect(m.updateIdentity).not.toHaveBeenCalled();
 });
 test("identity not_ready returns publish gap copy", async () => {
   m.updateIdentity.mockRejectedValue(new ProfileError("not_ready", ["contact"]));
