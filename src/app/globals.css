@@ -7,9 +7,43 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Vercel's full Geist build (geist package): the Google Fonts build strips the stylistic sets. */
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --color-canvas: var(--canvas);
+  --color-subtle: var(--subtle);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-faint: var(--fg-faint);
+  --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-text: var(--action-text);
+  /* Authenticated-app type scale (Geist Sans). Hierarchy from deliberate 400/500/600, never 700. */
+  --text-title: var(--title-size);
+  --text-title--line-height: var(--title-line);
+  --text-title--letter-spacing: var(--title-tracking);
+  --text-title--font-weight: 600;
+  --text-section: 0.9375rem;
+  --text-section--line-height: 1.25rem;
+  --text-section--letter-spacing: -0.01em;
+  --text-section--font-weight: 600;
+  --text-entity: 0.9375rem;
+  --text-entity--line-height: 1.25rem;
+  --text-entity--letter-spacing: -0.01em;
+  --text-entity--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.125rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-label--font-weight: 500;
+  --text-nav: 0.875rem;
+  --text-nav--line-height: 1.25rem;
+  --text-nav--font-weight: 500;
+  --radius-panel: 12px;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -81,6 +115,23 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Neffi Snow / Ink / Vermilion (approved palette; Vermilion matches the profile accent swatch). */
+  --canvas: #F7F8FA;
+  --subtle: #F2F3F5;
+  --fg-secondary: #62646A;
+  --fg-faint: #8B8E95;
+  --border-strong: #D5D7DC;
+  --brand: #E64A35;
+  --action: #D6402D;
+  --action-hover: #C93A29;
+  --action-text: #C93A29;
+  --title-size: 1.875rem;
+  --title-line: 2.125rem;
+  --title-tracking: -0.02em;
+}
+
+@media (min-width: 768px) {
+  :root { --title-size: 2.25rem; --title-line: 2.5rem; --title-tracking: -0.025em; }
 }
 
 .dark {
@@ -126,5 +177,80 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Product typography for the authenticated app: Geist's ss02 alternates, standard and contextual ligatures.
+   Scoped here rather than global so public and admin pages keep the default glyphs. */
+@utility app-type {
+  font-feature-settings: "liga" 1, "calt" 1, "ss02" 1;
+  font-optical-sizing: auto;
+  font-synthesis: none;
+}
+
+@utility app-shell {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--background);
+  box-shadow: 0 4px 16px -8px color-mix(in oklab, var(--foreground) 16%, transparent);
+
+  &[data-scrolled="true"] {
+    border-color: var(--border-strong);
+    box-shadow: 0 8px 24px -10px color-mix(in oklab, var(--foreground) 20%, transparent);
+  }
+}
+
+/* Shared interaction timing for the authenticated app dashboard. */
+@utility interact {
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility nav-interact {
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility nav-arrow {
+  color: var(--fg-faint);
+  transform: translate(0, 0) rotate(0deg);
+  transform-origin: center;
+  transition-property: transform, color;
+
+  @media (hover: hover) and (pointer: fine) {
+    .group:hover & {
+      color: var(--brand);
+
+      @media (prefers-reduced-motion: no-preference) {
+        transform: translate(2px, -1px) rotate(-45deg);
+      }
+    }
+  }
+}
+
+/* Quick Action desktop separator: a short centered hairline between cells, ~65% of cell height.
+   On mobile the existing full-width divide-y remains. */
+@media (min-width: 768px) {
+  .qa-strip > li + li {
+    border-left: none;
+    position: relative;
+  }
+  .qa-strip > li + li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 15%;
+    height: 65%;
+    width: 1px;
+    border-radius: 0.5px;
+    background: var(--border);
   }
 }

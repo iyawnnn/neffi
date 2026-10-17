@@ -20,7 +20,7 @@ export function openingTags(source: string, name: string): string[] {
   return tags;
 }
 
-const TALL = /size="touch"|\bh-11\b|\bmin-h-11\b|\bsize-11\b/;
+const TALL = /size="touch"|\b(min-)?h-1[12]\b|\bsize-11\b/;
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry);
