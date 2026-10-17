@@ -9,10 +9,10 @@ import { db } from "@/db";
 import { checkImage, destroyImage, getImage, isProfileImageId, signImageUpload } from "@/integrations/media/cloudinary";
 import { ProfileError } from "@/modules/profiles/errors";
 import { deleteProfile, getOwnedProfile, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "@/modules/profiles/profiles";
-import { ACCENTS, identitySchema, PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
+import { ACCENTS, identitySchema, PUBLISH_GAP_COPY, type Identity } from "@/modules/profiles/rules";
 import { createScene, showScene } from "@/modules/profiles/scenes";
 
-export type ProfileActionState = { error?: string; gaps?: string[]; fields?: string[]; ok?: string };
+export type ProfileActionState = { error?: string; gaps?: string[]; fields?: string[]; ok?: string; identity?: Identity };
 const PROFILE_MESSAGES = {
   invalid: "Check the highlighted fields and try again.",
   limit_reached: "You've reached the limit for this. Remove one first.",
@@ -62,7 +62,7 @@ export async function updateIdentityAction(_previous: ProfileActionState | undef
   const parsed = identitySchema.safeParse(Object.fromEntries(["fullName", "headline", "company", "bio", "phone", "email", "website", "location"].map(key => [key, text(data, key)])));
   if (!parsed.success) return { error: PROFILE_MESSAGES.invalid, fields: [...new Set(parsed.error.issues.map(issue => String(issue.path[0])))] };
   try { await updateIdentity(db, { accountId, profileId, identity: parsed.data }); } catch (error) { return failure(error); }
-  return { ok: "Saved." };
+  return { ok: "Saved.", identity: parsed.data };
 }
 
 export async function showSceneAction(data: FormData): Promise<void> {

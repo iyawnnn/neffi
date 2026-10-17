@@ -5,16 +5,29 @@ vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/modules/profiles/profiles", () => ({ getOwnedProfile: m.profile }));
 vi.mock("../actions", () => ({ publishAction: vi.fn(), createSceneAction: vi.fn(), deleteProfileAction: vi.fn(), updateIdentityAction: vi.fn() }));
-vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), notFound: () => { throw new Error("NOT_FOUND"); } }));
 import IdentityPage from "./page";
 const render = async () => renderToStaticMarkup(await IdentityPage({ params: Promise.resolve({ profileId: "p1" }), searchParams: Promise.resolve({}) }));
-test("identity shows all eight fields prefilled and Save", async () => {
+test("identity shows two sections, prefilled fields, parent navigation and pristine save state", async () => {
   m.requireAccount.mockResolvedValue({ accountId: "a1" });
   m.profile.mockResolvedValue({ id: "p1", fullName: "Ana", headline: "Designer", company: "Neffi", bio: "Hello", phone: "+639171234567", email: "ana@e.test", website: "https://ana.example/", location: "Manila" });
   const html = await render();
-  for (const label of ["Full name", "What you do", "Company", "Short intro", "Phone", "Email", "Website", "Location"]) expect(html).toContain(label);
-  for (const value of ["Ana", "Designer", "Neffi", "Hello", "+639171234567", "ana@e.test", "https://ana.example/", "Manila"]) expect(html).toContain(value);
-  expect(html).toContain(">Save<");
+  for (const label of ["Basic information", "Contact &amp; location", "Full name", "Headline", "Company", "Short intro", "Mobile number", "Public email", "Website", "City / municipality"]) expect(html).toContain(label);
+  for (const value of ["Ana", "Designer", "Neffi", "Hello", "+63", "9171234567", "ana@e.test", "https://ana.example/", "Manila"]) expect(html).toContain(value);
+  expect(html).toContain("Save changes");
+  expect(html).toMatch(/<button\b[^>]*disabled[^>]*>Save changes<\/button>/);
+  expect(html).toContain('href="/app/profiles/p1"');
+  expect(html).toContain("Shared information across all profile modes.");
+  expect(html).toContain("Back to profile");
+  expect(html).toContain("All changes saved");
+  expect(html).toContain("Tell visitors who you are and what you do. Full name is required.");
+  expect(html).toContain("Add only the contact information you want visitors to see.");
+  expect([...html.matchAll(/>Optional<\/span>/g)]).toHaveLength(7);
+  const basicLabels = [...html.matchAll(/<label\b[^>]*>(Full name|Company|Headline|Short intro)/g)].map(match => match[1]);
+  expect(basicLabels).toEqual(["Full name", "Company", "Headline", "Short intro"]);
+  const forms = [...html.matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/g)];
+  expect(forms).toHaveLength(1);
+  for (const content of ["Basic information", "Contact &amp; location", "<footer", "Save changes"]) expect(forms[0][1]).toContain(content);
 });
 test("unowned identity is not found", async () => {
   m.profile.mockResolvedValue(null);
