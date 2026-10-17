@@ -1,6 +1,6 @@
 # Spec: Cards, inventory and activation
 
-**Status:** implemented through M9A. Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [domain model](../architecture/domain-model.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [domain model](../architecture/domain-model.md).
 
 ## Purpose
 

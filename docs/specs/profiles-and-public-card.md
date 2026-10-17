@@ -1,6 +1,6 @@
 # Spec: Profiles, Scenes and the public card
 
-**Status:** implemented (M6, M7). Related: [0001](../decisions/0001-permanent-card-url.md), [0003](../decisions/0003-profile-scene-model.md), [0004](../decisions/0004-two-qr-codes.md), [0011](../decisions/0011-fresh-card-state-cached-scene-content.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0001](../decisions/0001-permanent-card-url.md), [0003](../decisions/0003-profile-scene-model.md), [0004](../decisions/0004-two-qr-codes.md), [0011](../decisions/0011-fresh-card-state-cached-scene-content.md).
 
 ## Purpose
 

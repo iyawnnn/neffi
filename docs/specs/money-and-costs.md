@@ -1,6 +1,6 @@
 # Spec: Money, payments, refunds and costs
 
-**Status:** implemented through M9A. Related: [0008](../decisions/0008-append-only-money.md), [orders and fulfilment](orders-and-fulfillment.md), [support and corrections](support-and-corrections.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0008](../decisions/0008-append-only-money.md), [orders and fulfilment](orders-and-fulfillment.md), [support and corrections](support-and-corrections.md).
 
 ## Principles
 

@@ -1,6 +1,6 @@
 # 0012 — Support-controlled recovery with new-inbox proof
 
-**Status:** Accepted for M9B local implementation; live acceptance pending.
+**Status:** Accepted. For current engineering milestone status, see [the roadmap](../roadmap.md).
 
 ## Decision
 

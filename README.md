@@ -7,18 +7,19 @@ NFC Digital Business Cards and Google Review Cards. One Next.js 16 modular monol
 | **Digital Business Card** | An NFC card with a permanent URL that opens the customer's Neffi profile. Customers activate it with a package code and manage their profile and Scenes from a phone |
 | **Google Review Card** | An NFC card that opens a business's direct Google review page. Neffi records the sale; the tag is prepared by hand |
 
-Status: Milestones 1 through 9B are merged. M10 passed the software gate and T12 browser acceptance; PR #12 awaits merge approval. Shared Neon development is verified through `0015_validate_dbc_ready_checks` as of 2026-10-15 (16-entry journal, Ready-check constraint validated, 27 tables / 16 enums). Production remains untouched/unconfigured; verified-domain and two-independent-inbox recovery acceptance remain launch gates. See [`docs/roadmap.md`](docs/roadmap.md).
+Milestone status: [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Documentation
 
 Start at [`docs/README.md`](docs/README.md), the map of which document is authoritative for what.
 
-- [`PRODUCT.md`](PRODUCT.md): what Neffi is and how it behaves today.
+- [`PRODUCT.md`](PRODUCT.md): how Neffi behaves today (engineering summary). Product and business intent live in Notion; see the [sources of truth](docs/README.md#sources-of-truth).
 - [`docs/architecture/`](docs/architecture/): system and domain model. [`docs/database/erd.md`](docs/database/erd.md) is the generated schema reference.
 - [`docs/specs/`](docs/specs/): feature contracts. [`docs/decisions/`](docs/decisions/): long-lived decisions.
 - [`docs/operations.md`](docs/operations.md): runbooks for migrations, seed, auth, card provisioning, deploys and verification.
-- [`docs/superpowers/plans/`](docs/superpowers/plans/): historical milestone plans (not specifications).
+- [`docs/superpowers/`](docs/superpowers/): historical milestone plans and design records (not specifications).
 - [`src/modules/README.md`](src/modules/README.md): domain module map.
+- [`AGENTS.md`](AGENTS.md): rules for coding agents.
 
 ## Prerequisites
 

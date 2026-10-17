@@ -1,6 +1,6 @@
 # Spec: Accounts, sign-in and access
 
-**Status:** implemented (M3, M6, M8). Related: [0002](../decisions/0002-purchaser-account-card-profile.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0002](../decisions/0002-purchaser-account-card-profile.md).
 
 ## Purpose
 
@@ -16,7 +16,7 @@ Identify people securely with the least friction, and keep customer data and own
 
 - The **Account** is the permanent identity, not an email string. A verified email resolves to its existing Account; a linked Google identity always resolves to its Account even if Google's email changes.
 - A new Google identity that matches an existing Account's email is refused: sign in with an email code, then **Connect Google** from `/app`. A Google identity owned by another Account is refused. Google tokens are not stored.
-- Different verified emails may be separate Accounts. Merging is a deferred support exception (not built, not in M9A).
+- Different verified emails may be separate Accounts. Merging is a deferred support exception (not built).
 - In `/app/account` the customer can connect or remove Google (only when another verified method remains), change the sign-in email (re-authenticated, new address confirmed by code), and sign out everywhere. Account deletion is not self-service; the page says to contact support.
 
 ## Roles and authorization
@@ -31,10 +31,10 @@ Allow-listed only: email, role, created date, sign-in method kinds (`google` / `
 
 ## Non-goals (current)
 
-OWNER MFA or step-up (revisit when the trusted 2–3-person team grows or at Production setup); Turnstile on distributed-abuse evidence; Account deletion, freeze/restriction, merge and Profile moves. Static CSP/nosniff and daily caps are implemented in M10.
+OWNER MFA or step-up (revisit when the trusted 2–3-person team grows or at Production setup); Turnstile on distributed-abuse evidence; Account deletion, freeze/restriction, merge and Profile moves. Static CSP/nosniff and daily caps are enforced.
 
-## Recovery and notices (M9B, local implementation)
+## Recovery and notices
 
 See [support](support-and-corrections.md) and [0012](../decisions/0012-support-controlled-account-recovery.md) for owner verification followed by new-inbox proof. Owner Accounts and occupied new emails are refused. Do not sign in with a proposed address before completing `/support/recover`: email-code sign-in can create another Account and block recovery. Completion keeps Account id and business records, verifies the email and revokes sessions and optional Google.
 
-Self-service email changes notify old (captured before the Better Auth call) and new addresses. Google removal and sign-out-everywhere notify the Account. Google identity create-after notifies only when added to a pre-existing Account, never on new Google signup. Notices run via `after()` following the committed mutation, are best effort, and record Activity results. They reveal neither the other address, codes nor submitted support content. Live two-inbox acceptance remains pending.
+Self-service email changes notify old (captured before the Better Auth call) and new addresses. Google removal and sign-out-everywhere notify the Account. Google identity create-after notifies only when added to a pre-existing Account, never on new Google signup. Notices run via `after()` following the committed mutation, are best effort, and record Activity results. They reveal neither the other address, codes nor submitted support content.

@@ -1,6 +1,6 @@
 # System architecture
 
-Current through M9A. See also [domain model](domain-model.md), the [ERD](../database/erd.md) and the [decision records](../decisions/).
+For current engineering milestone status, see [the roadmap](../roadmap.md). See also [domain model](domain-model.md), the [ERD](../database/erd.md) and the [decision records](../decisions/).
 
 ## Shape
 
