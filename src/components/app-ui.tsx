@@ -17,7 +17,7 @@ export function ButtonLink({ variant = "default", className, ...props }: ButtonL
     <Link
       className={cn(
         buttonVariants({ variant, size: "touch" }),
-        "h-12 rounded-[10px] px-5 text-[0.875rem] leading-5 font-medium focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:h-11 sm:px-4",
+        "h-12 rounded-[10px] px-5 text-[0.875rem] leading-5 font-medium focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:h-11 sm:px-4",
         variant === "action" && "font-semibold active:bg-action-hover",
         variant === "outline" && "border-border bg-background text-foreground hover:border-border-strong hover:bg-canvas active:bg-subtle",
         className,
@@ -109,9 +109,9 @@ export function ProfileAvatar({ name, size = "md" }: { name: string | null; size
 }
 
 // A profile is shown by a neutral rounded-square contact/ID card object tile, never by an avatar or initials.
-export function ProfileGlyph() {
+export function ProfileGlyph({ className }: { className?: string }) {
   return (
-    <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-border bg-canvas nav-interact transition-colors group-hover:bg-subtle">
+    <span aria-hidden className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-border bg-canvas nav-interact transition-colors group-hover:bg-subtle", className)}>
       <IdCard className="size-[1.125rem] text-foreground" strokeWidth={1.6} />
     </span>
   );
