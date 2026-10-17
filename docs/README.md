@@ -29,6 +29,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 |---|---|---|
 | How does Neffi behave **today**? Terms and principles | [PRODUCT.md](../PRODUCT.md) | Current, normative summary. Specs win on detail |
 | Stack, surfaces, module boundaries, caching, security, environments, transaction conventions | [architecture/system.md](architecture/system.md) | Current, normative |
+| Authenticated customer UI: implemented typography, tokens, chrome, objects and interactions | [architecture/customer-ui.md](architecture/customer-ui.md) | Current engineering design reference; `/app` is the visual anchor |
 | Entities, relationships, state machines | [architecture/domain-model.md](architecture/domain-model.md) | Current, normative |
 | Exact tables, columns, constraints, indexes, triggers | [database/erd.md](database/erd.md) | Generated from migrations. Never edit by hand |
 | Required behavior of a feature | [`specs/`](specs/) (list below) | Current, normative |

@@ -1,47 +1,87 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), unreadCount: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), cardSummaries: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
-vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles }));
-vi.mock("@/modules/forms/submissions", () => ({ unreadCount: m.unreadCount }));
-vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
+vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
+vi.mock("@/modules/cards/manage", () => ({ cardSummaries: m.cardSummaries }));
 vi.mock("@/db", () => ({ db: {} }));
 
+import { Dashboard } from "./dashboard";
 import CustomerHome from "./page";
 
 const TOKEN = "A".repeat(22) + "WXYZ";
-const render = async (search: Record<string, string> = {}) =>
-  renderToStaticMarkup(await CustomerHome({ params: Promise.resolve({}), searchParams: Promise.resolve(search) } as Parameters<typeof CustomerHome>[0]));
+const OTHER = "B".repeat(22) + "QRST";
+const card = (id: string, publicToken: string, profileId: string | null, extra = {}) => ({ id, publicToken, suffix: publicToken.slice(-4), profileId, profileName: null, disabled: false, ...extra });
+const render = async (search: Record<string, string> = {}) => renderToStaticMarkup(await Dashboard({ accountId: "a1", searchParams: Promise.resolve(search) }));
+const draft = (gaps: string[]) => ({ id: "p1", fullName: "Ana", status: "draft", defaultSceneId: "s1", gaps, unread: 0 });
 
 beforeEach(() => {
   vi.clearAllMocks();
   m.requireAccount.mockResolvedValue({ accountId: "a1", email: "a@example.test", role: "customer" });
   m.ownedProfiles.mockResolvedValue([]);
-  m.unreadCount.mockResolvedValue(0);
-  m.ownedCards.mockResolvedValue([]);
+  m.getOwnedProfile.mockResolvedValue(null);
+  m.cardSummaries.mockResolvedValue([]);
 });
 
-test("lists profiles and resumes publishing a draft", async () => {
-  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "draft", unread: 0 }, { id: "p2", fullName: "Lee", status: "published", unread: 0 }]);
+test("the page checks the session, then renders the header before the dashboard data", async () => {
+  const html = renderToStaticMarkup(await CustomerHome({ params: Promise.resolve({}), searchParams: Promise.resolve({}) } as Parameters<typeof CustomerHome>[0]));
+  expect(html).toContain("Your Neffi");
+  expect(html.replace(/<[^>]+>/g, "")).toContain("Manage your cards and what people see when they tap.");
+  expect(html).toContain('aria-label="Loading your Neffi"');
+  expect(m.requireAccount).toHaveBeenCalledWith("/app");
+});
+
+test("lists profiles and leads with the draft's next step", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "draft", unread: 0 }, { id: "p2", fullName: "Lee", status: "published", unread: 2 }]);
+  m.getOwnedProfile.mockResolvedValue(draft(["contact"]));
   const html = await render();
+  expect(m.getOwnedProfile).toHaveBeenCalledWith({}, "a1", "p1");
   expect(html).toContain("Your profiles");
   expect(html).toContain('href="/app/profiles/p1"');
-  expect(html).toContain("Ana");
+  expect(html).toContain('href="/app/profiles/p2"');
   expect(html).toContain("Draft");
   expect(html).toContain("Published");
-  expect(html).toContain("Preview and publish Ana");
+  expect(html).toContain("2 new");
+  expect(html).toContain('aria-valuenow="2"');
+  expect(html).toContain("Add a phone number, email or website so people can reach you.");
+  expect(html).toContain('href="/app/profiles/p1/identity"');
+  expect(html).toContain("Preview and publish");
   expect(html).toContain('href="/app/profiles/p1/publish"');
   expect(html).not.toContain('href="/app/profiles/p2/publish"');
 });
 
-test.each([0, 1, 3])("shows the unread message summary only when nonzero (%s)", async unread => {
-  m.unreadCount.mockResolvedValue(unread);
+test("a draft missing content continues in its main scene; a complete draft goes straight to publishing", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "draft", unread: 0 }]);
+  m.getOwnedProfile.mockResolvedValue(draft(["content"]));
+  expect(await render()).toContain('href="/app/profiles/p1/scenes/s1"');
+  m.getOwnedProfile.mockResolvedValue(draft([]));
   const html = await render();
-  if (unread) {
-    expect(html).toContain(`${unread} new message${unread === 1 ? "" : "s"}`);
-    expect(html).toContain('href="/app/inbox"');
-  } else expect(html).not.toContain('href="/app/inbox"');
+  expect(html).toContain('aria-valuenow="3"');
+  expect(html).toContain("Profile readiness");
+  expect(html).not.toContain("Continue setup");
+  expect(html).toContain('href="/app/profiles/p1/publish"');
+});
+
+test("a published profile offers manage, preview and share instead of setup", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p2", fullName: "Lee", status: "published", unread: 0 }]);
+  m.cardSummaries.mockResolvedValue([card("c2", OTHER, "p2", { profileName: "Lee" })]);
+  const html = await render();
+  expect(m.getOwnedProfile).not.toHaveBeenCalled();
+  expect(html).toContain("Manage profile");
+  expect(html).toContain('href="/app/profiles/p2/preview"');
+  expect(html).toContain('href="/app/cards/c2"');
+  expect(html).toContain("Live on 1 card");
+  expect(html).not.toContain("Continue setup");
+  expect(html).not.toContain(OTHER);
+});
+
+test.each([0, 2])("a profile row shows its own unread messages only when nonzero (%s)", async unread => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p2", fullName: "Lee", status: "published", unread }]);
+  const html = await render();
+  expect(html.includes(`${unread} new`)).toBe(unread > 0);
+  // The account-wide Inbox entry point is the header bell (see app-nav.test.tsx), not a dashboard shortcut.
+  expect(html).not.toContain('href="/app/inbox"');
 });
 
 test("after a claim, confirms the Neffi was added", async () => {
@@ -50,38 +90,36 @@ test("after a claim, confirms the Neffi was added", async () => {
   expect(html).toContain("Your Neffi has been added to your account. Next, you&#x27;ll set it up.");
 });
 
-test("lists owned cards waiting for setup without exposing the full card address", async () => {
-  m.ownedCards.mockResolvedValue([
-    { id: "c1", publicToken: TOKEN, profileId: null },
-    { id: "c2", publicToken: "B".repeat(26), profileId: "p1" },
-  ]);
+test("leads with owned cards waiting for setup without exposing the full card address", async () => {
+  m.cardSummaries.mockResolvedValue([card("c1", TOKEN, null), card("c2", OTHER, "p1", { profileName: "Ana", disabled: true })]);
   const html = await render();
-  expect(html).toContain("Ready to set up");
-  expect(html).toContain("Set up Neffi ending in WXYZ");
+  expect(html).toContain("Set up your Neffi");
+  expect(html).toMatch(/Neffi ending in <span[^>]*>WXYZ</);
+  expect(html).toContain('<span class="sr-only">ending in</span> WXYZ');
   expect(html).toContain('href="/app/setup/c1"');
+  expect(html).toContain("Connected to Ana");
+  expect(html).toContain("Turned off");
   expect(html).toContain("Activate another Neffi");
   expect(html).not.toContain(TOKEN);
-  expect(html).not.toContain("BBBB");
-  expect(m.ownedCards).toHaveBeenCalledWith({}, "a1");
+  expect(html).not.toContain(OTHER);
+  expect(m.cardSummaries).toHaveBeenCalledWith({}, "a1");
+  expect(m.getOwnedProfile).not.toHaveBeenCalled();
 });
 
-test("with no cards keeps the empty-state line and offers activation", async () => {
+test("with nothing yet, onboards to activation with intentional empty sections", async () => {
   const html = await render();
-  expect(html).not.toContain("Signed in as");
-  expect(html).not.toContain("Sign-in methods");
-  expect(html).toContain("Your cards and profiles will appear here.");
-  expect(html).not.toContain("Ready to set up");
-  expect(html).toContain('href="/activate"');
+  expect(html).toContain("Activate your first Neffi");
+  expect(html).toContain("No profiles yet");
+  expect(html).toContain("No cards activated yet");
+  expect(html).not.toContain("Quick actions");
+  expect([...html.matchAll(/href="\/activate"/g)]).toHaveLength(1);
   expect(html).toContain("Activate a Neffi");
 });
 
 test.each([false, true])("activation navigation has a 44px touch target (owns cards: %s)", async (ownsCards) => {
-  m.ownedCards.mockResolvedValue(ownsCards ? [{ id: "c1", publicToken: TOKEN, profileId: null }] : []);
+  m.cardSummaries.mockResolvedValue(ownsCards ? [card("c1", TOKEN, null)] : []);
   const html = await render();
-  const link = [...html.matchAll(/<a\b[^>]*>/g)]
-    .map(([tag]) => tag)
-    .find((tag) => tag.includes('href="/activate"'));
-  expect(link).toBeDefined();
-  expect(link).toContain("inline-flex");
-  expect(link).toContain("min-h-11");
+  const links = [...html.matchAll(/<a\b[^>]*>/g)].map(([tag]) => tag).filter((tag) => tag.includes('href="/activate"'));
+  expect(links.length).toBeGreaterThan(0);
+  for (const link of links) expect(link).toMatch(/\b(min-h-11|h-11)\b/);
 });

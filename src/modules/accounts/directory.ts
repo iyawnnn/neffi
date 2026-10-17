@@ -4,6 +4,12 @@ import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { escapeLike } from "../orders/purchasers";
 
+// Display-only: the Google profile name, when there is one (email-code sign-ups have an empty name).
+export async function accountDisplayName(db: Db, id: string): Promise<string | null> {
+  const [row] = await db.select({ name: schema.accounts.name }).from(schema.accounts).where(eq(schema.accounts.id, id));
+  return row?.name.trim() || null;
+}
+
 export function listAccounts(db: Db, query = "") {
   return db.select({ id: schema.accounts.id, email: schema.accounts.email, role: schema.accounts.role, createdAt: schema.accounts.createdAt }).from(schema.accounts).where(query ? ilike(schema.accounts.email, `%${escapeLike(query)}%`) : undefined).orderBy(asc(schema.accounts.email)).limit(50);
 }
