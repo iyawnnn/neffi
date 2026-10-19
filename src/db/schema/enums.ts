@@ -28,6 +28,12 @@ export const profileLinkType = pgEnum("profile_link_type", [
   "shop",
   "menu",
   "custom",
+  "threads",
+  "discord",
+  "reddit",
+  "pinterest",
+  "behance",
+  "dribbble",
 ]);
 export const expenseCategory = pgEnum("expense_category", [
   "inventory_production",

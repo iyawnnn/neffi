@@ -34,7 +34,7 @@ describe("checkActivationCode", () => {
       for (const input of inputs) expect(await check(tx, input)).toEqual({ status: "claimable", credentialId });
     }));
 
-  test.each(["", "ABCD", "Z".repeat(16), "A".repeat(200), "!@#$%^&*()_+{}|:"])("%j is invalid", (input) =>
+  test.each(["", "ABCD", "Z".repeat(7), "Z".repeat(9), "N8KF-42PQ-7XYZ-ABCD", "A".repeat(200), "!@#$%^&*()_+{}|:"])("%j is invalid", (input) =>
     rollback(db, async (tx) => {
       await released(tx);
       expect(await check(tx, input)).toEqual({ status: "invalid" });

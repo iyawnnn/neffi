@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signOutAction } from "@/auth/actions";
+import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/auth/client";
 import { Button } from "@/components/ui/button";
 
@@ -11,22 +11,33 @@ export function AccountActions({ googleLinked }: { googleLinked: boolean }) {
   async function connectGoogle() {
     setBusy(true);
     // Better Auth links only when Google's verified email equals this Account's email.
-    const { error } = await authClient.linkSocial({ provider: "google", callbackURL: "/app/account", errorCallbackURL: "/app/account" });
+    const { error } = await authClient.linkSocial({
+      provider: "google",
+      callbackURL: "/app/account",
+      errorCallbackURL: "/app/account",
+    });
     if (error) setBusy(false);
   }
 
+  if (googleLinked) return null;
+
   return (
-    <div className="flex w-full max-w-sm flex-col gap-3">
-      {googleLinked ? null : (
-        <Button type="button" variant="outline" size="lg" className="h-11 w-full" disabled={busy} onClick={connectGoogle}>
-          Connect Google
-        </Button>
+    <Button
+      type="button"
+      variant="outline"
+      size="touch"
+      className="w-full sm:w-auto"
+      disabled={busy}
+      onClick={connectGoogle}
+    >
+      {busy ? (
+        <>
+          <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+          Connecting…
+        </>
+      ) : (
+        "Connect Google"
       )}
-      <form action={signOutAction}>
-        <Button type="submit" variant="ghost" size="lg" className="h-11 w-full">
-          Sign out
-        </Button>
-      </form>
-    </div>
+    </Button>
   );
 }

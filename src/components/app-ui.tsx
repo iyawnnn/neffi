@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // Customer-app building blocks shared by Home and, later, Profiles, Cards and Account.
 // Surfaces: the Snow canvas, a white panel (rounded-panel, hairline border), and interactive rows/tiles inside it.
 
-type ButtonLinkProps = ComponentProps<typeof Link> & { variant?: "default" | "action" | "outline" };
+type ButtonLinkProps = ComponentProps<typeof Link> & { variant?: "default" | "action" | "outline" | "ghost" };
 
 // A link styled as a button: 48px on phones, 44px from sm, identical geometry for every variant so a primary and
 // its secondary always line up. `action` is the one Vermilion primary per screen; `outline` the quiet Snow secondary.
@@ -39,6 +39,10 @@ export function SectionHeader({ id, title, count, action }: { id: string; title:
   );
 }
 
+export function CountBadge({ children }: { children: ReactNode }) {
+  return <span className="inline-flex shrink-0 items-center rounded-md border border-border/70 bg-canvas px-2 py-0.5 text-label tabular-nums text-fg-secondary">{children}</span>;
+}
+
 export function SectionLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link href={href} className="group cursor-pointer -mr-2 inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-meta font-medium text-fg-secondary nav-interact transition-colors hover:text-foreground active:text-foreground focus-visible:outline-2 focus-visible:outline-brand">
@@ -52,10 +56,10 @@ export function SectionLink({ href, children }: { href: string; children: ReactN
 export function ListPanel({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="overflow-hidden rounded-panel border bg-background">
-      <div className="flex h-14 items-center justify-between gap-4 px-5">
+      <div className="flex h-14 items-center justify-between gap-4 px-5 md:px-6">
         <h2 id={id} className="flex items-baseline gap-2 text-section">
           {title}
-          {count ? <span className="text-meta font-normal tabular-nums text-fg-secondary">{count}</span> : null}
+          {count ? <CountBadge>{count}</CountBadge> : null}
         </h2>
         {action}
       </div>
@@ -71,7 +75,7 @@ export function RowList({ children }: { children: ReactNode }) {
 export function Row({ href, leading, title, meta, status, trailing }: { href: string; leading: ReactNode; title: ReactNode; meta?: ReactNode; status?: ReactNode; trailing?: ReactNode }) {
   return (
     <li>
-      <Link href={href} className="group flex min-h-[4.5rem] cursor-pointer items-center gap-3.5 px-5 py-3 nav-interact transition-colors hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+      <Link href={href} className="group flex min-h-[4.5rem] cursor-pointer items-center gap-3.5 px-5 py-3 nav-interact transition-colors hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand md:px-6">
         {leading}
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-entity">{title}</span>
@@ -128,10 +132,15 @@ export function CardGlyph() {
 
 const statuses = {
   draft: { label: "Draft", className: "bg-canvas text-fg-secondary shadow-[inset_0_0_0_1px_var(--border-strong)]" },
-  published: { label: "Published", className: "bg-foreground text-background" },
+  published: { label: "Published" },
   unpublished: { label: "Unpublished", className: "bg-subtle text-fg-secondary" },
 } as const;
 
 export function ProfileStatus({ status }: { status: keyof typeof statuses }) {
+  if (status === "published") return <PositiveStatus>Published</PositiveStatus>;
   return <span className={cn(badgeVariants({ variant: "secondary" }), "h-[1.375rem] shrink-0 rounded-full border-0 px-2 text-label", statuses[status].className)}>{statuses[status].label}</span>;
+}
+
+export function PositiveStatus({ children }: { children: ReactNode }) {
+  return <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-brand/20 bg-brand/5 px-2 py-0.5 text-label text-action-text"><span aria-hidden className="size-1 rounded-full bg-current" />{children}</span>;
 }

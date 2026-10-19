@@ -1,10 +1,12 @@
+import { ArrowLeft, Eye } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAccount } from "@/auth/access";
+import { ButtonLink } from "@/components/app-ui";
 import { db } from "@/db";
-import { blockType } from "@/db/schema/enums";
 import { sceneForEditing } from "@/modules/profiles/editor";
-import { BlockControls, DeleteSceneForm, RenameSceneForm } from "./block-forms";
+import { SceneMenu } from "./block-forms";
+import { ModeEditor } from "./mode-editor";
 
 export const instant = false;
 
@@ -13,16 +15,32 @@ export default async function ScenePage({ params }: PageProps<"/app/profiles/[pr
   const { profileId, sceneId } = await params;
   const edit = await sceneForEditing(db, viewer.accountId, profileId, sceneId);
   if (!edit) notFound();
-  const present = new Set(edit.blocks.map(block => block.type));
-  const types = [...blockType.enumValues].sort((a, b) => Number(present.has(a)) - Number(present.has(b)));
-  const label = (type: string) => type[0].toUpperCase() + type.slice(1);
+  const target = { profileId, sceneId };
+
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10"><div className="flex w-full max-w-sm flex-col gap-6">
-      <h1 className="break-words text-2xl font-semibold tracking-tight">{edit.scene.name}</h1>
-      <RenameSceneForm profileId={profileId} sceneId={sceneId} name={edit.scene.name} />
-      <ul className="flex flex-col gap-4">{edit.blocks.map((block, index) => <li key={block.id} className="flex flex-col gap-3 rounded-lg border p-4"><h2 className="font-medium">{label(block.type)}</h2><p className="break-words text-sm">{block.summary}</p><BlockControls profileId={profileId} sceneId={sceneId} blockId={block.id} visible={block.visible} first={index === 0} last={index === edit.blocks.length - 1} /><Link href={`/app/profiles/${profileId}/scenes/${sceneId}/blocks/${block.id}`} className="inline-flex min-h-11 items-center underline underline-offset-4">Edit</Link></li>)}</ul>
-      <section className="flex flex-col gap-2"><h2 className="font-medium">Add to this scene</h2>{types.map(type => <Link key={type} href={`/app/profiles/${profileId}/scenes/${sceneId}/blocks/new?type=${type}`} className="inline-flex min-h-11 items-center rounded-lg border px-3">Add {label(type)}</Link>)}</section>
-      {edit.scene.isDefault ? null : <section className="border-t pt-6"><DeleteSceneForm profileId={profileId} sceneId={sceneId} /></section>}
-    </div></main>
+    <main data-canvas className="mx-auto flex w-full max-w-[896px] flex-1 flex-col gap-6 px-4 pt-6 pb-10 md:gap-8 md:px-6 md:pt-8 md:pb-12">
+      <div className="flex flex-col gap-4">
+        <Link href={`/app/profiles/${profileId}`} className="-ml-2 inline-flex min-h-11 w-fit cursor-pointer items-center gap-1.5 rounded-md px-2 text-meta font-medium text-fg-secondary transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-brand">
+          <ArrowLeft aria-hidden className="size-3.5" />Back to profile
+        </Link>
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 max-w-full break-words text-title">{edit.scene.name}</h1>
+              {edit.scene.isShown ? <span className="inline-flex items-center rounded-md bg-brand/10 px-2 py-0.5 text-label font-medium text-brand">Currently showing</span> : null}
+            </div>
+            <p className="mt-2 text-body text-fg-secondary">Choose what visitors see in this profile mode.</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            <ButtonLink href={`/app/profiles/${profileId}/preview?scene=${sceneId}`} variant="outline" className="flex-1 gap-2 sm:h-[42px] sm:flex-none">
+              <Eye aria-hidden className="size-4" />Preview
+            </ButtonLink>
+            <SceneMenu {...target} name={edit.scene.name} canDelete={!edit.scene.isDefault} />
+          </div>
+        </header>
+      </div>
+
+      <ModeEditor {...target} blocks={edit.blocks} />
+    </main>
   );
 }

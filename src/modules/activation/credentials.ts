@@ -7,14 +7,25 @@ import { activationLookup, generateActivationCode } from "./code";
 const usable = (cardId: string) =>
   and(eq(schema.activationCredentials.cardId, cardId), isNull(schema.activationCredentials.usedAt), isNull(schema.activationCredentials.revokedAt));
 
+export class ActivationCredentialError extends Error {
+  constructor() {
+    super("collision_limit");
+    this.name = "ActivationCredentialError";
+  }
+}
+
 // Stores only the keyed lookup value. The raw code is returned to the caller once and exists nowhere else.
 export async function issueActivationCredential(tx: Db, cardId: string, secret: string): Promise<{ credentialId: string; code: string }> {
-  const code = generateActivationCode();
-  const [row] = await tx
-    .insert(schema.activationCredentials)
-    .values({ cardId, lookupHmac: activationLookup(secret, code) })
-    .returning({ id: schema.activationCredentials.id });
-  return { credentialId: row.id, code };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateActivationCode();
+    const [row] = await tx
+      .insert(schema.activationCredentials)
+      .values({ cardId, lookupHmac: activationLookup(secret, code) })
+      .onConflictDoNothing({ target: schema.activationCredentials.lookupHmac })
+      .returning({ id: schema.activationCredentials.id });
+    if (row) return { credentialId: row.id, code };
+  }
+  throw new ActivationCredentialError();
 }
 
 export async function usableCredential(tx: Db, cardId: string) {

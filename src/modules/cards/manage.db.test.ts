@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import { activityEvents, cards } from "@/db/schema";
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
-import { cardSummaries, connectCardToProfile, getOwnedCard, setCardDisabled } from "./manage";
+import * as activity from "../activity/record";
+import { cardSummaries, connectCardToProfile, getOwnedCard, setCardDisabled, saveCardSettings } from "./manage";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -69,4 +70,56 @@ test("another account cannot disable or read the card", () => rollback(db, async
   await expect(setCardDisabled(tx, { accountId: other.id, cardId: card.id, disabled: true })).rejects.toMatchObject({ code: "not_found" });
   expect(await getOwnedCard(tx, other.id, card.id)).toBeNull();
   expect((await tx.select().from(cards).where(eq(cards.id, card.id)))[0].disabledAt).toBeNull();
+}));
+
+test.each(["profile", "status", "both", "unchanged"])("settings save persists %s changes and only records actual transitions", change => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const { profile: original } = await insertProfileWithScene(tx, owner.id);
+  const { profile: next } = await insertProfileWithScene(tx, owner.id);
+  const { card } = await insertReleasedDbc(tx);
+  await tx.update(cards).set({ ownerAccountId: owner.id, profileId: original.id }).where(eq(cards.id, card.id));
+  const profileId = change === "profile" || change === "both" ? next.id : original.id;
+  const disabled = change === "status" || change === "both";
+  await saveCardSettings(tx, { accountId: owner.id, cardId: card.id, profileId, disabled });
+  const [saved] = await tx.select().from(cards).where(eq(cards.id, card.id));
+  expect(saved.profileId).toBe(profileId);
+  expect(Boolean(saved.disabledAt)).toBe(disabled);
+  const events = await tx.select().from(activityEvents).where(eq(activityEvents.cardId, card.id));
+  expect(events.map(event => event.type).sort()).toEqual([
+    ...(profileId !== original.id ? ["card_profile_changed"] : []),
+    ...(disabled ? ["card_disabled"] : []),
+  ].sort());
+}));
+
+test("settings save rejects foreign profiles and cards without changing either field", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const other = await insertAccount(tx);
+  const { profile } = await insertProfileWithScene(tx, other.id);
+  const { card } = await insertReleasedDbc(tx);
+  await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
+  for (const accountId of [owner.id, other.id]) {
+    await expect(saveCardSettings(tx, { accountId, cardId: card.id, profileId: profile.id, disabled: true })).rejects.toMatchObject({ code: "not_found" });
+  }
+  expect((await tx.select().from(cards).where(eq(cards.id, card.id)))[0]).toMatchObject({ profileId: null, disabledAt: null });
+  expect(await tx.select().from(activityEvents).where(eq(activityEvents.cardId, card.id))).toHaveLength(0);
+}));
+
+test("a failure in the second change rolls back both fields and activity", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const { profile } = await insertProfileWithScene(tx, owner.id);
+  const { card } = await insertReleasedDbc(tx);
+  await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
+  const recordActivity = activity.recordActivity;
+  const spy = vi.spyOn(activity, "recordActivity").mockImplementation(async (transaction, event) => {
+    if (event.type === "card_disabled") throw new Error("activity write failed");
+    await recordActivity(transaction, event);
+  });
+  try {
+    await expect(saveCardSettings(tx, { accountId: owner.id, cardId: card.id, profileId: profile.id, disabled: true })).rejects.toThrow("activity write failed");
+    expect(spy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: "card_profile_changed" }));
+    expect((await tx.select().from(cards).where(eq(cards.id, card.id)))[0]).toMatchObject({ profileId: null, disabledAt: null });
+    expect(await tx.select().from(activityEvents).where(eq(activityEvents.cardId, card.id))).toHaveLength(0);
+  } finally {
+    spy.mockRestore();
+  }
 }));

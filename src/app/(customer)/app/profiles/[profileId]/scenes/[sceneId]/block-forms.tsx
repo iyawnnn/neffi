@@ -1,64 +1,82 @@
 "use client";
 
-import { useActionState } from "react";
+import { Ellipsis, Layers, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useActionState, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, inputClass, Textarea } from "@/components/ui/input";
-import { LINK_KINDS, LINK_KIND_LABELS } from "@/modules/profiles/block-options";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { BlockType } from "@/modules/profiles/block-content";
-import { addBlockAction, deleteSceneAction, moveBlockAction, removeBlockAction, renameSceneAction, toggleBlockAction, updateBlockAction, type SceneActionState } from "./actions";
+import { DialogCancel, EditorDialog } from "../../editor-dialogs";
+import { ItemFields } from "./item-fields";
+import { addBlockAction, deleteSceneAction, renameSceneAction, updateBlockAction, type SceneActionState } from "./actions";
+
+const motion = "interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none";
+const fieldClass = "h-11 rounded-[10px]";
 
 type Target = { profileId: string; sceneId: string };
 function HiddenTarget({ profileId, sceneId, blockId }: Target & { blockId?: string }) {
   return <><input type="hidden" name="profileId" value={profileId} /><input type="hidden" name="sceneId" value={sceneId} />{blockId ? <input type="hidden" name="blockId" value={blockId} /> : null}</>;
 }
 function Feedback({ state }: { state: SceneActionState | undefined }) {
-  return <>{state?.error ? <p role="alert" className="text-sm">{state.error}</p> : null}{state?.gaps?.length ? <ul className="list-inside list-disc text-sm">{state.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul> : null}</>;
+  return <>{state?.error ? <p role="alert" className="text-meta text-destructive">{state.error}</p> : null}{state?.gaps?.length ? <ul className="list-inside list-disc text-meta text-fg-secondary">{state.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul> : null}</>;
+}
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">{label}{children}{hint ? <span className="text-meta font-normal text-fg-secondary">{hint}</span> : null}</label>;
+}
+function Submit({ pending, children, className }: { pending: boolean; children: ReactNode; className?: string }) {
+  return <Button type="submit" size="touch" disabled={pending} className={cn("min-h-11 rounded-[10px] sm:h-[42px]", motion, className)}>{children}</Button>;
 }
 
-export function RenameSceneForm({ profileId, sceneId, name }: Target & { name: string }) {
-  const [state, action, pending] = useActionState(renameSceneAction, undefined);
-  return <form action={action} className="flex flex-col gap-3"><HiddenTarget profileId={profileId} sceneId={sceneId} /><label className="flex flex-col gap-1 text-sm">Name<Input name="name" defaultValue={name} required maxLength={40} /></label><Feedback state={state} /><Button type="submit" size="touch" disabled={pending}>Rename</Button></form>;
-}
-export function DeleteSceneForm({ profileId, sceneId }: Target) {
-  const [state, action, pending] = useActionState(deleteSceneAction, undefined);
-  return <form action={action} className="flex flex-col gap-3"><HiddenTarget profileId={profileId} sceneId={sceneId} /><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="confirm" required />I understand this deletes this scene and its items</label><Feedback state={state} /><Button type="submit" size="touch" variant="destructive" disabled={pending}>Delete scene</Button></form>;
-}
-
-export function BlockControls({ profileId, sceneId, blockId, visible, first, last }: Target & { blockId: string; visible: boolean; first: boolean; last: boolean }) {
-  const [upState, upAction, upPending] = useActionState(moveBlockAction, undefined);
-  const [downState, downAction, downPending] = useActionState(moveBlockAction, undefined);
-  const [visibilityState, visibilityAction, visibilityPending] = useActionState(toggleBlockAction, undefined);
-  const [removeState, removeAction, removePending] = useActionState(removeBlockAction, undefined);
+export function SceneMenu({ profileId, sceneId, name, canDelete }: Target & { name: string; canDelete: boolean }) {
+  const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
+  const [renameState, renameAction, renamePending] = useActionState(renameSceneAction, undefined);
+  const [deleteState, deleteAction, deletePending] = useActionState(deleteSceneAction, undefined);
+  const close = (open: boolean) => { if (!open) setDialog(null); };
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
-        <form action={upAction}><HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} /><input type="hidden" name="direction" value="up" /><Button type="submit" size="touch" variant="outline" disabled={first || upPending}>Move up</Button></form>
-        <form action={downAction}><HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} /><input type="hidden" name="direction" value="down" /><Button type="submit" size="touch" variant="outline" disabled={last || downPending}>Move down</Button></form>
-        <form action={visibilityAction}><HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} /><input type="hidden" name="visible" value={String(!visible)} /><Button type="submit" size="touch" variant="outline" disabled={visibilityPending}>{visible ? "Hide" : "Show"}</Button></form>
-      </div>
-      <Feedback state={upState} /><Feedback state={downState} /><Feedback state={visibilityState} />
-      <form action={removeAction} className="flex flex-col gap-2">
-        <HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} />
-        <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="confirm" required />Remove this item</label>
-        <Feedback state={removeState} /><Button type="submit" size="touch" variant="outline" disabled={removePending}>Remove</Button>
-      </form>
-    </div>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button size="touch" variant="outline" aria-label="More profile mode options" className={cn("size-12 min-h-0 rounded-[10px] px-0 hover:border-border-strong hover:bg-canvas sm:size-11", motion)} />}>
+          <Ellipsis aria-hidden className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 rounded-[10px] p-1.5">
+          <DropdownMenuItem onClick={() => setDialog("rename")} className="min-h-11 cursor-pointer gap-2.5 rounded-lg px-2.5 text-body"><Pencil aria-hidden />Rename mode</DropdownMenuItem>
+          {canDelete ? <DropdownMenuItem variant="destructive" onClick={() => setDialog("delete")} className="min-h-11 cursor-pointer gap-2.5 rounded-lg px-2.5 text-body"><Trash2 aria-hidden />Delete mode</DropdownMenuItem> : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <EditorDialog open={dialog === "rename"} onOpenChange={close} icon={Layers} title="Rename mode" description="Visitors don't see this name. It helps you tell your profile modes apart.">
+        <form action={renameAction} className="flex flex-col gap-5">
+          <HiddenTarget profileId={profileId} sceneId={sceneId} />
+          <Field label="Mode name"><Input name="name" defaultValue={name} required maxLength={40} className={fieldClass} /></Field>
+          <Feedback state={renameState} />
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-end"><DialogCancel /><Submit pending={renamePending}>Save name</Submit></div>
+        </form>
+      </EditorDialog>
+      {canDelete ? (
+        <EditorDialog open={dialog === "delete"} onOpenChange={close} icon={Trash2} iconClassName="bg-destructive/10 text-destructive" title={`Delete ${name}?`} description="This deletes the profile mode and everything in it. It can't be undone.">
+          <form action={deleteAction} className="flex flex-col gap-5">
+            <HiddenTarget profileId={profileId} sceneId={sceneId} /><input type="hidden" name="confirm" value="on" />
+            <Feedback state={deleteState} />
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-end"><DialogCancel /><Submit pending={deletePending} className="bg-destructive text-white hover:bg-destructive/90">Delete mode</Submit></div>
+          </form>
+        </EditorDialog>
+      ) : null}
+    </>
   );
 }
 
-export function BlockForm({ profileId, sceneId, blockId, type, content = {} }: Target & { blockId?: string; type: BlockType; content?: Record<string, unknown> }) {
+export function BlockForm({ profileId, sceneId, blockId, type, content = {}, cancelHref }: Target & { blockId?: string; type: BlockType; content?: Record<string, unknown>; cancelHref: string }) {
   const [state, action, pending] = useActionState(blockId ? updateBlockAction : addBlockAction, undefined);
-  const value = (key: string) => typeof content[key] === "string" ? content[key] as string : "";
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} /><input type="hidden" name="type" value={type} />
-      {type === "about" ? <label className="flex flex-col gap-1 text-sm">About you<Textarea name="text" defaultValue={value("text")} required maxLength={1000} /></label> : null}
-      {type === "project" ? <><label className="flex flex-col gap-1 text-sm">Project name<Input name="title" defaultValue={value("title")} required maxLength={80} /></label><label className="flex flex-col gap-1 text-sm">Short description<Textarea name="description" defaultValue={value("description")} maxLength={500} /></label><label className="flex flex-col gap-1 text-sm">Link<Input name="url" defaultValue={value("url")} inputMode="url" /></label></> : null}
-      {type === "link" ? <><label className="flex flex-col gap-1 text-sm">Type<select name="kind" className={inputClass} defaultValue={value("kind") || "custom"}>{LINK_KINDS.map(kind => <option key={kind} value={kind}>{LINK_KIND_LABELS[kind]}</option>)}</select></label><label className="flex flex-col gap-1 text-sm">Label<Input name="label" defaultValue={value("label")} maxLength={40} /></label><label className="flex flex-col gap-1 text-sm">Link<Input name="url" defaultValue={value("url")} required inputMode="url" /></label></> : null}
-      {type === "contact" ? <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="saveContact" defaultChecked={content.saveContact === undefined ? true : Boolean(content.saveContact)} />Show a Save Contact button</label> : null}
-      {type === "booking" ? <><label className="flex flex-col gap-1 text-sm">Button text<Input name="label" defaultValue={value("label")} placeholder="Book a time" maxLength={40} /></label><label className="flex flex-col gap-1 text-sm">Booking link<Input name="url" defaultValue={value("url")} required inputMode="url" /></label></> : null}
-      {type === "form" ? <label className="flex flex-col gap-1 text-sm">Form<select name="preset" className={inputClass} defaultValue="connect"><option value="connect">Connect</option><option value="project_inquiry">Project inquiry</option><option value="contact">Contact</option></select></label> : null}
-      <Feedback state={state} /><Button type="submit" size="touch" disabled={pending}>{blockId ? "Save" : "Add"}</Button>
+    <form action={action} className="flex flex-col gap-5">
+      <HiddenTarget profileId={profileId} sceneId={sceneId} blockId={blockId} />
+      <ItemFields type={type} content={content} editing={!!blockId} errors={state?.fields} />
+      <Feedback state={state} />
+      <div className="flex flex-col-reverse gap-2.5 border-t pt-5 sm:flex-row sm:justify-end">
+        <Link href={cancelHref} className={cn("inline-flex min-h-11 items-center justify-center rounded-[10px] border px-4 text-body font-medium hover:border-border-strong hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:h-[42px]", motion)}>Cancel</Link>
+        <Submit pending={pending}>{blockId ? "Save changes" : type === "link" ? "Add link" : type === "form" ? "Add contact form" : type === "about" || type === "project" ? "Add content" : "Add action"}</Submit>
+      </div>
     </form>
   );
 }

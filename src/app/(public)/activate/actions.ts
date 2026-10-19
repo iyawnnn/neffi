@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { authorize, getViewer } from "@/auth/access";
-import { consumeQuota, hmacHex } from "@/auth/otp-quota";
+import { consumeQuota, hmacHex, QUOTA_RETENTION_MS } from "@/auth/otp-quota";
 import { auth } from "@/auth/server";
 import { env } from "@/config/env";
 import { db } from "@/db";
@@ -14,6 +14,8 @@ import { clearChallenge, readChallenge, setChallenge } from "./challenge-cookie"
 export type ActivateState = { error?: string };
 
 const CHECKS_PER_IP = 20;
+const CHECKS_PER_IP_DAY = 50;
+const CHECKS_GLOBAL = 100;
 const CLAIMS_PER_ACCOUNT = 10;
 const MESSAGES = {
   invalid: "We couldn't find that code. Check the label inside your package and try again. If it still doesn't work, please contact Neffi support.",
@@ -26,7 +28,10 @@ const quotaKey = (domain: string, value: string) => hmacHex(env.activationCodeSe
 
 // The code arrives only in this POST body. It is never echoed back, logged, stored or put in a URL.
 export async function checkCodeAction(_previous: ActivateState | undefined, data: FormData): Promise<ActivateState> {
-  if (!(await consumeQuota(db, quotaKey("activation-ip", clientIp(await headers())), CHECKS_PER_IP))) return { error: MESSAGES.tooMany };
+  const ip = clientIp(await headers());
+  if (!(await consumeQuota(db, quotaKey("activation-ip", ip), CHECKS_PER_IP)) ||
+    !(await consumeQuota(db, quotaKey("activation-ip-day", ip), CHECKS_PER_IP_DAY, new Date(), { windowMs: QUOTA_RETENTION_MS })) ||
+    !(await consumeQuota(db, quotaKey("activation-global", "checks"), CHECKS_GLOBAL))) return { error: MESSAGES.tooMany };
   const viewer = await getViewer();
   const raw = data.get("code");
   const result = await checkActivationCode(db, {

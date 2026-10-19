@@ -390,7 +390,7 @@ erDiagram
 | `order_status` | `in_progress`, `completed`, `cancelled` |
 | `payment_method` | `gcash`, `bank_transfer`, `cash` |
 | `product_kind` | `dbc`, `grc` |
-| `profile_link_type` | `facebook`, `instagram`, `tiktok`, `linkedin`, `youtube`, `github`, `messenger`, `whatsapp`, `viber`, `telegram`, `x`, `portfolio`, `booking`, `shop`, `menu`, `custom` |
+| `profile_link_type` | `facebook`, `instagram`, `tiktok`, `linkedin`, `youtube`, `github`, `messenger`, `whatsapp`, `viber`, `telegram`, `x`, `portfolio`, `booking`, `shop`, `menu`, `custom`, `threads`, `discord`, `reddit`, `pinterest`, `behance`, `dribbble` |
 | `profile_status` | `draft`, `published`, `unpublished` |
 | `shipment_status` | `pending`, `in_transit`, `delivered`, `failed`, `returned`, `lost` |
 | `support_case_card_role` | `affected`, `replacement` |

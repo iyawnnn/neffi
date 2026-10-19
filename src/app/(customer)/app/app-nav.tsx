@@ -3,7 +3,7 @@
 import { Bell, ChevronDown, CircleUser, House, LogOut, Nfc, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOutAction } from "@/auth/actions";
 import { NeffiLogo } from "@/components/neffi-logo";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -63,11 +63,18 @@ export function AppHeader({ account, unread }: { account: HeaderAccount; unread:
 
 // The Inbox holds the messages people send from a Neffi; the dot is its real unread count, never a guess.
 function InboxLink({ unread, current }: { unread: number; current: boolean }) {
+  const [count, setCount] = useState({ source: unread, value: unread });
+  if (count.source !== unread) setCount({ source: unread, value: unread });
+  useEffect(() => {
+    const update = (event: Event) => setCount({ source: unread, value: (event as CustomEvent<number>).detail });
+    window.addEventListener("neffi:inbox-unread", update);
+    return () => window.removeEventListener("neffi:inbox-unread", update);
+  }, [unread]);
   return (
-    <Link href="/app/inbox" aria-current={current ? "page" : undefined} aria-label={unread ? `Inbox, ${unread} unread` : "Inbox"} className="group relative inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-fg-secondary focus-visible:outline-none">
+    <Link href="/app/inbox" aria-current={current ? "page" : undefined} aria-label={count.value ? `Inbox, ${count.value} unread` : "Inbox"} className="group relative inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-fg-secondary focus-visible:outline-none">
       <span aria-hidden className="absolute inset-[3px] rounded-full interact transition-[background-color,box-shadow] group-hover:bg-canvas group-hover:shadow-[inset_0_0_0_1px_var(--border)] group-active:bg-subtle group-focus-visible:outline-2 group-focus-visible:outline-brand group-aria-[current=page]:bg-subtle" />
       <Bell aria-hidden className="relative size-[1.125rem] interact transition-colors group-hover:text-foreground group-aria-[current=page]:text-foreground" strokeWidth={1.6} />
-      {unread ? <span aria-hidden className="absolute top-2.5 right-2.5 size-2 rounded-full bg-brand ring-2 ring-background" /> : null}
+      {count.value ? <span aria-hidden className="absolute top-2.5 right-2.5 size-2 rounded-full bg-brand ring-2 ring-background" /> : null}
     </Link>
   );
 }

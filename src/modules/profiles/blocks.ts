@@ -68,13 +68,17 @@ export async function updateBlock(db: Db, input: { accountId: string; profileId:
   });
 }
 
-export async function moveBlock(db: Db, input: { accountId: string; profileId: string; blockId: string; direction: "up" | "down" }): Promise<void> {
+// `among` limits the swap to the nearest block of those types, so the editor can reorder within one section.
+export async function moveBlock(db: Db, input: { accountId: string; profileId: string; blockId: string; direction: "up" | "down"; among?: readonly BlockType[] }): Promise<void> {
   await db.transaction(async tx => {
     const profile = await lockOwnedProfile(tx, input.accountId, input.profileId);
     const block = await ownedBlock(tx, profile.id, input.blockId);
-    const ids = await orderedIds(tx, block.sceneId);
+    const rows = await tx.select({ id: schema.sceneBlocks.id, type: schema.sceneBlocks.type }).from(schema.sceneBlocks).where(eq(schema.sceneBlocks.sceneId, block.sceneId)).orderBy(asc(schema.sceneBlocks.position), asc(schema.sceneBlocks.createdAt));
+    const ids = rows.map(row => row.id);
     const i = ids.indexOf(block.id);
-    const j = i + (input.direction === "up" ? -1 : 1);
+    const step = input.direction === "up" ? -1 : 1;
+    let j = i + step;
+    while (input.among && j >= 0 && j < rows.length && !input.among.includes(rows[j].type)) j += step;
     if (j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j], ids[i]];
     await writeOrder(tx, ids);

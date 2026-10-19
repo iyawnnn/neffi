@@ -54,6 +54,15 @@ test("move keeps positions dense", () => rollback(db, async tx => {
   await moveBlock(tx, { ...input, blockId: reordered[3].id, direction: "down" });
   expect(await rows(tx, input.sceneId)).toEqual(reordered);
 }));
+test("moving within a section swaps with the nearest block of that section", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const { blockId } = await addBlock(tx, { ...input, type: "project", content: { title: "Site" } });
+  await moveBlock(tx, { ...input, blockId, direction: "up", among: ["about", "project"] });
+  const reordered = await rows(tx, input.sceneId);
+  expect(reordered.map(b => b.type)).toEqual(["project", "link", "contact", "about"]);
+  await moveBlock(tx, { ...input, blockId, direction: "up", among: ["about", "project"] });
+  expect(await rows(tx, input.sceneId)).toEqual(reordered);
+}));
 test("delete renumbers", () => rollback(db, async tx => {
   const input = await setup(tx);
   await addBlock(tx, { ...input, type: "project", content: { title: "Site" } });

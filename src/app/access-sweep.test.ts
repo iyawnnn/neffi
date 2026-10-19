@@ -71,10 +71,12 @@ const classifiedExports: Record<string, readonly string[]> = {
   ],
   "./(customer)/app/cards/actions.ts": [
     "connectCardAction",
-    "setCardDisabledAction"
+    "setCardDisabledAction",
+    "saveCardSettingsAction"
   ],
   "./(customer)/app/inbox/actions.ts": [
-    "deleteSubmissionAction"
+    "deleteSubmissionAction",
+    "updateInboxAction"
   ],
   "./(customer)/app/profiles/[profileId]/actions.ts": [
     "publishAction",
@@ -89,6 +91,8 @@ const classifiedExports: Record<string, readonly string[]> = {
     "removeImageAction"
   ],
   "./(customer)/app/profiles/[profileId]/scenes/[sceneId]/actions.ts": [
+    "loadItemAction",
+    "mutateItemAction",
     "renameSceneAction",
     "deleteSceneAction",
     "addBlockAction",

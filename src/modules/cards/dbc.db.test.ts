@@ -162,7 +162,7 @@ describe("matchPackage", () => {
       const { base } = await setup(tx);
       const { publicToken } = await provisionDbc(tx, { ...base, activationSecret: SECRET });
       await nfc(tx, base, { readBackUri: cardUrl(ORIGIN, publicToken) });
-      for (const activationCode of ["0000-0000-0000-0000", "nonsense"]) {
+      for (const activationCode of ["0000-0000", "nonsense"]) {
         await expect(matchPackage(tx, { ...base, activationCode, activationSecret: SECRET })).rejects.toMatchObject({ code: "code_mismatch" });
       }
       expect(await reload(tx, base.cardId)).toMatchObject({ state: "blank", packageMatchedAt: null });

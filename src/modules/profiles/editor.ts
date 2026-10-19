@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import type { FormConfig } from "../forms/config";
@@ -21,7 +21,7 @@ const blockColumns = {
 };
 
 export async function sceneForEditing(db: Db, accountId: string, profileId: string, sceneId: string) {
-  const [scene] = await db.select({ id: schema.scenes.id, name: schema.scenes.name, defaultSceneId: schema.profiles.defaultSceneId })
+  const [scene] = await db.select({ id: schema.scenes.id, name: schema.scenes.name, defaultSceneId: schema.profiles.defaultSceneId, activeSceneId: schema.profiles.activeSceneId })
     .from(schema.scenes).innerJoin(schema.profiles, eq(schema.profiles.id, schema.scenes.profileId))
     .where(and(eq(schema.scenes.id, sceneId), eq(schema.profiles.id, profileId), eq(schema.profiles.accountId, accountId)));
   if (!scene) return null;
@@ -29,18 +29,26 @@ export async function sceneForEditing(db: Db, accountId: string, profileId: stri
     .leftJoin(schema.formDefinitions, eq(schema.formDefinitions.id, schema.sceneBlocks.formId))
     .where(eq(schema.sceneBlocks.sceneId, scene.id)).orderBy(asc(schema.sceneBlocks.position), asc(schema.sceneBlocks.createdAt));
   return {
-    scene: { id: scene.id, name: scene.name, isDefault: scene.id === scene.defaultSceneId },
+    scene: { id: scene.id, name: scene.name, isDefault: scene.id === scene.defaultSceneId, isShown: scene.id === (scene.activeSceneId ?? scene.defaultSceneId) },
     blocks: rows.map(row => ({ id: row.id, type: row.type, visible: row.visible, content: row.content as Record<string, unknown>, summary: summary(row.type, row.content as Record<string, unknown>, row.formTitle) })),
   };
 }
 
-export async function blockForEditing(db: Db, accountId: string, profileId: string, blockId: string) {
+export async function blockForEditing(db: Db, accountId: string, profileId: string, blockId: string, sceneId?: string) {
   const [row] = await db.select({ ...blockColumns, formConfig: schema.formDefinitions.config }).from(schema.sceneBlocks)
     .innerJoin(schema.scenes, eq(schema.scenes.id, schema.sceneBlocks.sceneId))
     .innerJoin(schema.profiles, eq(schema.profiles.id, schema.scenes.profileId))
     .leftJoin(schema.formDefinitions, eq(schema.formDefinitions.id, schema.sceneBlocks.formId))
-    .where(and(eq(schema.sceneBlocks.id, blockId), eq(schema.profiles.id, profileId), eq(schema.profiles.accountId, accountId)));
+    .where(and(
+      eq(schema.sceneBlocks.id, blockId),
+      eq(schema.profiles.id, profileId),
+      eq(schema.profiles.accountId, accountId),
+      ...(sceneId ? [eq(schema.sceneBlocks.sceneId, sceneId)] : []),
+    ));
   if (!row) return null;
+  const [{ n: formUseCount }] = row.formId
+    ? await db.select({ n: count() }).from(schema.sceneBlocks).where(eq(schema.sceneBlocks.formId, row.formId))
+    : [{ n: 0 }];
   return { id: row.id, sceneId: row.sceneId, type: row.type, visible: row.visible, content: row.content as Record<string, unknown>, formId: row.formId,
-    form: row.formId && row.formTitle && row.formConfig ? { id: row.formId, title: row.formTitle, config: row.formConfig as FormConfig } : null };
+    form: row.formId && row.formTitle && row.formConfig ? { id: row.formId, title: row.formTitle, config: row.formConfig as FormConfig, useCount: Number(formUseCount) } : null };
 }

@@ -3,6 +3,7 @@ import { useActionState } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 const m = vi.hoisted(() => ({ account: vi.fn(), methods: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.account }));
+vi.mock("@/auth/actions", () => ({ signOutAction: vi.fn() }));
 vi.mock("@/auth/methods", () => ({ getLinkedMethods: m.methods }));
 vi.mock("./account-actions", () => ({ AccountActions: ({ googleLinked }: { googleLinked: boolean }) => googleLinked ? null : <button>Connect Google</button> }));
 vi.mock("./actions", () => ({ removeGoogleAction: vi.fn(), requestEmailChangeAction: vi.fn(), confirmEmailChangeAction: vi.fn(), signOutEverywhereAction: vi.fn() }));
@@ -15,14 +16,14 @@ import { ChangeEmailForm } from "./account-forms";
 const render = async (changed?: string) => renderToStaticMarkup(await AccountPage({ params: Promise.resolve({}), searchParams: Promise.resolve({ changed }) }));
 beforeEach(() => { vi.clearAllMocks(); m.account.mockResolvedValue({ accountId: "a1", email: "a@example.test" }); m.methods.mockResolvedValue({ google: true }); });
 test("account has sign-in methods, changes, session controls and support deletion", async () => {
-  const html = await render("1"); for (const copy of ["Signed in as", "a@example.test", "Sign-in methods", "Email code", "Google", "Remove Google", "You can still sign in with an email code.", "Change sign-in email", "Send code", "Sign out everywhere", "To delete your account, please contact Neffi support.", "Your sign-in email has been changed."]) expect(html).toContain(copy);
+  const html = await render("1"); for (const copy of ["Signed in as", "a@example.test", "Sign-in methods", "Email code", "Google", "Remove Google", "You can still sign in with an email code.", "Change sign-in email", "Send code", "Sign out", "Sign out of all devices", "To delete your account, please contact Neffi support.", "Your sign-in email has been changed."]) expect(html).toContain(copy);
   expect(html).toContain('href="/support?topic=recovery"');
 });
 test("unlinked account offers Connect Google", async () => { m.methods.mockResolvedValue({ google: false }); const html = await render(); expect(html).toContain("Connect Google"); expect(html).not.toContain("Remove Google"); });
 
 test("Account form controls submit rather than silently doing nothing", async () => {
   const html = await render();
-  for (const label of ["Remove Google", "Send code", "Sign out everywhere"]) {
+  for (const label of ["Remove Google", "Send code", "Sign out", "Sign out of all devices"]) {
     expect(html.match(new RegExp(`<button\\b[^>]*>${label}</button>`))?.[0]).toContain('type="submit"');
   }
 });

@@ -5,7 +5,7 @@ const SECRET = "s".repeat(40);
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 const CREDENTIAL = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const CARD = "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d";
-const CODE = "N8KF-42PQ-7XYZ-ABCD";
+const CODE = "N8KF-42PQ";
 const VIEWER = { accountId: ACCOUNT, email: "a@example.test", role: "customer" as const };
 const DB = { sentinel: true };
 
@@ -50,6 +50,23 @@ describe("checkCodeAction", () => {
     expect(m.checkActivationCode).not.toHaveBeenCalled();
   });
 
+  test("consults IP, daily IP, then global quotas before lookup", async () => {
+    m.checkActivationCode.mockResolvedValue({ status: "invalid" });
+    await actions.checkCodeAction(undefined, form(CODE));
+    expect(m.consumeQuota.mock.calls).toHaveLength(3);
+    expect(m.consumeQuota.mock.calls[0].slice(0, 3)).toEqual([DB, hmacHex(SECRET, "activation-ip", "203.0.113.9"), 20]);
+    expect(m.consumeQuota.mock.calls[1].slice(0, 3)).toEqual([DB, hmacHex(SECRET, "activation-ip-day", "203.0.113.9"), 50]);
+    expect(m.consumeQuota.mock.calls[1][4]).toEqual({ windowMs: 24 * 60 * 60_000 });
+    expect(m.consumeQuota.mock.calls[2].slice(0, 3)).toEqual([DB, hmacHex(SECRET, "activation-global", "checks"), 100]);
+    expect(m.checkActivationCode).toHaveBeenCalledOnce();
+  });
+
+  test.each([0, 1, 2])("a refusal from quota %i skips lookup", async (refusal) => {
+    m.consumeQuota.mockImplementation(() => Promise.resolve(m.consumeQuota.mock.calls.length !== refusal + 1));
+    expect(await actions.checkCodeAction(undefined, form(CODE))).toEqual({ error: TOO_MANY });
+    expect(m.checkActivationCode).not.toHaveBeenCalled();
+  });
+
   test("prefers the platform IP header", async () => {
     m.headers.mockResolvedValue(new Headers({ "x-vercel-forwarded-for": "198.51.100.7", "x-forwarded-for": "203.0.113.9" }));
     m.checkActivationCode.mockResolvedValue({ status: "invalid" });
@@ -81,7 +98,7 @@ describe("checkCodeAction", () => {
     m.checkActivationCode.mockResolvedValue({ status });
     const state = await actions.checkCodeAction(undefined, form(CODE));
     expect(state).toEqual({ error });
-    expect(JSON.stringify(state)).not.toMatch(/N8KF|42PQ|7XYZ|ABCD/);
+    expect(JSON.stringify(state)).not.toMatch(/N8KF|42PQ/);
     expect(m.setChallenge).not.toHaveBeenCalled();
   });
 

@@ -1,14 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-import { ACCENTS } from "@/modules/profiles/rules";
+import { ACCENTS } from "@/modules/profiles/appearance-options";
 const m = vi.hoisted(() => ({ account: vi.fn(), profile: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.account }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo" } }));
 vi.mock("@/modules/profiles/profiles", () => ({ getOwnedProfile: m.profile }));
 vi.mock("../actions", () => ({ updateAppearanceAction: vi.fn() }));
-vi.mock("../image-upload", async importOriginal => ({ ...await importOriginal<typeof import("../image-upload")>(), ImageUpload: () => <button>Upload image</button> }));
-vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), notFound: () => { throw new Error("NOT_FOUND"); } }));
 import AppearancePage from "./page";
 const render = async () => renderToStaticMarkup(await AppearancePage({ params: Promise.resolve({ profileId: "p1" }), searchParams: Promise.resolve({}) }));
 test("appearance shows named swatches, current choice, photo/logo and image upload", async () => {
@@ -18,7 +17,14 @@ test("appearance shows named swatches, current choice, photo/logo and image uplo
   expect(html.match(/name="accentColor"/g)).toHaveLength(8);
   for (const accent of ACCENTS) { expect(html).toContain(accent.name); expect(html).toContain(`value="${accent.hex}"`); }
   expect(html).toMatch(/checked=""[^>]*value="#1F5FAE"/);
-  for (const copy of ["Show my image as", "Photo", "Logo", "Upload image"]) expect(html).toContain(copy);
+  for (const copy of ["Photo", "Logo", "Change image", "Cancel", "Save changes"]) expect(html).toContain(copy);
+  for (const copy of ["All changes saved", "Unsaved changes"]) expect(html).not.toContain(copy);
+  for (const copy of ["Appearance preview", "Profile link", "Connect"]) expect(html).not.toContain(copy);
+  expect(html).toContain('href="/app/profiles/p1/preview"');
+  expect(html).toContain("Preview profile");
+  expect(html.match(/<img\b/g)).toHaveLength(1);
+  expect(html.indexOf('id="profile-image-title"')).toBeLessThan(html.indexOf('id="accent-title"'));
+  expect(html).toContain('href="/app/profiles/p1"');
   expect(html).toContain("https://res.cloudinary.com/demo/image/upload/c_fill,g_face,w_256,h_256,f_auto,q_auto/a/b");
 });
 test("unowned appearance is not found", async () => {

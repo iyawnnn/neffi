@@ -25,7 +25,7 @@ test("public intake is unassigned, anonymous, unlinked and never queries Account
 }));
 
 test("credential-shaped free text is refused before persistence", () => rollback(db, async tx => {
-  for (const change of [{ message: "My code is 0123-4567-89AB-CDEF" }, { message: "My recovery code is 12345678" }, { name: "0123456789ABCDEF" }]) await expect(submitSupportRequest(tx, { ...data(), ...change }, options)).rejects.toMatchObject({ code: "invalid_input" });
+  for (const change of [{ message: "My code is N8KF-42PQ" }, { message: "My recovery code is 12345678" }, { name: "N8KF42PQ" }]) await expect(submitSupportRequest(tx, { ...data(), ...change }, options)).rejects.toMatchObject({ code: "invalid_input" });
   expect(await tx.select().from(s.supportCases)).toHaveLength(0);
 }));
 

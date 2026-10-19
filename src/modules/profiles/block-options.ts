@@ -1,9 +1,10 @@
-import { profileLinkType } from "@/db/schema/enums";
+import { PLATFORMS } from "./platform-registry";
+import type { blockType, profileLinkType } from "@/db/schema/enums";
 
-export const LINK_KINDS = profileLinkType.enumValues;
-export type LinkKind = (typeof LINK_KINDS)[number];
-export const LINK_KIND_LABELS: Record<LinkKind, string> = {
-  facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn", youtube: "YouTube", github: "GitHub",
-  messenger: "Messenger", whatsapp: "WhatsApp", viber: "Viber", telegram: "Telegram", x: "X", portfolio: "Portfolio",
-  booking: "Booking", shop: "Shop", menu: "Menu", custom: "Other",
-};
+export type LinkKind = (typeof profileLinkType.enumValues)[number];
+export const LINK_KINDS = Object.keys(PLATFORMS) as LinkKind[];
+export const LINK_KIND_LABELS = Object.fromEntries(Object.entries(PLATFORMS).map(([kind, metadata]) => [kind, metadata.publicLabel ?? metadata.label])) as Record<LinkKind, string>;
+
+// How the scene editor groups blocks. Visitors still see one list in stored order.
+export const BLOCK_SECTIONS = { links: ["link"], content: ["about", "project"], actions: ["contact", "booking", "form"] } as const satisfies Record<string, readonly (typeof blockType.enumValues)[number][]>;
+export type BlockSection = keyof typeof BLOCK_SECTIONS;

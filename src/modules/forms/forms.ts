@@ -6,8 +6,13 @@ import { ProfileError } from "../profiles/errors";
 import { bumpProfileContentVersion, lockOwnedProfile } from "../profiles/profiles";
 import { parseFormConfig } from "./config";
 
+export function parseFormTitle(raw: string): string | null {
+  const title = raw.trim();
+  return title && title.length <= 60 ? title : null;
+}
+
 export async function updateForm(db: Db, input: { accountId: string; profileId: string; formId: string; title: string; config: unknown }): Promise<void> {
-  const title = input.title.trim();
+  const title = parseFormTitle(input.title);
   const config = parseFormConfig(input.config);
   if (!title || title.length > 60 || !config.ok) throw new ProfileError("invalid");
   await db.transaction(async tx => {

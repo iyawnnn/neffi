@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { OwnedProfile } from "@/modules/profiles/profiles";
 import { createSceneAction, deleteProfileAction, showSceneAction } from "./actions";
 
-function EditorDialog({
+export function EditorDialog({
   trigger,
   title,
   description,
@@ -74,7 +74,7 @@ function EditorDialog({
   );
 }
 
-function DialogCancel() {
+export function DialogCancel() {
   return (
     <Dialog.Close
       render={

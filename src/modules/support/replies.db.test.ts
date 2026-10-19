@@ -20,7 +20,7 @@ test("reply preparation validates before persisting status and supports duplicat
   const owner = await insertAccount(tx, "owner");
   const [row] = await tx.insert(s.supportCases).values({ type: "other", summary: "Other", requesterEmail: "contact@example.test" }).returning();
   const input = { caseId: row.id, actorId: owner.id, kind: "reply" as const, attemptId: crypto.randomUUID(), body: "Please send purchase evidence." };
-  await expect(prepareCaseMessage(tx, { ...input, body: "0123-4567-89AB-CDEF" })).rejects.toMatchObject({ code: "activation_code_in_email" });
+  await expect(prepareCaseMessage(tx, { ...input, body: "N8KF-42PQ" })).rejects.toMatchObject({ code: "activation_code_in_email" });
   expect((await tx.select().from(s.supportCases))[0].status).toBe("open");
   await prepareCaseMessage(tx, input); await prepareCaseMessage(tx, input);
   expect((await tx.select().from(s.supportCases))[0].status).toBe("waiting_on_customer");

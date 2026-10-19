@@ -35,6 +35,25 @@ test("lists owned profiles with status, connected-card counts and separate edit/
   expect(m.ownedProfiles).toHaveBeenCalledWith({}, "a1");
   expect(m.cardSummaries).toHaveBeenCalledWith({}, "a1");
   expect(m.requireAccount).toHaveBeenCalledWith("/app");
+  const published = html.match(/<span class="([^"]*)"><span aria-hidden="true"[^>]*><\/span>Published<\/span>/)![1];
+  for (const token of ["bg-brand/5", "border-brand/20", "text-action-text"]) expect(published).toContain(token);
+  expect(published).not.toContain("bg-foreground");
+  const draft = html.match(/<span class="([^"]*)">Draft<\/span>/)![1];
+  expect(draft).toContain("bg-canvas"); expect(draft).not.toContain("bg-brand");
+});
+
+test("approved layout retains right-hand count, outline row actions and large centered creation panel", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "published" }]);
+  const html = renderToStaticMarkup(await ProfilesPage());
+  const header = html.match(/<header\b[\s\S]*?<\/header>/)![0];
+  expect(header).toContain("justify-between"); expect(header).toContain("rounded-full border bg-background");
+  const row = html.match(/<li\b[\s\S]*?<\/li>/)![0];
+  expect(row).toContain("gap-3 px-5 py-4"); expect(row).toContain("md:py-2");
+  for (const link of row.matchAll(/<a\b[^>]*>/g)) expect(link[0]).toContain("border-border");
+  expect(row).not.toContain("lucide-pencil");
+  const panel = html.match(/<section aria-labelledby="create-profile"[\s\S]*?<\/section>/)![0];
+  for (const token of ["text-center", "w-[240px]", "md:px-8", "md:py-8", "mx-auto mt-2", "bg-action"]) expect(panel).toContain(token);
+  expect(panel).not.toContain("md:grid-cols-"); expect(panel).not.toContain("md:text-left");
 });
 
 test("creation has a single primary action without a duplicate list header or setup explanatory copy", async () => {

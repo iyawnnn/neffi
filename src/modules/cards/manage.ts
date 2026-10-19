@@ -27,6 +27,13 @@ export async function connectCardToProfile(db: Db, input: { accountId: string; c
   });
 }
 
+export async function saveCardSettings(db: Db, input: { accountId: string; cardId: string; profileId: string; disabled: boolean }): Promise<void> {
+  await db.transaction(async tx => {
+    await connectCardToProfile(tx, input);
+    await setCardDisabled(tx, input);
+  });
+}
+
 export type CardSummary = { id: string; publicToken: string; suffix: string; profileId: string | null; profileName: string | null; disabled: boolean };
 const cardColumns = { id: schema.cards.id, publicToken: schema.cards.publicToken, profileId: schema.cards.profileId, profileName: schema.profiles.fullName, disabledAt: schema.cards.disabledAt };
 

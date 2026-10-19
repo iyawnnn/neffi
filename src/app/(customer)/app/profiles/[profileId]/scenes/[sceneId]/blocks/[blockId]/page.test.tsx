@@ -6,6 +6,7 @@ vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/modules/profiles/editor", () => ({ blockForEditing: m.block }));
 vi.mock("../../actions", () => ({ addBlockAction: vi.fn(), updateBlockAction: vi.fn(), renameSceneAction: vi.fn(), deleteSceneAction: vi.fn(), moveBlockAction: vi.fn(), toggleBlockAction: vi.fn(), removeBlockAction: vi.fn(), updateFormAction: vi.fn() }));
+vi.mock("../../../../actions", () => ({ createSceneAction: vi.fn(), deleteProfileAction: vi.fn(), showSceneAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
 import EditBlockPage from "./page";
 const render = async () => renderToStaticMarkup(await EditBlockPage({ params: Promise.resolve({ profileId: "p1", sceneId: "s1", blockId: "b1" }), searchParams: Promise.resolve({}) }));
@@ -13,13 +14,13 @@ beforeEach(() => { vi.resetAllMocks(); m.requireAccount.mockResolvedValue({ acco
 test("editing fields are prefilled", async () => {
   const html = await render();
   for (const text of ["My site", "Hello", "https://ana.example/", "Project name", "Short description"]) expect(html).toContain(text);
-  expect(html).toMatch(/<button[^>]*>Save<\/button>/);
+  expect(html).toMatch(/<button[^>]*>Save changes<\/button>/);
 });
 test("form Block shows editable form settings with fixed required name", async () => {
   m.block.mockResolvedValue({ id: "b1", sceneId: "s1", type: "form", content: {}, form: { id: "f1", title: "Contact", config: PRESETS.contact.config } });
   const html = await render();
-  expect(html).toContain("Form settings");
-  expect(html).toContain("Form title");
+  expect(html).toContain("Edit contact form");
+  expect(html).toContain("Contact form title");
   expect(html).toContain('name="field.name" value="required"');
   expect(html).not.toContain('<select name="field.name"');
   for (const mode of ["Hidden", "Optional", "Required"]) expect(html).toContain(mode);

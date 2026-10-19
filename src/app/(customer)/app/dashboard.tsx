@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Eye, Nfc, Plus, UserRound, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, Eye, Nfc, Pencil, Plus, QrCode, UserRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ButtonLink, CardGlyph, EmptyState, ListPanel, ProfileGlyph, ProfileStatus, Row, RowList, SectionHeader, SectionLink } from "@/components/app-ui";
@@ -93,15 +93,15 @@ function Notice({ role, children }: { role: "alert" | "status"; children: ReactN
 function NextStep({ leading, title, badge, summary, children, actions }: { leading?: ReactNode; title: string; badge?: ReactNode; summary: ReactNode; children?: ReactNode; actions: ReactNode }) {
   const content = (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <h2 className="truncate text-entity">{title}</h2>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <h2 className="max-w-full truncate text-entity">{title}</h2>
         {badge}
       </div>
       <p className="text-body text-fg-secondary">{summary}</p>
     </div>
   );
   return (
-    <section aria-label="Next step" className="grid gap-y-5 rounded-panel border bg-background p-5 md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-8 md:gap-y-6 md:px-7 md:py-6">
+    <section aria-label="Next step" className={cn("grid gap-y-5 rounded-panel border bg-background p-5 md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-8 md:gap-y-6 md:p-6", !children && "md:items-center")}>
       {leading ? (
         <div className="flex min-w-0 items-center gap-4">
           {leading}
@@ -110,7 +110,7 @@ function NextStep({ leading, title, badge, summary, children, actions }: { leadi
       ) : (
         content
       )}
-      <div className="order-last flex flex-col-reverse gap-2 md:order-none md:flex-row md:items-start">{actions}</div>
+      <div className={cn("order-last flex w-full flex-col-reverse gap-2 md:order-none md:w-auto md:flex-row", children ? "md:items-start" : "md:items-center")}>{actions}</div>
       {children ? <div className="min-w-0 md:col-span-2">{children}</div> : null}
     </section>
   );
@@ -234,6 +234,7 @@ function LiveCard({ profile, cards }: { profile: ProfileRow; cards: CardSummary[
   const live = profile.status === "published";
   return (
     <NextStep
+      leading={<ProfileGlyph />}
       title={profileName(profile.fullName)}
       badge={<ProfileStatus status={profile.status} />}
       summary={
@@ -244,11 +245,34 @@ function LiveCard({ profile, cards }: { profile: ProfileRow; cards: CardSummary[
             : "Published, but no card shows it yet. Connect a card from Cards."
       }
       actions={
-        <>
-          <ButtonLink href={`/app/profiles/${profile.id}/preview`} variant="outline">Preview</ButtonLink>
-          {live && shownOn[0] ? <ButtonLink href={`/app/cards/${shownOn[0].id}`} variant="outline">Share QR code</ButtonLink> : null}
-          <ButtonLink href={`/app/profiles/${profile.id}`}>Manage profile</ButtonLink>
-        </>
+        <div role="group" aria-label="Profile actions" className="flex w-full items-center gap-2 md:w-auto">
+          <Link
+            href={`/app/profiles/${profile.id}/preview`}
+            aria-label="Preview profile"
+            title="Preview profile"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background text-foreground transition-colors duration-[220ms] hover:border-border-strong hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
+          >
+            <Eye aria-hidden className="size-4 shrink-0 text-foreground" />
+          </Link>
+          {live && shownOn[0] ? (
+            <Link
+              href={`/app/cards/${shownOn[0].id}`}
+              aria-label="Share QR code"
+              title="Share QR code"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background text-foreground transition-colors duration-[220ms] hover:border-border-strong hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
+            >
+              <QrCode aria-hidden className="size-4 shrink-0 text-foreground" />
+            </Link>
+          ) : null}
+          <ButtonLink
+            href={`/app/profiles/${profile.id}`}
+            variant="action"
+            className="order-first h-11 flex-1 px-4 duration-[220ms] motion-reduce:transition-none md:order-last md:flex-initial md:w-auto"
+          >
+            <Pencil aria-hidden className="size-4 shrink-0" />
+            <span className="truncate">Manage profile</span>
+          </ButtonLink>
+        </div>
       }
     />
   );

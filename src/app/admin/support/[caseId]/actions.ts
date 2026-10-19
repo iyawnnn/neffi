@@ -20,6 +20,7 @@ import type { ActionState } from "../../inventory/actions";
 import { env } from "@/config/env";
 import { parsePesos } from "@/lib/money";
 import { formatActivationCode } from "@/modules/activation/code";
+import { ActivationCredentialError } from "@/modules/activation/credentials";
 import { afterSaleRefund, voidAfterSaleRefund, voidCompletedPayment, recordCompletedPayment } from "@/modules/support/money";
 import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, resetCardOwnership } from "@/modules/support/cards";
 import { recordSupportShipment, updateSupportShipment } from "@/modules/support/shipments";
@@ -60,6 +61,7 @@ async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: 
     if (error instanceof RangeError) return { error: "Check the amount. Use pesos with at most two decimal places." };
     if (error instanceof OrderError) return { error: error.code === "balance_exceeded" ? "Payment exceeds the current balance. Reload the case and check the amount." : error.code === "refund_exceeded" ? "Refund exceeds the net amount paid. Reload the case and check the amount." : error.code === "already_voided" ? "That entry was already voided. Reload the case." : "That order action is unavailable. Reload the case and check the order's status." };
     if (error instanceof CardError) return { error: "That card is unavailable. Reload the case." };
+    if (error instanceof ActivationCredentialError) return { error: "A new activation code could not be issued. Please try again." };
     throw error;
   }
 }

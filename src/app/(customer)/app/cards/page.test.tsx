@@ -53,6 +53,22 @@ test("lists owned cards with status, connected profile and manage link", async (
   expect(html).not.toContain("private-card-token");
   expect(m.cardSummaries).toHaveBeenCalledWith({}, "a1");
   expect(m.requireAccount).toHaveBeenCalledWith("/app");
+  const connected = html.match(/<span class="([^"]*)"><span aria-hidden="true"[^>]*><\/span>Connected<\/span>/)![1];
+  for (const token of ["bg-brand/5", "border-brand/20", "text-action-text"]) expect(connected).toContain(token);
+  expect(connected).not.toContain("bg-foreground");
+});
+
+test("approved layout retains right-hand count, original Manage action and large centered activation panel", async () => {
+  m.cardSummaries.mockResolvedValue([{ id: "c1", suffix: "WXYZ", profileName: "Ana", profileId: "p1", disabled: false }]);
+  const html = renderToStaticMarkup(await CardsPage());
+  const header = html.match(/<header\b[\s\S]*?<\/header>/)![0];
+  expect(header).toContain("justify-between"); expect(header).toContain("rounded-full border bg-background");
+  const row = html.match(/<li\b[\s\S]*?<\/li>/)![0];
+  expect(row).toContain("gap-3 px-5 py-4"); expect(row).toContain("md:py-2");
+  expect(row).toContain("border-border"); expect(row).not.toContain("lucide-sliders-horizontal");
+  const panel = html.match(/<section aria-labelledby="activate-card"[\s\S]*?<\/section>/)![0];
+  for (const token of ["text-center", "w-[240px]", "md:px-8", "md:py-8", "mx-auto mt-2", "bg-action"]) expect(panel).toContain(token);
+  expect(panel).not.toContain("md:grid-cols-"); expect(panel).not.toContain("md:text-left");
 });
 
 test("activation panel has a single primary Vermilion action without duplicate CTA or inner Cards heading", async () => {

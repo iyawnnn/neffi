@@ -26,11 +26,11 @@ const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const initial = { id, kind: "dbc", state: "blank", publicToken: null, createdAt: new Date("2026-10-10"),
   nfcVerifiedAt: null, packageMatchedAt: null, usableCredentialId: null, credentialCount: 0, orderContext: null, activity: [] };
 const issued = { ...initial, publicToken: "A".repeat(26), usableCredentialId: id, credentialCount: 1 };
-const reveal = { code: "ABCD-EFGH-JKMN-PQRS", url: "http://localhost:3000/c/" + "A".repeat(26) };
+const reveal = { code: "N8KF-42PQ", url: "http://localhost:3000/c/" + "A".repeat(26) };
 const page = () => CardPage({ params: Promise.resolve({ cardId: id }), searchParams: Promise.resolve({}) });
 beforeEach(() => {
   responses.clear(); vi.clearAllMocks(); readCard.mockResolvedValue(initial);
-  provision.mockResolvedValue({ reveal }); replace.mockResolvedValue({ reveal: { code: "PQRS-JKMN-EFGH-ABCD" } });
+  provision.mockResolvedValue({ reveal }); replace.mockResolvedValue({ reveal: { code: "PQR8-JKMN" } });
 });
 
 test("provision response remains visible after persisted card update, and fresh page never retrieves it", async () => {
@@ -86,10 +86,10 @@ test("replacement response reveals independently of the initial provisioning res
   const data = new FormData(); data.set("cardId", id);
   responses.set(replace, await replace(undefined, data));
   const html = renderToStaticMarkup(await page());
-  expect(html).toContain("PQRS-JKMN-EFGH-ABCD");
+  expect(html).toContain("PQR8-JKMN");
   expect(html).not.toContain(reveal.code);
-  expect(html.indexOf("Credential recovery")).toBeLessThan(html.indexOf("PQRS-JKMN-EFGH-ABCD"));
+  expect(html.indexOf("Credential recovery")).toBeLessThan(html.indexOf("PQR8-JKMN"));
   responses.clear();
-  expect(renderToStaticMarkup(await page())).not.toContain("PQRS-JKMN-EFGH-ABCD");
+  expect(renderToStaticMarkup(await page())).not.toContain("PQR8-JKMN");
 });
 vi.mock("next/server", () => ({ connection: vi.fn() }));

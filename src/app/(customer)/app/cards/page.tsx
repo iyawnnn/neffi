@@ -1,7 +1,7 @@
 import { Nfc, Plus } from "lucide-react";
 import Image from "next/image";
 import { requireAccount } from "@/auth/access";
-import { ButtonLink, CardGlyph, EmptyState } from "@/components/app-ui";
+import { ButtonLink, CardGlyph, EmptyState, PositiveStatus } from "@/components/app-ui";
 import { db } from "@/db";
 import { cardSummaries } from "@/modules/cards/manage";
 
@@ -42,7 +42,7 @@ export default async function CardsPage() {
                         ) : !card.profileId ? (
                           <span className="shrink-0 rounded-full bg-canvas px-2 py-0.5 text-label text-fg-secondary shadow-[inset_0_0_0_1px_var(--border-strong)]">Needs setup</span>
                         ) : (
-                          <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-label text-background">Connected</span>
+                          <PositiveStatus>Connected</PositiveStatus>
                         )}
                       </span>
                       <span className="text-meta text-fg-secondary">

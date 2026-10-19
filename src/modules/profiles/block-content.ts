@@ -11,7 +11,7 @@ const required = linkSchema().refine((value): value is string => value !== null)
 const checkbox = z.unknown().transform((value) => value === true || value === "on");
 
 // Content is built only from these schemas: customers fill plain fields, never raw JSON.
-const SCHEMAS = {
+export const BLOCK_CONTENT_SCHEMAS = {
   about: z.strictObject({ text: text(1000) }),
   // prefault (not default): Zod 4 runs the missing-key value through the transforms, so absent fields become null.
   project: z.strictObject({ title: text(80), description: optional(500).prefault(""), url: linkSchema().prefault("") }),
@@ -22,6 +22,6 @@ const SCHEMAS = {
 } satisfies Record<BlockType, z.ZodType>;
 
 export function parseBlockContent(type: BlockType, input: Record<string, unknown>): { ok: true; content: Record<string, unknown> } | { ok: false } {
-  const result = SCHEMAS[type].safeParse(input);
+  const result = BLOCK_CONTENT_SCHEMAS[type].safeParse(input);
   return result.success ? { ok: true, content: result.data as Record<string, unknown> } : { ok: false };
 }

@@ -1,10 +1,11 @@
 "use server";
 
 import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
 import { db } from "@/db";
-import { connectCardToProfile, setCardDisabled } from "@/modules/cards/manage";
+import { connectCardToProfile, setCardDisabled, saveCardSettings } from "@/modules/cards/manage";
 import { ProfileError } from "@/modules/profiles/errors";
 
 type CardActionState = { error?: string };
@@ -33,4 +34,20 @@ export async function setCardDisabledAction(_previous: CardActionState | undefin
   if (disabled && data.get("confirm") !== "on") return { error: "Tick the box to confirm." };
   try { await setCardDisabled(db, { ...input, disabled }); } catch (error) { return failure(error); }
   redirect(`/app/cards/${input.cardId}`);
+}
+
+export async function saveCardSettingsAction(data: FormData): Promise<{ ok: true } | { error: string }> {
+  const input = await context(data);
+  const parsed = z.object({ profileId: z.uuid(), disabled: z.enum(["true", "false"]) }).safeParse(Object.fromEntries(data));
+  if (!parsed.success) return { error: "Check the highlighted fields and try again." };
+  const disabled = parsed.data.disabled === "true";
+  if (disabled && data.get("confirm") !== "on") return { error: "Tick the box to confirm." };
+  try {
+    await saveCardSettings(db, { ...input, profileId: parsed.data.profileId, disabled });
+  } catch (error) {
+    if (error instanceof ProfileError && error.code === "not_found") notFound();
+    return { error: "Couldn't update card. Try again." };
+  }
+  revalidatePath(`/app/cards/${input.cardId}`);
+  return { ok: true };
 }

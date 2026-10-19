@@ -69,7 +69,7 @@ const CASES: Case[] = [
     bad: [{ ...STOCK, quantity: "0" }, { ...STOCK, quantity: "501" }, { ...STOCK, quantity: "1.5" }, { ...STOCK, receivedOn: "2026-13-45" }, { ...STOCK, intendedKind: "other" }, without(STOCK, "receivedOn")],
     reveal: null,
   },
-  { name: "provisionDbcAction", service: "provisionDbc", fields: { cardId: CARD }, bad: [{ cardId: "not-a-uuid" }, {}], reveal: { url: "https://tap.example.test/c/TOKEN", code: "ABCD-EFGH-JKMN-PQRS" } },
+  { name: "provisionDbcAction", service: "provisionDbc", fields: { cardId: CARD }, bad: [{ cardId: "not-a-uuid" }, {}], reveal: { url: "https://tap.example.test/c/TOKEN", code: "N8KF-42PQ" } },
   {
     name: "recordNfcCheckAction",
     service: "recordNfcCheck",
@@ -80,7 +80,7 @@ const CASES: Case[] = [
   {
     name: "matchPackageAction",
     service: "matchPackage",
-    fields: { cardId: CARD, activationCode: "ABCD-EFGH-JKMN-PQRS" },
+    fields: { cardId: CARD, activationCode: "N8KF-42PQ" },
     bad: [{ cardId: CARD }, { cardId: CARD, activationCode: "" }, { cardId: CARD, activationCode: "x".repeat(65) }, { cardId: "x", activationCode: "ABCD" }],
     reveal: null,
   },
@@ -89,7 +89,7 @@ const CASES: Case[] = [
     service: "replaceProvisioningCredential",
     fields: REPLACE,
     bad: [without(REPLACE, "confirm"), without(REPLACE, "reason"), { ...REPLACE, reason: "  " }, { ...REPLACE, reason: "x".repeat(201) }, { ...REPLACE, credentialId: "x" }],
-    reveal: { code: "ABCD-EFGH-JKMN-PQRS" },
+    reveal: { code: "N8KF-42PQ" },
   },
   { name: "reserveGrcAction", service: "reserveGrc", fields: { cardId: CARD, orderItemId: ITEM }, bad: [{ cardId: CARD }, { cardId: CARD, orderItemId: "x" }], reveal: null },
   { name: "retireCardAction", service: "retireCard", fields: RETIRE, bad: [without(RETIRE, "confirm"), without(RETIRE, "reason"), { ...RETIRE, reason: "" }], reveal: null },
@@ -99,8 +99,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   for (const fn of Object.values(services)) fn.mockReset();
   authorize.mockResolvedValue(OWNER);
-  services.provisionDbc.mockResolvedValue({ publicToken: "TOKEN", credentialId: ITEM, activationCode: "ABCDEFGHJKMNPQRS" });
-  services.replaceProvisioningCredential.mockResolvedValue({ credentialId: ITEM, activationCode: "ABCDEFGHJKMNPQRS" });
+  services.provisionDbc.mockResolvedValue({ publicToken: "TOKEN", credentialId: ITEM, activationCode: "N8KF42PQ" });
+  services.replaceProvisioningCredential.mockResolvedValue({ credentialId: ITEM, activationCode: "N8KF42PQ" });
   services.receiveStock.mockResolvedValue({ stockPurchaseId: ITEM });
 });
 

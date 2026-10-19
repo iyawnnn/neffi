@@ -32,18 +32,19 @@ test("reply is bounded and references expose only eight hex characters", () => {
   expect(caseReference("abcdef12-1234-4000-8000-000000000001")).toBe("abcdef12");
 });
 
-test.each(["0123456789ABCDEF", "0123-4567-89ab-cdef", "o123 4567 89ab cdef", "0123\n4567\n89AB\nCDEF"])("blocks activation-shaped credentials: %s", (code) => {
+test.each(["N8KF42PQ", "N8KF-42pq", "o8kf42pq"])("blocks activation-shaped credentials: %s", (code) => {
   expect(containsActivationCode(`Here is ${code}.`)).toBe(true);
 });
 
 test("ordinary messages and invalid alphabet do not look like activation credentials", () => {
   expect(containsActivationCode("Please contact support about your card.")).toBe(false);
   expect(containsActivationCode("0123456789ABCDEU")).toBe(false);
+  for (const body of ["Jennifer", "Margaret", "activation", "Verified purchase evidence", "abcdef12", "year 2026", "card 1234"]) expect(containsActivationCode(body)).toBe(false);
 });
 
-test("embedding a code in a longer token does not bypass the email credential guard", () => {
-  expect(containsActivationCode("code0123456789ABCDEF")).toBe(true);
-  expect(containsActivationCode("0123456789ABCDEF0")).toBe(true);
+test("embedded codes are deliberately not treated as standalone credentials", () => {
+  expect(containsActivationCode("codeN8KF42PQ")).toBe(false);
+  expect(containsActivationCode("N8KF42PQ0")).toBe(false);
 });
 
 test("acknowledgement and security notices accept no personal content and use fixed headers", () => {

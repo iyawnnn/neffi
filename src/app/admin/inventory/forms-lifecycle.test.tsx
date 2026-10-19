@@ -31,7 +31,7 @@ test("navigation hiding remounts the action response holder, including Back rest
 });
 
 test("Copy activation code writes only to clipboard on explicit click", async () => {
-  const code = "ABCD-EFGH-JKMN-PQRS";
+  const code = "N8KF-42PQ";
   response.current = { reveal: { code, url: "http://localhost:3000/c/public-token" } };
   const wrapper = ProvisionForm({ cardId: "test-card", available: false });
   const form = invoke(invoke(wrapper));

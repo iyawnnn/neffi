@@ -36,6 +36,6 @@ test("fallback uses current account email, missing recipient refuses and failure
 
 test("server blocks bearer activation codes before sending or recording a result", () => rollback(db, async tx => {
   const [support] = await tx.insert(s.supportCases).values({ type: "other", summary: "Other", requesterEmail: "requester@example.test" }).returning();
-  for (const kind of ["reply", "resolution"] as const) await expect(dispatchCaseEmail(tx, { caseId: support.id, actorId: null, kind, body: "Use 0123-4567-89AB-CDEF", attemptId: crypto.randomUUID() }, async () => { throw new Error("must not send"); })).rejects.toMatchObject({ code: "activation_code_in_email" });
+  for (const kind of ["reply", "resolution"] as const) await expect(dispatchCaseEmail(tx, { caseId: support.id, actorId: null, kind, body: "Use N8KF-42PQ", attemptId: crypto.randomUUID() }, async () => { throw new Error("must not send"); })).rejects.toMatchObject({ code: "activation_code_in_email" });
   expect(await tx.select().from(s.activityEvents)).toHaveLength(0);
 }));

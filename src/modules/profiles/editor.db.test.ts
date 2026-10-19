@@ -6,6 +6,7 @@ import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { addBlock } from "./blocks";
 import { blockForEditing, sceneForEditing } from "./editor";
 import { createProfileFromStarter } from "./profiles";
+import { createScene } from "./scenes";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -22,7 +23,7 @@ test("blocks return in position order with every type's friendly summary", () =>
   await addBlock(tx, { ...input, type: "project", content: { title: "Site" } });
   await addBlock(tx, { ...input, type: "booking", content: { url: "cal.com/ana" } });
   const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
-  expect(edit?.scene).toEqual({ id: input.sceneId, name: "Networking", isDefault: true });
+  expect(edit?.scene).toEqual({ id: input.sceneId, name: "Networking", isDefault: true, isShown: true });
   expect(edit?.blocks.map(b => b.summary)).toEqual(["Save Contact on", "Other", "A".repeat(60), "Let's connect", "Site", "Book a time"]);
   const block = edit!.blocks[1];
   expect(await blockForEditing(tx, input.accountId, input.profileId, block.id)).toMatchObject({ id: block.id, sceneId: input.sceneId, type: "link", content: block.content });
@@ -46,4 +47,20 @@ test("a scene of another profile is not returned", () => rollback(db, async tx =
   const block = edit!.blocks.find(b => b.type === "form")!;
   const row = await blockForEditing(tx, input.accountId, input.profileId, block.id);
   expect(row).toMatchObject({ form: { id: row!.formId, title: "Let's connect", config: { fields: { name: "required", email: "required" }, questions: [] } } });
+}));
+
+test("form editing data reports how many profile modes share a form", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
+  const form = edit!.blocks.find(block => block.type === "form")!;
+  await createScene(tx, { ...input, name: "Copied", copyFromSceneId: input.sceneId });
+  const row = await blockForEditing(tx, input.accountId, input.profileId, form.id, input.sceneId);
+  expect(row?.form?.useCount).toBe(2);
+}));
+
+test("a route-scoped item read does not return an item from another mode", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const { sceneId } = await createScene(tx, { ...input, name: "Other", copyFromSceneId: null });
+  const edit = await sceneForEditing(tx, input.accountId, input.profileId, input.sceneId);
+  expect(await blockForEditing(tx, input.accountId, input.profileId, edit!.blocks[0].id, sceneId)).toBeNull();
 }));

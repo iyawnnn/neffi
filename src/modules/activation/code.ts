@@ -4,9 +4,15 @@ import { CROCKFORD, randomCrockford } from "@/lib/crockford";
 
 // Pure helpers (no server-only, no env): the secret is passed in by the caller.
 
-const CODE_LENGTH = 16; // 80 bits
+const CODE_LENGTH = 8; // ~40 bits
 
-export const generateActivationCode = () => randomCrockford(CODE_LENGTH);
+export function generateActivationCode() {
+  let code: string;
+  do {
+    code = randomCrockford(CODE_LENGTH);
+  } while (!/\d/.test(code) || !/[G-HJ-KM-NP-TV-Z]/.test(code));
+  return code;
+}
 
 export const formatActivationCode = (code: string) => code.match(/.{4}/g)!.join("-");
 

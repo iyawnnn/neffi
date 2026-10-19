@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
 import { requireAccount } from "@/auth/access";
+import { LinkKindIcon } from "@/components/social-icons";
 import { db } from "@/db";
+import { LINK_KIND_LABELS, type LinkKind } from "@/modules/profiles/block-options";
 import { blockForEditing } from "@/modules/profiles/editor";
 import { BlockForm } from "../../block-forms";
+import { BLOCK_META, BlockTile } from "../../block-meta";
+import { BlockPage } from "../../block-page";
 import { FormEditor } from "../../form-editor";
 
 export const instant = false;
@@ -13,5 +17,13 @@ export default async function EditBlockPage({ params }: PageProps<"/app/profiles
   const block = await blockForEditing(db, viewer.accountId, profileId, blockId);
   if (!block || block.sceneId !== sceneId) notFound();
   if (block.type === "form" && !block.form) notFound();
-  return <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10"><div className="flex w-full max-w-sm flex-col gap-4"><h1 className="text-2xl font-semibold tracking-tight">{block.type === "form" ? "Form settings" : `Edit ${block.type[0].toUpperCase() + block.type.slice(1)}`}</h1>{block.type === "form" ? <FormEditor profileId={profileId} sceneId={sceneId} form={block.form!} /> : <BlockForm profileId={profileId} sceneId={sceneId} blockId={block.id} type={block.type} content={block.content} />}</div></main>;
+  const back = `/app/profiles/${profileId}/scenes/${sceneId}`;
+  const kind = block.type === "link" ? block.content.kind as LinkKind : null;
+  const meta = BLOCK_META[block.type];
+  return (
+    <BlockPage backHref={back} icon={kind ? <LinkKindIcon kind={kind} /> : <BlockTile icon={meta.icon} />}
+      title={block.type === "form" ? "Edit contact form" : `Edit ${kind ? LINK_KIND_LABELS[kind] : meta.label.toLowerCase()}`} description={meta.description}>
+      {block.type === "form" ? <FormEditor profileId={profileId} sceneId={sceneId} blockId={block.id} form={block.form!} /> : <BlockForm profileId={profileId} sceneId={sceneId} blockId={block.id} type={block.type} content={block.content} cancelHref={back} />}
+    </BlockPage>
+  );
 }

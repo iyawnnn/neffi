@@ -6,6 +6,7 @@ import { authorize } from "@/auth/access";
 import { env } from "@/config/env";
 import { db } from "@/db";
 import { formatActivationCode } from "@/modules/activation/code";
+import { ActivationCredentialError } from "@/modules/activation/credentials";
 import { CardError, recordNfcCheck, retireCard, type CardErrorCode } from "@/modules/cards/card";
 import { matchPackage, provisionDbc, replaceProvisioningCredential } from "@/modules/cards/dbc";
 import { reserveGrc } from "@/modules/cards/grc";
@@ -56,6 +57,7 @@ async function run<S extends z.ZodType>(
     return result;
   } catch (error) {
     if (error instanceof CardError) return { error: MESSAGES[error.code] };
+    if (error instanceof ActivationCredentialError) return { error: "A new activation code could not be issued. Please try again." };
     if (error instanceof OrderError) return { error: "That stock purchase could not be saved. Reload and check the fields." };
     throw error;
   }

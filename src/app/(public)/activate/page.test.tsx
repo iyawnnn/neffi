@@ -32,20 +32,29 @@ beforeEach(() => {
 test("signed out: code entry with a way to sign in", async () => {
   const html = await render();
   expect(html).toContain("Activate your Neffi");
-  expect(html).toContain("Enter the activation code inside your package.");
+  expect(html).toContain(
+    "Enter the activation code inside your package to add this card to your account."
+  );
   expect(html).toContain("data-code-form");
   expect(html).toContain('href="/sign-in?next=/activate"');
-  expect(html).not.toContain("Go to my Neffi");
+  expect(html).not.toContain("My Neffi");
   expect(html).toContain('href="/support?topic=activation"');
+});
+
+test("renders responsive activation hero artwork with desktop and mobile assets", async () => {
+  const html = await render();
+  expect(html).toContain("neffi-activation-hero-desktop.png");
+  expect(html).toContain("neffi-activation-hero-mobile.png");
+  expect(html).toContain("<picture");
 });
 
 test("signed in without cards: activate your Neffi, identity shown, easy way home", async () => {
   m.getViewer.mockResolvedValue(VIEWER);
   const html = await render();
   expect(html).toContain("Activate your Neffi");
-  expect(html).toContain("Signed in as");
+  expect(html).toContain("Adding to your account");
   expect(html).toContain("a@example.test");
-  expect(html).toContain("Go to my Neffi");
+  expect(html).toContain("My Neffi");
   expect(html).toContain('href="/app"');
 });
 
@@ -67,7 +76,7 @@ test("signed in with a card: repeat scan offers another activation, no auto-redi
   m.getViewer.mockResolvedValue(VIEWER);
   m.ownedCards.mockResolvedValue([CARD]);
   const html = await render();
-  expect(html).toContain("Activate another Neffi");
+  expect(html).toContain("Activate your Neffi");
   expect(html).toContain("data-code-form");
   expect(html).not.toContain("WXYZ");
 });

@@ -113,6 +113,13 @@
       "when": 1792055999588,
       "tag": "0015_validate_dbc_ready_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792290641217,
+      "tag": "0016_extend_social_platforms",
+      "breakpoints": true
     }
   ]
 }

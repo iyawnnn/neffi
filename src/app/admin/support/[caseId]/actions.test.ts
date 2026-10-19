@@ -16,6 +16,7 @@ vi.mock("@/modules/support/case", async (original) => ({ ...await original<objec
 vi.mock("@/modules/support/cards", async (original) => ({ ...await original<object>(), reissueActivationCode }));
 import { openCaseAction, addCaseNoteAction, setCaseStatusAction } from "./actions";
 import { SupportError } from "@/modules/support/errors";
+import { ActivationCredentialError } from "@/modules/activation/credentials";
 import * as actions from "./actions";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [key, value] of Object.entries(fields)) data.set(key, value); return data; };
@@ -84,10 +85,15 @@ test("every support action refuses a customer direct call", async () => {
 });
 
 test("a verified reissue returns a one-time reveal and only record paths are revalidated", async () => {
-  reissueActivationCode.mockResolvedValue({ activationCode: "A".repeat(16), credentialId: id });
+  reissueActivationCode.mockResolvedValue({ activationCode: "N8KF42PQ", credentialId: id });
   const result = await actions.reissueActivationCodeAction(undefined, form({ caseId: id, cardId: id, verificationNote: "Invoice and claimant checked", confirm: "on" }));
-  expect(result.reveal?.code.length).toBe(19);
+  expect(result.reveal?.code).toBe("N8KF-42PQ");
   expect(result.reveal?.instructions).toContain("Copy it now");
   expect(revalidatePath.mock.calls.map(([path]) => path)).toEqual(["/admin", "/admin/support", "/admin/orders", "/admin/inventory", "/admin/expenses", `/admin/support/${id}`, "/admin/orders/[orderId]", `/admin/inventory/cards/${id}`]);
   expect(result.href).toBeUndefined();
+});
+
+test("collision exhaustion returns a controlled retry error", async () => {
+  reissueActivationCode.mockRejectedValueOnce(new ActivationCredentialError());
+  expect(await actions.reissueActivationCodeAction(undefined, form({ caseId: id, cardId: id, verificationNote: "Invoice and claimant checked", confirm: "on" }))).toEqual({ error: "A new activation code could not be issued. Please try again." });
 });
