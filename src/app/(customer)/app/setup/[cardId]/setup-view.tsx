@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { isPurpose, type Purpose } from "@/modules/profiles/starters";
+import { isPurpose, type Purpose } from "@/modules/profiles/purpose-options";
 
 const options = {
   network: { label: "Network", description: "Share your details and make it easy to stay connected.", icon: Users, linkPlaceholder: "linkedin.com/in/yourname" },

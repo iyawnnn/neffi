@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Purpose } from "@/modules/profiles/starters";
+import type { Purpose } from "@/modules/profiles/purpose-options";
 import { createProfileAction } from "./actions";
 import { EssentialsFields } from "./setup-view";
 

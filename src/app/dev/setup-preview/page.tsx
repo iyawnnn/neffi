@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SetupHeader } from "@/components/setup-header";
 import { SetupView } from "@/app/(customer)/app/setup/[cardId]/setup-view";
-import { isPurpose, PURPOSES } from "@/modules/profiles/starters";
+import { isPurpose, PURPOSES } from "@/modules/profiles/purpose-options";
 import { PreviewForm } from "./preview-form";
 
 export const metadata: Metadata = {

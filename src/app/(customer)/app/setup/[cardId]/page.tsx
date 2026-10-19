@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/db";
 import { ownedCards } from "@/modules/cards/owned";
 import { ownedProfiles } from "@/modules/profiles/profiles";
-import { isPurpose, PURPOSES } from "@/modules/profiles/starters";
+import { isPurpose, PURPOSES } from "@/modules/profiles/purpose-options";
 import { chooseProfileAction } from "./actions";
 import { EssentialsForm } from "./setup-forms";
 import { SetupView } from "./setup-view";

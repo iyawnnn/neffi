@@ -1,7 +1,7 @@
 "use client";
 
 import { EssentialsFields } from "@/app/(customer)/app/setup/[cardId]/setup-view";
-import type { Purpose } from "@/modules/profiles/starters";
+import type { Purpose } from "@/modules/profiles/purpose-options";
 
 export function PreviewForm({ purpose, linkLabel }: { purpose: Purpose; linkLabel: string }) {
   return (
