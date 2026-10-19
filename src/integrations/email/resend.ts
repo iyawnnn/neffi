@@ -1,14 +1,17 @@
 import "server-only";
+import { renderEmail, type EmailMessage } from "./layout";
 
-export type Email = { to: string; subject: string; text: string; replyTo?: string; idempotencyKey?: string };
+export type Email = EmailMessage & { to: string; replyTo?: string; idempotencyKey?: string };
 export type EmailSender = (email: Email) => Promise<void>;
 
-type ResendConfig = { apiKey: string; from: string };
+type ResendConfig = { apiKey: string; from: string; origin: string };
 
-// EmailService boundary for Resend. Plain text, no tracking. Failures are deliberately opaque: the provider's
-// response, the recipient and the message body (which holds a sign-in code) must never reach logs or Sentry.
-export function createResendSender({ apiKey, from }: ResendConfig): EmailSender {
-  return async ({ to, subject, text, replyTo, idempotencyKey }) => {
+// EmailService boundary for Resend. HTML with a generated plain-text alternative, no tracking. Failures are
+// deliberately opaque: the provider's response, the recipient and the message body (which holds a sign-in code)
+// must never reach logs or Sentry.
+export function createResendSender({ apiKey, from, origin }: ResendConfig): EmailSender {
+  return async ({ to, replyTo, idempotencyKey, ...message }) => {
+    const { subject, text, html } = renderEmail(message, origin);
     let response: Response;
     try {
       response = await fetch("https://api.resend.com/emails", {
@@ -19,7 +22,7 @@ export function createResendSender({ apiKey, from }: ResendConfig): EmailSender 
           // Caller-supplied for notifications; random for sign-in codes, never derived from the code.
           "Idempotency-Key": idempotencyKey ?? crypto.randomUUID(),
         },
-        body: JSON.stringify({ from, to: [to], subject, text, ...(replyTo ? { reply_to: [replyTo] } : {}) }),
+        body: JSON.stringify({ from, to: [to], subject, text, html, ...(replyTo ? { reply_to: [replyTo] } : {}) }),
       });
     } catch {
       throw new Error("Email delivery failed");
@@ -28,16 +31,24 @@ export function createResendSender({ apiKey, from }: ResendConfig): EmailSender 
   };
 }
 
-export function authCodeEmail(code: string, lifetimeMinutes: number): Pick<Email, "subject" | "text"> {
+export function authCodeEmail(code: string, lifetimeMinutes: number): EmailMessage {
   return {
     subject: "Your Neffi sign-in code",
-    text: `Your Neffi sign-in code is ${code}.\n\nIt expires in ${lifetimeMinutes} minutes and works once. If you did not ask for it, ignore this message.`,
+    preheader: `Use it within ${lifetimeMinutes} minutes to continue.`,
+    heading: "Your sign-in code",
+    paragraphs: ["Use this code to continue to Neffi."],
+    code,
+    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`, "If you didn't request it, you can ignore this email."],
   };
 }
 
-export function changeEmailCodeEmail(code: string, lifetimeMinutes: number): Pick<Email, "subject" | "text"> {
+export function changeEmailCodeEmail(code: string, lifetimeMinutes: number): EmailMessage {
   return {
-    subject: "Confirm your new Neffi sign-in email",
-    text: `Your Neffi code is ${code}.\n\nEnter it to use this address for signing in. It expires in ${lifetimeMinutes} minutes and works once. If you did not ask for this, ignore this message.`,
+    subject: "Confirm your new Neffi email",
+    preheader: `Use this code within ${lifetimeMinutes} minutes to finish the change.`,
+    heading: "Confirm your new email",
+    paragraphs: ["Enter this code in Neffi to start signing in with this address."],
+    code,
+    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`, "If you didn't request this, ignore this email. Your account won't change."],
   };
 }

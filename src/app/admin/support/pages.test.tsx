@@ -9,7 +9,7 @@ vi.mock("@/modules/orders/queries", () => ({ orderAssignees: vi.fn().mockResolve
 vi.mock("@/modules/orders/purchasers", () => ({ getPurchaser: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/modules/accounts/directory", () => ({ accountDirectoryDetail: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/modules/inventory/queries", () => ({ getCardDetail: vi.fn().mockResolvedValue(null) }));
-vi.mock("@/config/env", () => ({ env: {} }));
+vi.mock("@/config/env", () => ({ env: { authBaseUrl: "http://localhost:3000" } }));
 import Queue from "./page";
 import Detail from "./[caseId]/page";
 import NewCase from "./new/page";

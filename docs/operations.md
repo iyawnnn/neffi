@@ -100,7 +100,7 @@ Use a single development/Preview Google OAuth **web** client. Keep its consent s
 - `http://localhost:3000/api/auth/callback/google`
 - the Preview branch alias callback (`https://<branch-alias>.vercel.app/api/auth/callback/google`), registered exactly
 
-Use a development/Preview Resend key with send-only permission. Until a sender domain is verified, set `AUTH_EMAIL_FROM` to `Neffi <onboarding@resend.dev>`; this test sender reaches only the Resend account owner's inbox. Domain verification and SPF/DKIM/DMARC are required before the pilot. Mail contains plain text with a random idempotency key per delivery; codes and provider responses are never logged.
+Use a development/Preview Resend key with send-only permission. Until a sender domain is verified, set `AUTH_EMAIL_FROM` to `Neffi <onboarding@resend.dev>`; this test sender reaches only the Resend account owner's inbox. Domain verification and SPF/DKIM/DMARC are required before the pilot. Mail is HTML with a generated plain-text alternative (one shared shell, the logo loads from `/email/neffi-logo.png` on the app origin) and a random idempotency key per delivery; codes and provider responses are never logged.
 
 At `/sign-in`, choose Google or request a six-digit email code. Codes expire after five minutes, work once and allow three failed attempts; they are stored as keyed HMACs. Sends are limited to three per email per ten minutes, ten per email per 24 hours, fifty per IP per 24 hours and ten per IP per minute; code submissions also have a ten-per-minute IP limit. App per-IP keys use the IPv6 /64 network; IPv4-mapped addresses share the plain IPv4 key. Limits persist in PostgreSQL. Known and unknown emails receive the same send response. Passwords, SMS and account-settings endpoints are disabled.
 
@@ -129,7 +129,7 @@ Email lookup is case-insensitive. Unknown or ambiguous Accounts and invalid role
 
 ### Local and approved live checks
 
-Local tests use fresh PGlite databases and mocked Google/Resend responses; they send no mail and need no live database. CI supplies synthetic auth configuration, checks migration drift and scans public bundles for secret values. A local build requires the auth variables; synthetic CI values prove compilation but cannot verify delivery or OAuth setup.
+`/dev/email-preview` renders every email type with fake data at 375 or 600 px. It exists only in local development, returns 404 elsewhere and never sends mail. Local tests use fresh PGlite databases and mocked Google/Resend responses; they send no mail and need no live database. CI supplies synthetic auth configuration, checks migration drift and scans public bundles for secret values. A local build requires the auth variables; synthetic CI values prove compilation but cannot verify delivery or OAuth setup.
 
 At an approved live check, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Application Production remains untouched.
 

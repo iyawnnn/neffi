@@ -1,28 +1,71 @@
-import { caseReference, RECOVERY_INSTRUCTION } from "@/modules/support/domain";
-import type { Email } from "./resend";
+import { formatDateTime } from "@/lib/format-date";
+import { caseReference } from "@/modules/support/domain";
+import type { EmailMessage } from "./layout";
 
-type Template = Pick<Email, "subject" | "text">;
-const contact = "Contact Neffi support at /support if you need help.";
-const context = (at: Date, caseId?: string) => `Time: ${at.toISOString()}${caseId ? `\nCase: ${caseReference(caseId)}` : ""}\n\n${contact}`;
-export function acknowledgementEmail(caseId: string, at: Date): Template {
-  return { subject: "Neffi support received your request", text: `Your support request was received.\n\n${context(at, caseId)}` };
+const SUPPORT_REASON = "You're receiving this because you contacted Neffi support.";
+const caseDetail = (caseId: string) => ({ label: "Case reference", value: caseReference(caseId) });
+
+export function acknowledgementEmail(caseId: string): EmailMessage {
+  return {
+    subject: "We received your Neffi support request",
+    preheader: "Your case reference is inside.",
+    heading: "We received your request",
+    paragraphs: ["Thanks for contacting Neffi support. We'll reply by email."],
+    details: [caseDetail(caseId)],
+    notes: ["Keep this reference if you contact us again."],
+    reason: SUPPORT_REASON,
+  };
 }
+
+const NOT_YOU = "If you made this change, no action is needed. If you didn't, contact Neffi support right away.";
+const contactSupport = { label: "Contact support", path: "/support" } as const;
 export const noticeEvents = {
-  email_changed: "Your Neffi sign-in email changed.",
-  google_connected: "Google sign-in was connected to your Neffi Account.",
-  google_removed: "Google sign-in was removed from your Neffi Account.",
-  sessions_revoked: "Your Neffi Account was signed out everywhere.",
-  recovery_started: "Recovery of your Neffi Account was started.",
-  recovery_completed: "Recovery of your Neffi Account was completed.",
-  account_secured: "Neffi support secured your Account.",
+  email_changed: { subject: "Your Neffi sign-in email was changed", preheader: "If this wasn't you, contact Neffi support.", heading: "Your sign-in email was changed", body: "The email you use to sign in to Neffi was changed.", note: NOT_YOU, action: contactSupport },
+  google_connected: { subject: "Google sign-in was connected to Neffi", preheader: "If this wasn't you, contact Neffi support.", heading: "Google sign-in was connected", body: "You can now sign in to Neffi with Google.", note: NOT_YOU, action: contactSupport },
+  google_removed: { subject: "Google sign-in was removed from Neffi", preheader: "You can still sign in with an email code.", heading: "Google sign-in was removed", body: "You can still sign in with a code sent to your email.", note: NOT_YOU, action: contactSupport },
+  sessions_revoked: { subject: "You were signed out of Neffi everywhere", preheader: "If this wasn't you, contact Neffi support.", heading: "You were signed out everywhere", body: "Your Neffi account was signed out on all devices.", note: NOT_YOU, action: contactSupport },
+  recovery_started: { subject: "Recovery of your Neffi account was started", preheader: "If you didn't ask for this, contact Neffi support now.", heading: "Account recovery was started", body: "Neffi support started moving your account to a different sign-in email.", note: "If you didn't ask Neffi support for this, contact us right away.", action: contactSupport },
+  recovery_completed: { subject: "Your Neffi account recovery is complete", preheader: "Sign in with your new email.", heading: "Account recovery is complete", body: "Your Neffi account now uses a different sign-in email, and all devices were signed out.", note: "Sign in with your new email. If you didn't request this, contact Neffi support.", action: { label: "Sign in", path: "/sign-in" } },
+  account_secured: { subject: "Neffi support secured your account", preheader: "All devices were signed out.", heading: "Neffi support secured your account", body: "We signed your Neffi account out on all devices to protect it.", note: "Sign in again with a code sent to your email.", action: undefined },
 } as const;
 export type NoticeKind = keyof typeof noticeEvents;
-export function securityNoticeEmail(kind: NoticeKind, at: Date, caseId?: string): Template {
-  return { subject: "Neffi account security notice", text: `${noticeEvents[kind]}\n\n${context(at, caseId)}` };
+export function securityNoticeEmail(kind: NoticeKind, at: Date, caseId?: string): EmailMessage {
+  const event = noticeEvents[kind];
+  return {
+    subject: event.subject,
+    preheader: event.preheader,
+    heading: event.heading,
+    paragraphs: [event.body],
+    details: [{ label: "When", value: `${formatDateTime(at)} (Philippine time)` }, ...(caseId ? [caseDetail(caseId)] : [])],
+    ...(event.action ? { action: event.action } : {}),
+    notes: [event.note],
+  };
 }
-export function recoveryCodeEmail(code: string, at: Date): Template {
-  return { subject: "Complete your Neffi account recovery", text: `Your one-time recovery code is ${code}. It expires in 24 hours.\n\nEnter it at /support/recover. ${RECOVERY_INSTRUCTION}\n\n${context(at)}` };
+
+export function recoveryCodeEmail(code: string): EmailMessage {
+  return {
+    subject: "Your Neffi recovery code",
+    preheader: "Approved by Neffi support. Valid for 24 hours.",
+    heading: "Complete your account recovery",
+    paragraphs: ["Neffi support approved your recovery request.", "Enter this code with this email address to finish."],
+    code,
+    action: { label: "Complete recovery", path: "/support/recover" },
+    notes: [
+      "This code expires in 24 hours.",
+      "Don't sign in with this address until recovery is complete. It can create a separate account and block recovery.",
+      "Don't share this code. Neffi support will never ask for it.",
+    ],
+    reason: SUPPORT_REASON,
+  };
 }
-export function caseMessageEmail(kind: "reply" | "resolution", body: string): Template {
-  return { subject: kind === "reply" ? "A message from Neffi support" : "Your Neffi support case was resolved", text: `${body}\n\n${contact}` };
+
+export function caseMessageEmail(kind: "reply" | "resolution", body: string, caseId: string, canReply: boolean): EmailMessage {
+  return {
+    subject: kind === "reply" ? "A message from Neffi support" : "Your Neffi support case was resolved",
+    heading: kind === "reply" ? "A message from Neffi support" : "Your support case was resolved",
+    paragraphs: [body],
+    details: [caseDetail(caseId)],
+    ...(canReply ? { notes: ["Reply to this email to answer."] } : {}),
+    reason: SUPPORT_REASON,
+  };
 }

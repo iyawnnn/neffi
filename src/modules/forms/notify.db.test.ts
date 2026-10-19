@@ -4,6 +4,7 @@ import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { accounts, cards, formDefinitions, formSubmissions, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
+import { renderEmail } from "@/integrations/email/layout";
 import { createProfileFromStarter, publishProfile } from "../profiles/profiles";
 import { notifySubmission } from "./notify";
 import { openSubmission, submitForm } from "./submissions";
@@ -31,27 +32,27 @@ async function saved(tx: TestTx) {
 test("emails the profile owner's sign-in address once", () => rollback(db, async tx => {
   const input = await saved(tx);
   const send = vi.fn().mockResolvedValue(undefined);
-  await notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: "vic@e.test" });
+  await notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", replyTo: "vic@e.test" });
   expect(send).toHaveBeenCalledOnce();
   const [account] = await tx.select().from(accounts).where(eq(accounts.id, input.accountId));
-  expect(send).toHaveBeenCalledWith({ to: account.email, subject: "New message from your Neffi", text: expect.stringContaining("Your name: Vic"), replyTo: "vic@e.test", idempotencyKey: `form-submission-${input.submissionId}` });
-  expect(send.mock.calls[0][0].text).toContain(`https://app.example.test/app/inbox/${input.submissionId}`);
+  expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: account.email, subject: "New message from your Neffi", details: expect.arrayContaining([{ label: "Your name", value: "Vic" }]), action: { label: "Open inbox", path: `/app/inbox/${input.submissionId}` }, replyTo: "vic@e.test", idempotencyKey: `form-submission-${input.submissionId}` }));
+  expect(renderEmail(send.mock.calls[0][0], "https://app.example.test").text).toContain(`https://app.example.test/app/inbox/${input.submissionId}`);
   const [row] = await tx.select().from(formSubmissions).where(eq(formSubmissions.id, input.submissionId));
   expect(row.notifiedAt).toBeInstanceOf(Date);
-  await notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: null });
+  await notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", replyTo: null });
   expect(send).toHaveBeenCalledOnce();
 }));
 test("a failed send keeps the message and never throws or logs private data", () => rollback(db, async tx => {
   const input = await saved(tx);
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   const send = vi.fn().mockRejectedValue(new Error("private-provider-data"));
-  await expect(notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: null })).resolves.toBeUndefined();
+  await expect(notifySubmission(tx, send, { submissionId: input.submissionId, secret: "synthetic-notification-secret", replyTo: null })).resolves.toBeUndefined();
   expect((await tx.select().from(formSubmissions).where(eq(formSubmissions.id, input.submissionId)))[0].notifiedAt).toBeNull();
   expect(log).toHaveBeenCalledWith("Form notification failed");
 }));
 test("an unknown submission is ignored", () => rollback(db, async tx => {
   const send = vi.fn();
-  await notifySubmission(tx, send, { submissionId: randomUUID(), secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: null });
+  await notifySubmission(tx, send, { submissionId: randomUUID(), secret: "synthetic-notification-secret", replyTo: null });
   expect(send).not.toHaveBeenCalled();
 }));
 
@@ -62,7 +63,7 @@ test("the fifty-first Profile notification stays in the Inbox while another Prof
   for (let n = 0; n < 51; n++) {
     const result = await submitForm(tx, submission(first.formId));
     if (result.status !== "created") throw new Error("fixture failed");
-    await notifySubmission(tx, send, { submissionId: result.submissionId, secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: null });
+    await notifySubmission(tx, send, { submissionId: result.submissionId, secret: "synthetic-notification-secret", replyTo: null });
     if (n === 50) capped = result.submissionId;
   }
   expect(send).toHaveBeenCalledTimes(50);
@@ -72,6 +73,6 @@ test("the fifty-first Profile notification stays in the Inbox while another Prof
   const second = await setup(tx, first.accountId);
   const result = await submitForm(tx, submission(second.formId));
   if (result.status !== "created") throw new Error("fixture failed");
-  await notifySubmission(tx, send, { submissionId: result.submissionId, secret: "synthetic-notification-secret", appOrigin: "https://app.example.test", replyTo: null });
+  await notifySubmission(tx, send, { submissionId: result.submissionId, secret: "synthetic-notification-secret", replyTo: null });
   expect(send).toHaveBeenCalledTimes(51);
 }));

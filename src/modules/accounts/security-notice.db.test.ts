@@ -2,9 +2,11 @@ import { beforeAll, expect, test } from "vitest";
 import { insertAccount } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { activityEvents, supportCases } from "@/db/schema";
+import { renderEmail } from "@/integrations/email/layout";
 import type { Email } from "@/integrations/email/resend";
 import { noticeEvents } from "@/integrations/email/support-templates";
 import { sendSecurityNotice, resendCaseSecurityNotice } from "./security-notice";
+const origin = "https://app.example.test";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
 test("notice attempts are idempotent and provider failures expose no recipient or body", () => rollback(db, async tx => {
@@ -13,16 +15,18 @@ test("notice attempts are idempotent and provider failures expose no recipient o
   const sender = async (email: Email) => { sent.push(email); if (email.to === "old@example.test") throw new Error("private-provider-detail"); };
   await sendSecurityNotice(tx, input, sender); await sendSecurityNotice(tx, input, sender);
   expect(sent).toHaveLength(2);
-  expect(sent.every(email => !email.text.includes("@"))).toBe(true);
+  expect(sent.every(email => !renderEmail(email, origin).text.includes("@") && !/(old|new)@example/.test(renderEmail(email, origin).html))).toBe(true);
   const events = await tx.select().from(activityEvents);
   expect(events.map(e => e.type).sort()).toEqual(["security_notice_failed", "security_notice_sent"]);
   expect(JSON.stringify(events)).not.toMatch(/private-provider|@example/);
 }));
-test("every security event uses the restricted fixed-subject template", () => rollback(db, async tx => {
+test("every security event uses its own restricted template", () => rollback(db, async tx => {
   const account = await insertAccount(tx); const sent: Email[] = [];
   for (const kind of Object.keys(noticeEvents) as (keyof typeof noticeEvents)[]) await sendSecurityNotice(tx, { accountId: account.id, actorId: null, kind, attemptId: crypto.randomUUID(), at: new Date(), recipients: [{ to: account.email, slot: "current" }] }, async email => { sent.push(email); });
   expect(sent).toHaveLength(7);
-  expect(sent.every(email => email.subject === "Neffi account security notice" && !email.text.includes("@") && email.text.includes("/support"))).toBe(true);
+  expect(sent.map(email => email.subject)).toEqual(Object.values(noticeEvents).map(event => event.subject));
+  expect(new Set(sent.map(email => email.subject)).size).toBe(7);
+  expect(sent.every(email => { const { text, html } = renderEmail(email, origin); return !text.includes("@") && !html.includes(account.email) && text.includes(`${origin}/support`); })).toBe(true);
 }));
 
 test("case security retries are scoped to secure notices and target the Account, never public contact", () => rollback(db, async tx => {
