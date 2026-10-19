@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ArrowRight, Check, Shield } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
 import { NeffiLogo } from "@/components/neffi-logo";
 import { cn } from "@/lib/utils";
 import { RECOVERY_INSTRUCTION } from "@/modules/support/domain";
@@ -18,59 +18,43 @@ const RECOVERY_STEPS = [
   {
     step: "01",
     title: "Verified by support",
-    description: "Your recovery request has been reviewed.",
-    status: "completed",
+    description: "Your recovery request has been approved.",
   },
   {
     step: "02",
-    title: "Enter recovery details",
-    description: "Use your new email and recovery code.",
-    status: "current",
+    title: "Enter your recovery details",
+    description: "Use the new email and code sent by Neffi support.",
   },
   {
     step: "03",
-    title: "Access restored",
-    description: "Your account will move to the new sign-in email.",
-    status: "upcoming",
+    title: "Access your account",
+    description: "After recovery, sign in using your new email.",
   },
 ] as const;
 
 function RecoveryProgress() {
   return (
-    <div className="relative flex flex-col gap-5">
-      {RECOVERY_STEPS.map((item, index) => {
-        const isLast = index === RECOVERY_STEPS.length - 1;
-        return (
-          <div key={item.step} aria-current={item.status === "current" ? "step" : undefined} className="relative flex items-start gap-3.5">
-            {!isLast ? (
-              <span
-                aria-hidden="true"
-                className="absolute left-[13px] top-7 bottom-[-14px] w-px bg-border/70"
-              />
-            ) : null}
-            <div
-              className={cn(
-                "relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-[0.6875rem] font-semibold transition-colors",
-                item.status === "current"
-                  ? "bg-brand text-white shadow-xs"
-                  : item.status === "completed"
-                  ? "bg-subtle text-foreground border border-border"
-                  : "bg-subtle text-fg-secondary border border-border/80"
-              )}
-            >
-              {item.status === "completed" ? <Check aria-label="Completed" className="size-3.5" /> : item.step}
-            </div>
-            <div className="flex flex-col pt-0.5">
-              <span className={cn("text-body", item.status === "current" ? "font-semibold text-foreground" : item.status === "completed" ? "font-medium text-foreground" : "font-medium text-fg-secondary")}>
-                {item.title}
-              </span>
-              <span className="mt-0.5 text-meta text-fg-secondary leading-normal">
-                {item.description}
-              </span>
-            </div>
+    <div className="flex flex-col gap-6 sm:gap-7">
+      {RECOVERY_STEPS.map((item) => (
+        <div
+          key={item.step}
+          className="flex items-start gap-3.5 sm:gap-4"
+        >
+          <div
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-brand/25 bg-brand/[0.08] font-mono text-xs font-semibold tracking-tight text-brand"
+          >
+            {item.step}
           </div>
-        );
-      })}
+          <div className="flex flex-col pt-1">
+            <span className="text-body font-medium text-foreground">
+              {item.title}
+            </span>
+            <span className="mt-1 text-meta text-fg-secondary leading-normal">
+              {item.description}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -83,7 +67,7 @@ function SecurityGuidance({ className }: { className?: string }) {
       </div>
       <div className="flex flex-col">
         <h2 className="text-body font-semibold text-foreground">
-          Do not sign in with your new email yet
+          Don’t sign in with your new email yet
         </h2>
         <p className="mt-1 text-meta text-fg-secondary leading-normal">
           {RECOVERY_INSTRUCTION}
@@ -95,13 +79,13 @@ function SecurityGuidance({ className }: { className?: string }) {
 
 function ContactSupportLink() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5 text-center">
-      <span className="text-meta text-fg-secondary">
-        Haven’t received a recovery code?
+    <div className="flex flex-wrap items-center justify-center gap-1.5 text-center text-meta">
+      <span className="text-fg-secondary">
+        Didn’t receive a recovery code?
       </span>
       <Link
         href="/support"
-        className="group inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand"
+        className="group inline-flex min-h-11 items-center gap-1.5 font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand"
       >
         <span className="nav-interact transition-colors group-hover:text-brand">
           Contact support
@@ -121,7 +105,7 @@ export default async function RecoveryPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Shared-width container ensures exact pixel-perfect alignment between header and main shell */}
-      <div className="mx-auto flex w-full max-w-[1140px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-16 gap-5 sm:gap-6 md:gap-7">
+      <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-16 gap-5 sm:gap-6 md:gap-7">
         {/* Floating Public Header */}
         <header className="w-full">
           <div className="flex h-14 sm:h-15 w-full items-center justify-between rounded-[16px] border border-border/80 bg-background px-4 sm:px-6 shadow-xs transition-[border-color,box-shadow] duration-200">
@@ -153,10 +137,10 @@ export default async function RecoveryPage() {
             ACCOUNT RECOVERY
           </span>
           <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
-            Complete recovery
+            Recover your account
           </h1>
           <p className="mt-2 text-body text-fg-secondary leading-normal">
-            Enter the new email and the recovery code emailed to your new address after Neffi support approved your request.
+            Your recovery request was approved. Use the new email and recovery code sent by Neffi support to finish.
           </p>
         </div>
 
@@ -165,16 +149,16 @@ export default async function RecoveryPage() {
           {/* Main split shell on desktop, streamlined stack on mobile */}
           <div className="w-full overflow-hidden rounded-none border-0 bg-transparent md:rounded-[20px] md:border md:border-border/80 md:bg-background md:shadow-xs md:grid md:grid-cols-[42%_58%]">
             {/* LEFT RECOVERY CONTEXT PANEL (Desktop only) */}
-            <div className="hidden md:flex flex-col justify-between border-r border-border/70 bg-[#FAF9F5] p-8 lg:p-11">
+            <div className="hidden md:flex flex-col justify-between border-r border-border/70 bg-[#FAF9F5] p-8 lg:p-10">
               <div>
                 <span className="text-[0.75rem] font-semibold tracking-wider text-fg-secondary uppercase">
                   ACCOUNT RECOVERY
                 </span>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
-                  Complete recovery
+                  Recover your account
                 </h1>
                 <p className="mt-2.5 text-body text-fg-secondary leading-normal max-w-[440px]">
-                  Enter the new email and the recovery code emailed to your new address after Neffi support approved your request.
+                  Your recovery request was approved. Use the new email and recovery code sent by Neffi support to finish.
                 </p>
 
                 {/* Recovery 3-step progression */}
@@ -197,7 +181,7 @@ export default async function RecoveryPage() {
                     Complete recovery
                   </h2>
                   <p className="mt-2 text-body text-fg-secondary leading-normal">
-                    Enter the new email and the recovery code emailed to your new address after Neffi support approved your request.
+                    Enter the new email and recovery code sent after Neffi support approved your request.
                   </p>
                 </div>
 

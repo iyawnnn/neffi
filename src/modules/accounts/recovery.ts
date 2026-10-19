@@ -15,6 +15,7 @@ import { SupportError } from "../support/errors";
 import { sendSecurityNotice } from "./security-notice";
 
 export const recoveryLookup = (secret: string, id: string, code: string) => hmacHex(secret, "account-recovery", `${id}:${code}`);
+export const generateRecoveryCode = () => String(randomInt(1_000_000)).padStart(6, "0");
 export async function lockCustomerAccount(tx: Db, accountId: string | null) {
   if (!accountId) throw new SupportError("customer_required");
   const [account] = await tx.select().from(s.accounts).where(eq(s.accounts.id, accountId)).for("update");
@@ -34,7 +35,7 @@ export async function initiateRecovery(db: Db, input: { caseId: string; actorId:
   const parsed = recoveryInitiationSchema.safeParse(input);
   if (!parsed.success || containsStoredCredential(parsed.data.verificationNote)) throw new SupportError("invalid_input");
   const data = parsed.data; const now = input.now ?? new Date();
-  const recoveryId = randomUUID(); const code = String(randomInt(100000000)).padStart(8, "0");
+  const recoveryId = randomUUID(); const code = generateRecoveryCode();
   let account: typeof s.accounts.$inferSelect;
   try {
     account = await withCase(db, input, async (tx, row) => {

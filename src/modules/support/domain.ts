@@ -14,7 +14,7 @@ export const intakeSchema = z.object({
 });
 export const verificationSchema = z.object({ confirmed: z.literal(true), verificationNote: z.string().trim().min(10).max(300), unlinkGoogle: z.boolean().default(true) });
 export const recoveryInitiationSchema = verificationSchema.extend({ newEmail: contactEmail });
-export const recoveryCompletionSchema = z.object({ email: contactEmail, code: z.string().trim().regex(/^\d{8}$/) });
+export const recoveryCompletionSchema = z.object({ email: contactEmail, code: z.string().trim().regex(/^\d{6}$/) });
 export const replySchema = z.object({ body: z.string().trim().min(1).max(2000), attemptId: z.uuid() });
 export const caseReference = (id: string) => id.slice(0, 8);
 export const ACK_WINDOW_MS = 24 * 60 * 60_000;

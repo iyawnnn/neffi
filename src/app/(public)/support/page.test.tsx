@@ -14,14 +14,16 @@ test("support streams a usable signed-out form with privacy and recovery guidanc
   expect(html).toContain('name="message"');
   expect(html).toContain('value="activation" selected');
   expect(html).toContain("unverified");
-  expect(html).toContain("Do not sign in");
   expect(html).not.toContain("recovery link");
-  expect(html).toContain("I can still access my current email");
-  expect(html).toContain("I no longer have access to my current email");
+  expect(html).not.toContain("Do not sign in with the new address");
+  expect(html).toContain("Need help with your sign-in email?");
+  expect(html).toContain("Still have access to your current email?");
+  expect(html).toContain("Lost access to your current email?");
   expect(html).toContain('href="/sign-in?next=/app/account"');
   expect(html).toContain('href="/support?topic=recovery#support-request"');
   expect(html).toContain('href="/support/recover"');
   expect(html).toContain("Already have a recovery code?");
+  expect(html).toContain("Complete recovery");
 });
 
 test("lost-inbox action selects the recovery support topic", async () => {

@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react";
+import { CodeSlots } from "@/components/code-slots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { completeRecoveryAction } from "./actions";
 
 export function RecoveryForm() {
   const [state, action, pending] = useActionState(completeRecoveryAction, undefined);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+
+  const canSubmit = email.trim().length > 0 && code.length === 6;
 
   if (state?.ok) {
     return (
@@ -24,7 +29,7 @@ export function RecoveryForm() {
         </p>
         <Link
           href="/sign-in"
-          className="mt-6 inline-flex h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-action px-6 text-base font-semibold !text-white shadow-xs transition-colors duration-[220ms] hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-brand"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-action px-6 text-base font-semibold !text-white shadow-xs transition-colors duration-[220ms] hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-brand"
         >
           <span>Sign in with your new address</span>
           <ArrowRight aria-hidden className="size-4.5" />
@@ -50,7 +55,9 @@ export function RecoveryForm() {
           maxLength={254}
           autoComplete="email"
           placeholder="you@example.com"
-          className="mt-2 h-[50px] rounded-xl border-border bg-background px-4 text-body text-foreground placeholder:text-fg-secondary/40 focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mt-2 h-12 rounded-[10px] border-border bg-background px-4 text-body text-foreground placeholder:text-fg-secondary/40 focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20"
         />
       </div>
 
@@ -61,23 +68,24 @@ export function RecoveryForm() {
         >
           Recovery code
         </label>
-        <Input
-          id="code"
-          name="code"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9]{8}"
-          minLength={8}
-          maxLength={8}
-          aria-describedby="recovery-code-help"
-          required
-          placeholder="12345678"
-          className="mt-2 h-[50px] rounded-xl border-border bg-background px-4 font-mono text-base tracking-widest text-foreground placeholder:text-fg-secondary/40 placeholder:tracking-normal focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20"
-        />
-        <p id="recovery-code-help" className="mt-2 text-meta text-fg-secondary leading-normal">
-          Neffi support sends this code after your recovery request is verified. It expires after 24 hours. Three incorrect attempts cancel recovery.
-        </p>
+        <div className="mt-2">
+          <CodeSlots
+            label="6-digit recovery code"
+            describedBy="recovery-code-help"
+            value={code}
+            onChange={setCode}
+            disabled={pending}
+            hasError={Boolean(state?.error)}
+          />
+        </div>
+        <div className="mt-2.5 flex flex-col gap-0.5 text-meta text-fg-secondary leading-normal">
+          <p id="recovery-code-help">
+            Sent to your new email. This code expires after 24 hours.
+          </p>
+          <p className="text-[0.75rem] text-fg-faint">
+            Three incorrect attempts cancel recovery.
+          </p>
+        </div>
       </div>
 
       {state?.error ? (
@@ -97,8 +105,8 @@ export function RecoveryForm() {
         type="submit"
         size="touch"
         variant="action"
-        disabled={pending}
-        className="mt-6 h-[50px] w-full rounded-xl text-base font-semibold shadow-xs transition-all duration-[220ms] disabled:cursor-wait"
+        disabled={pending || !canSubmit}
+        className="mt-6 h-12 w-full rounded-[10px] text-base font-semibold shadow-xs transition-all duration-[220ms] disabled:bg-subtle disabled:text-fg-secondary/60 disabled:border-border/60 disabled:shadow-none disabled:cursor-not-allowed"
       >
         {pending ? (
           <>
@@ -106,7 +114,7 @@ export function RecoveryForm() {
               aria-hidden
               className="size-4.5 animate-spin motion-reduce:animate-none"
             />
-            Recovering…
+            Completing…
           </>
         ) : (
           <>

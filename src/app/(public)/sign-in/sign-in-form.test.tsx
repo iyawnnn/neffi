@@ -253,3 +253,58 @@ test("Use a different email returns to email step and resets code", async () => 
   expect(host.textContent).toContain("Continue to Neffi");
   expect(host.querySelector("input#email")).not.toBeNull();
 });
+
+test("invalid OTP verification renders with destructive styling and error accessibility attributes", async () => {
+  m.signInEmailOtp.mockResolvedValueOnce({
+    error: { message: "Invalid code", status: 400 },
+  });
+
+  await act(async () => {
+    root.render(<SignInForm next="/app" />);
+  });
+
+  // Step 1: Request code
+  const emailInput = host.querySelector<HTMLInputElement>("input#email")!;
+  await act(async () => {
+    changeInput(emailInput, "alex@example.test");
+  });
+  await act(async () => {
+    host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+
+  // Initial code step: neutral info message with role="status"
+  const infoNotice = host.querySelector('[role="status"]')!;
+  expect(infoNotice).not.toBeNull();
+  expect(infoNotice.textContent).toContain("A 6-digit code is on its way");
+  expect(infoNotice.className).toContain("bg-subtle/50");
+  expect(infoNotice.className).not.toContain("bg-destructive");
+
+  const otpInput = host.querySelector<HTMLInputElement>("input#code")!;
+  expect(otpInput.getAttribute("aria-invalid")).toBe("false");
+
+  // Enter 6 digits and submit
+  await act(async () => {
+    changeInput(otpInput, "999999");
+  });
+  await act(async () => {
+    host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+
+  // Verification failed: destructive error state
+  const errorNotice = host.querySelector('[role="alert"]')!;
+  expect(errorNotice).not.toBeNull();
+  expect(errorNotice.id).toBe("code-error");
+  expect(errorNotice.textContent).toContain("That code isn't valid. Check it or request a new one.");
+  expect(errorNotice.className).toContain("bg-destructive/5");
+  expect(errorNotice.className).toContain("text-destructive");
+  expect(errorNotice.className).toContain("border-destructive");
+
+  // Icon in error notice is destructive
+  const errorIcon = errorNotice.querySelector("svg")!;
+  expect(errorIcon).not.toBeNull();
+  expect(errorIcon.className.baseVal || errorIcon.getAttribute("class")).toContain("text-destructive");
+
+  // Input receives error attributes
+  expect(otpInput.getAttribute("aria-invalid")).toBe("true");
+  expect(otpInput.getAttribute("aria-describedby")).toBe("code-error");
+});

@@ -26,7 +26,7 @@ export function AccountActions({ googleLinked }: { googleLinked: boolean }) {
       type="button"
       variant="outline"
       size="touch"
-      className="w-full sm:w-auto"
+      className="h-11 w-full border-border bg-background px-4 font-medium text-foreground transition-colors duration-200 hover:border-border-strong hover:bg-canvas active:bg-subtle sm:w-auto"
       disabled={busy}
       onClick={connectGoogle}
     >

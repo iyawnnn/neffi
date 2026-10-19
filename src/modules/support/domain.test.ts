@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { categories, intakeSchema, recoveryCompletionSchema, recoveryInitiationSchema, replySchema, caseReference } from "./domain";
-import { containsActivationCode } from "./credentials";
+import { containsActivationCode, containsStoredCredential } from "./credentials";
 import { acknowledgementEmail, recoveryCodeEmail, securityNoticeEmail, caseMessageEmail } from "@/integrations/email/support-templates";
 
 const input = { email: " Person@Example.test ", name: " Person ", category: "activation", message: " Lost package ", clientKey: "00000000-0000-4000-8000-000000000001", website: "" };
@@ -17,13 +17,21 @@ test("intake normalizes contact fields and bounds untrusted input", () => {
   expect(categories.other.type).toBe("other");
 });
 
-test("recovery requires verified initiation and eight digits for completion", () => {
+test("recovery requires verified initiation and six digits for completion", () => {
   const data = { newEmail: " New@Example.test ", confirmed: true, verificationNote: "Verified purchase evidence" };
   expect(recoveryInitiationSchema.parse(data)).toMatchObject({ newEmail: "new@example.test", unlinkGoogle: true });
   expect(recoveryInitiationSchema.safeParse({ ...data, confirmed: false }).success).toBe(false);
   expect(recoveryInitiationSchema.safeParse({ ...data, verificationNote: "short" }).success).toBe(false);
-  expect(recoveryCompletionSchema.parse({ email: "NEW@example.test", code: "12345678" }).email).toBe("new@example.test");
-  for (const code of ["1234567", "123456789", "abcdefgh"]) expect(recoveryCompletionSchema.safeParse({ email: "new@example.test", code }).success).toBe(false);
+  expect(recoveryCompletionSchema.parse({ email: "NEW@example.test", code: "123456" }).email).toBe("new@example.test");
+  for (const code of ["12345", "1234567", "12345678", "abcdef", "12 3456"]) expect(recoveryCompletionSchema.safeParse({ email: "new@example.test", code }).success).toBe(false);
+});
+
+test.each(["Recovery code 123456", "my recovery code is 123456", "OTP 123456", "PIN: 123456", "passcode 000000", "code" + " ".repeat(20) + "123456"])("blocks contextual six-digit credentials: %s", body => {
+  expect(containsStoredCredential(body)).toBe(true);
+});
+
+test.each(["paid 150000", "20261019", "Case: 12345678", "year 2026", "call 0917 123 4567", "0917-123456", "123456", "123456 is my code", "code 12 3456", "code\n123456", "code" + " ".repeat(21) + "123456", "code 12345678", "zipcode 123456"])("allows ordinary text and documented filter gaps: %s", body => {
+  expect(containsStoredCredential(body)).toBe(false);
 });
 
 test("reply is bounded and references expose only eight hex characters", () => {
@@ -55,10 +63,10 @@ test("acknowledgement and security notices accept no personal content and use fi
   const notice = securityNoticeEmail("recovery_started", at, "abcdef12-1234-4000-8000-000000000001");
   expect(notice.text).toMatch(/recovery/i);
   for (const email of [ack, notice]) {
-    expect(email.text).not.toMatch(/@|\b\d{8}\b/);
+    expect(email.text).not.toMatch(/@|\b\d{6}\b/);
     expect(email.text).toContain("/support");
   }
-  expect(recoveryCodeEmail("12345678", at).text).toContain("Do not sign in");
-  expect(recoveryCodeEmail("12345678", at).text).toContain("12345678");
+  expect(recoveryCodeEmail("123456", at).text).toContain("Do not sign in");
+  expect(recoveryCodeEmail("123456", at).text).toContain("123456");
   expect(caseMessageEmail("reply", "Hello\ncustomer").subject).toBe("A message from Neffi support");
 });

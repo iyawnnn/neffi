@@ -94,22 +94,25 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
 
   expect(input).not.toBeNull();
   expect(label.textContent).toBe("Activation code");
+  expect(button).not.toBeNull();
   expect(button.disabled).toBe(true);
   expect(button.textContent).toBe("Continue");
   expect(button.className).not.toContain("bg-action");
 
-  // Incomplete code (7 chars): button stays disabled
+  // Incomplete code (7 chars): button stays disabled and remains in document
   await act(async () => {
     changeInput(input, "N8KF42P");
   });
   expect(input.value).toBe("N8KF-42P");
+  expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(true);
 
-  // Complete code (8 chars): button enabled with bg-action
+  // Complete code (8 chars): button enabled with bg-action and remains in document
   await act(async () => {
     changeInput(input, "N8KF42PQ");
   });
   expect(input.value).toBe("N8KF-42PQ");
+  expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(false);
   expect(button.className).toContain("bg-action");
 });

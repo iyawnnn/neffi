@@ -4,7 +4,7 @@
 
 ## Decision
 
-Recovery keeps the existing Account id. An owner verifies a linked customer Account through an active recovery case, confirms the claim and records a short note. An unused new inbox receives an eight-digit HMAC-stored proof valid for 24 hours. The customer completes at `/support/recover`; only then does email change and sessions/optional Google revoke. No waiting period is added.
+Recovery keeps the existing Account id. An owner verifies a linked customer Account through an active recovery case, confirms the claim and records a short note. An unused new inbox receives a six-digit HMAC-stored proof valid for 24 hours. The customer completes at `/support/recover`; only then does email change and sessions/optional Google revoke. No waiting period is added. Six digits are acceptable because the owner fixes the destination at initiation, each recovery row allows at most three incorrect guesses, and a recovery exists only after owner verification.
 
 Completion locks case → Account `FOR UPDATE` → recovery and rechecks case, customer role, proof status/expiry/attempts, old-email snapshot and unused address. Wrong attempts commit; the third cancels. Pending recovery prevents case resolution. Terminal proof history is immutable. Owner Accounts and occupied addresses are refused without merge, deletion or Profile moves.
 

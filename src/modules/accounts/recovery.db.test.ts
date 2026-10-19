@@ -4,11 +4,20 @@ import * as s from "@/db/schema";
 import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import type { Email } from "@/integrations/email/resend";
-import { initiateRecovery, cancelRecovery, completeRecovery, resendRecoveryNotice } from "./recovery";
+import { generateRecoveryCode, initiateRecovery, cancelRecovery, completeRecovery, resendRecoveryNotice } from "./recovery";
+import { readFileSync } from "node:fs";
 import { secureAccount } from "./secure";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
 const secret = "synthetic-recovery-secret";
+test("recovery generator uses crypto for six digits including leading zeros", () => {
+  const codes = Array.from({ length: 2000 }, () => generateRecoveryCode());
+  expect(codes.every(code => /^\d{6}$/.test(code))).toBe(true);
+  expect(codes.some(code => code.startsWith("0"))).toBe(true);
+  const source = readFileSync("src/modules/accounts/recovery.ts", "utf8");
+  expect(source).toContain('String(randomInt(1_000_000)).padStart(6, "0")');
+  expect(source).not.toContain("Math.random");
+});
 async function fixture(tx: TestTx, role: "customer" | "owner" = "customer") {
   const owner = await insertAccount(tx, "owner"); const account = await insertAccount(tx, role);
   await tx.update(s.accounts).set({ emailVerified: true }).where(eq(s.accounts.id, account.id));
@@ -22,9 +31,9 @@ test("initiation stores proof only, defaults Google removal, and sends private n
   const [row] = await tx.select().from(s.accountRecoveries);
   expect(row).toMatchObject({ status: "pending", attempts: 0, unlinkGoogle: true, oldEmail: f.account.email });
   expect(row.codeHmac).toMatch(/^[0-9a-f]{64}$/);
-  const code = sent.find(e => e.to === f.input.newEmail)!.text.match(/\b\d{8}\b/)![0];
+  const code = sent.find(e => e.to === f.input.newEmail)!.text.match(/\b\d{6}\b/)![0];
   expect(JSON.stringify(row)).not.toContain(code);
-  expect(sent.find(e => e.to === f.account.email)!.text).not.toMatch(/new@example|\b\d{8}\b/);
+  expect(sent.find(e => e.to === f.account.email)!.text).not.toMatch(/new@example|\b\d{6}\b/);
   expect(sent[0].idempotencyKey).toBe(`recovery-code-${result.recoveryId}`);
   await expect(initiateRecovery(tx, f.input, async () => {})).rejects.toMatchObject({ code: "recovery_live" });
   await cancelRecovery(tx, { caseId: f.support.id, actorId: f.owner.id, recoveryId: result.recoveryId });
@@ -43,7 +52,7 @@ test("owner targets, occupied email, unverified input and resolved cases refuse 
 
 test("recovery and secure verification notes cannot persist recovery-code-shaped credentials", () => rollback(db, async tx => {
   const f = await fixture(tx);
-  for (const action of [initiateRecovery, secureAccount]) await expect(action(tx, { ...f.input, verificationNote: "Recovery code 12345678" }, async () => {})).rejects.toMatchObject({ code: "invalid_input" });
+  for (const action of [initiateRecovery, secureAccount]) await expect(action(tx, { ...f.input, verificationNote: "Recovery code 123456" }, async () => {})).rejects.toMatchObject({ code: "invalid_input" });
   expect(await tx.select().from(s.activityEvents)).toHaveLength(0);
 }));
 test("expired recovery can be replaced and a failed code email requires cancel and fresh initiation", () => rollback(db, async tx => {
@@ -84,11 +93,18 @@ test("secure refuses owner/resolved targets and preserves the only unverified Go
 
 async function pending(tx: TestTx) {
   const f = await fixture(tx); let code = "";
-  const result = await initiateRecovery(tx, f.input, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{8}\b/)![0]; });
+  const result = await initiateRecovery(tx, f.input, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{6}\b/)![0]; });
   return { ...f, ...result, code };
 }
+
+test("legacy eight-digit input fails without consuming a pending recovery attempt", () => rollback(db, async tx => {
+  const f = await fixture(tx);
+  const { recoveryId } = await initiateRecovery(tx, f.input, async () => {});
+  expect(await completeRecovery(tx, { email: f.input.newEmail, code: "12345678", secret }, async () => {})).toEqual({ ok: false });
+  expect((await tx.select().from(s.accountRecoveries).where(eq(s.accountRecoveries.id, recoveryId)))[0]).toMatchObject({ status: "pending", attempts: 0 });
+}));
 test("three wrong attempts commit and cancel the proof, so the right code subsequently fails", () => rollback(db, async tx => {
-  const f = await pending(tx); const wrong = f.code === "00000000" ? "11111111" : "00000000";
+  const f = await pending(tx); const wrong = f.code === "000000" ? "111111" : "000000";
   for (let n = 1; n <= 3; n++) {
     expect(await completeRecovery(tx, { email: f.input.newEmail, code: wrong, secret }, async () => {})).toEqual({ ok: false });
     expect((await tx.select().from(s.accountRecoveries))[0]).toMatchObject({ attempts: n, status: n === 3 ? "cancelled" : "pending" });

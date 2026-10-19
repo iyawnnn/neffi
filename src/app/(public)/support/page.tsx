@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, CreditCard, KeyRound, LogIn } from "lucide-react";
+import { ArrowRight, CreditCard, KeyRound, LifeBuoy, LogIn, Mail } from "lucide-react";
 import { z } from "zod";
 import { getViewer } from "@/auth/access";
 import { NeffiLogo } from "@/components/neffi-logo";
-import { categories, RECOVERY_INSTRUCTION } from "@/modules/support/domain";
+import { categories } from "@/modules/support/domain";
 import { SupportForm } from "./support-form";
 
 export const metadata: Metadata = {
@@ -37,39 +37,86 @@ function RecoverySection({ className }: { className?: string }) {
   return (
     <div className={className}>
       <h2 className="text-body font-semibold text-foreground">
-        Can’t access your account?
+        Need help with your sign-in email?
       </h2>
-      <div className="mt-3 flex flex-col gap-4">
-        <div>
-          <h3 className="text-meta font-medium text-foreground">I can still access my current email</h3>
-          <p className="mt-1 text-meta text-fg-secondary leading-normal">Sign in with a code sent to your current email, then change your sign-in email from Account settings.</p>
-          <Link href="/sign-in?next=/app/account" className="group inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand">
-            Sign in and change email <ArrowRight aria-hidden className="size-3.5 nav-interact nav-arrow" />
-          </Link>
+      <div className="mt-3.5 flex flex-col gap-3.5 sm:gap-4">
+        {/* OPTION 1 */}
+        <div className="flex items-start gap-3">
+          <Mail
+            aria-hidden
+            className="size-4 shrink-0 mt-0.5 text-fg-secondary"
+          />
+          <div className="flex flex-col">
+            <h3 className="text-meta font-medium text-foreground">
+              Still have access to your current email?
+            </h3>
+            <p className="hidden sm:block mt-0.5 text-meta text-fg-secondary leading-normal">
+              Sign in first, then update your sign-in email from Account settings.
+            </p>
+            <Link
+              href="/sign-in?next=/app/account"
+              className="group mt-0.5 inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              <span className="nav-interact transition-colors group-hover:text-brand">
+                Sign in and change email
+              </span>
+              <ArrowRight
+                aria-hidden
+                className="size-3.5 shrink-0 nav-interact nav-arrow"
+              />
+            </Link>
+          </div>
         </div>
-        <div>
-          <h3 className="text-meta font-medium text-foreground">I no longer have access to my current email</h3>
-          <p className="mt-1 text-meta text-fg-secondary leading-normal">Contact Neffi support. After we verify it&apos;s you, we&apos;ll send a recovery code to your new email address.</p>
-          <Link href="/support?topic=recovery#support-request" className="group inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand">
-            Contact support <ArrowRight aria-hidden className="size-3.5 nav-interact nav-arrow" />
+
+        {/* OPTION 2 */}
+        <div className="flex items-start gap-3">
+          <LifeBuoy
+            aria-hidden
+            className="size-4 shrink-0 mt-0.5 text-fg-secondary"
+          />
+          <div className="flex flex-col">
+            <h3 className="text-meta font-medium text-foreground">
+              Lost access to your current email?
+            </h3>
+            <p className="hidden sm:block mt-0.5 text-meta text-fg-secondary leading-normal">
+              Contact support and we’ll help verify your account.
+            </p>
+            <Link
+              href="/support?topic=recovery#support-request"
+              className="group mt-0.5 inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-brand transition-colors duration-[220ms] focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              <span className="nav-interact transition-colors group-hover:text-brand">
+                Contact support
+              </span>
+              <ArrowRight
+                aria-hidden
+                className="size-3.5 shrink-0 nav-interact nav-arrow"
+              />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* BOTTOM PATH */}
+      <div className="mt-3.5 border-t border-border/60 pt-2.5">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-meta">
+          <span className="text-fg-secondary">
+            Already have a recovery code?
+          </span>
+          <Link
+            href="/support/recover"
+            className="group inline-flex min-h-11 items-center gap-1.5 font-medium text-foreground transition-colors duration-[220ms] hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            <span className="nav-interact transition-colors group-hover:text-brand">
+              Complete recovery
+            </span>
+            <ArrowRight
+              aria-hidden
+              className="size-3.5 shrink-0 nav-interact nav-arrow"
+            />
           </Link>
         </div>
       </div>
-      <p className="mt-1.5 text-[0.75rem] text-fg-faint leading-normal">
-        {RECOVERY_INSTRUCTION}
-      </p>
-      <Link
-        href="/support/recover"
-        className="group mt-2.5 inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-foreground transition-colors duration-[220ms] hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-      >
-        <span className="nav-interact transition-colors group-hover:text-brand">
-          Already have a recovery code? Complete recovery
-        </span>
-        <ArrowRight
-          aria-hidden
-          className="size-3.5 shrink-0 nav-interact nav-arrow"
-        />
-      </Link>
     </div>
   );
 }

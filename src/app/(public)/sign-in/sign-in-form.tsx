@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
 import { authClient } from "@/auth/client";
+import { CodeSlots } from "@/components/code-slots";
 import { GoogleLogo } from "@/components/google-icon";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/input";
@@ -15,82 +16,6 @@ export { inputClass };
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-function OtpSlots({
-  value,
-  onChange,
-  disabled,
-  hasError,
-  inputRef,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  disabled?: boolean;
-  hasError?: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-}) {
-  const [isFocused, setIsFocused] = useState(false);
-  const digits = value.split("");
-
-  return (
-    <div className="relative w-full">
-      {/* 1 real semantic input underneath to preserve paste, mobile OTP autofill, accessibility */}
-      <input
-        ref={inputRef}
-        id="code"
-        name="code"
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9]*"
-        maxLength={6}
-        required
-        disabled={disabled}
-        value={value}
-        onChange={(e) => {
-          const clean = e.target.value.replace(/\D/g, "").slice(0, 6);
-          onChange(clean);
-        }}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        aria-label="6-digit verification code"
-        aria-invalid={hasError}
-        aria-describedby={hasError ? "code-error" : undefined}
-        className="absolute inset-0 h-full w-full cursor-text opacity-0 z-10 select-none"
-      />
-
-      {/* 6 clean visual code slots */}
-      <div
-        aria-hidden="true"
-        className="grid grid-cols-6 gap-2 sm:gap-2.5 w-full select-none"
-      >
-        {Array.from({ length: 6 }).map((_, i) => {
-          const char = digits[i] ?? "";
-          const isActive =
-            isFocused && (digits.length === i || (digits.length === 6 && i === 5));
-
-          return (
-            <div
-              key={i}
-              className={cn(
-                "flex h-[52px] items-center justify-center rounded-[10px] border bg-background font-mono text-xl font-semibold transition-all duration-150 text-foreground",
-                hasError
-                  ? "border-destructive text-destructive bg-destructive/5"
-                  : isActive
-                  ? "border-brand ring-3 ring-brand/20 bg-background"
-                  : char
-                  ? "border-foreground/30 bg-background"
-                  : "border-border bg-subtle/30 text-fg-secondary"
-              )}
-            >
-              {char}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 export function SignInForm({
@@ -106,7 +31,9 @@ export function SignInForm({
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [message, setMessage] = useState<string | undefined>(notice);
+  const [feedback, setFeedback] = useState<
+    { text: string; type: "info" | "error" } | undefined
+  >(notice ? { text: notice, type: "error" } : undefined);
   const [busy, setBusy] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,24 +44,27 @@ export function SignInForm({
     event?.preventDefault();
     if (!emailValid) return;
     setBusy(true);
-    setMessage(undefined);
+    setFeedback(undefined);
     const { error } = await authClient.emailOtp.sendVerificationOtp({
       email: email.trim(),
       type: "sign-in",
     });
     setBusy(false);
     if (error) {
-      setMessage(
-        error.status === 429
-          ? "Too many requests. Please wait a few minutes and try again."
-          : "We couldn't send a code. Check the address and try again."
-      );
+      setFeedback({
+        text:
+          error.status === 429
+            ? "Too many requests. Please wait a few minutes and try again."
+            : "We couldn't send a code. Check the address and try again.",
+        type: "error",
+      });
       return;
     }
     setStep("code");
-    setMessage(
-      "A 6-digit code is on its way. It expires in 5 minutes."
-    );
+    setFeedback({
+      text: "A 6-digit code is on its way. It expires in 5 minutes.",
+      type: "info",
+    });
     // Focus OTP input upon step change
     setTimeout(() => {
       otpInputRef.current?.focus();
@@ -145,18 +75,20 @@ export function SignInForm({
     event.preventDefault();
     if (!codeValid) return;
     setBusy(true);
-    setMessage(undefined);
+    setFeedback(undefined);
     const { error } = await authClient.signIn.emailOtp({
       email: email.trim(),
       otp: code.trim(),
     });
     if (error) {
       setBusy(false);
-      setMessage(
-        error.status === 429
-          ? "Too many attempts. Please wait a minute and try again."
-          : "That code isn't valid. Check it or request a new one."
-      );
+      setFeedback({
+        text:
+          error.status === 429
+            ? "Too many attempts. Please wait a minute and try again."
+            : "That code isn't valid. Check it or request a new one.",
+        type: "error",
+      });
       return;
     }
     router.replace(next);
@@ -165,7 +97,7 @@ export function SignInForm({
 
   async function continueWithGoogle() {
     setBusy(true);
-    setMessage(undefined);
+    setFeedback(undefined);
     const { error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: next,
@@ -174,9 +106,10 @@ export function SignInForm({
     });
     if (error) {
       setBusy(false);
-      setMessage(
-        "We could not start Google sign-in. Please try again or use an email code."
-      );
+      setFeedback({
+        text: "We could not start Google sign-in. Please try again or use an email code.",
+        type: "error",
+      });
     }
   }
 
@@ -202,16 +135,25 @@ export function SignInForm({
       ) : null}
 
       {/* Compact feedback notice */}
-      {message ? (
+      {feedback ? (
         <div
-          role="status"
-          className="mt-4 flex items-start gap-2.5 rounded-[10px] border border-border/70 bg-subtle/50 px-3.5 py-2.5 text-meta text-foreground"
+          role={feedback.type === "error" ? "alert" : "status"}
+          id={feedback.type === "error" && step === "code" ? "code-error" : undefined}
+          className={cn(
+            "mt-4 flex items-start gap-2.5 rounded-[10px] px-3.5 py-2.5 text-meta",
+            feedback.type === "error"
+              ? "border border-destructive/35 bg-destructive/5 text-destructive"
+              : "border border-border/70 bg-subtle/50 text-foreground"
+          )}
         >
           <AlertCircle
             aria-hidden
-            className="size-4 shrink-0 text-fg-secondary mt-0.5"
+            className={cn(
+              "size-4 shrink-0 mt-0.5",
+              feedback.type === "error" ? "text-destructive" : "text-fg-secondary"
+            )}
           />
-          <span>{message}</span>
+          <span>{feedback.text}</span>
         </div>
       ) : null}
 
@@ -306,10 +248,13 @@ export function SignInForm({
               Verification code
             </label>
             <div className="mt-2">
-              <OtpSlots
+              <CodeSlots
+                label="6-digit verification code"
+                describedBy={feedback?.type === "error" ? "code-error" : undefined}
                 value={code}
                 onChange={setCode}
                 disabled={busy}
+                hasError={step === "code" && feedback?.type === "error"}
                 inputRef={otpInputRef}
               />
             </div>
@@ -364,7 +309,7 @@ export function SignInForm({
               onClick={() => {
                 setStep("email");
                 setCode("");
-                setMessage(undefined);
+                setFeedback(undefined);
               }}
             >
               Use a different email

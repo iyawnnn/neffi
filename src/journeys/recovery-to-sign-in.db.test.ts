@@ -38,9 +38,9 @@ test("support recovery revokes the old session and signs into the same Account w
     const secret = "synthetic-recovery-journey-secret";
     let code = "";
     await initiateRecovery(db, { caseId, actorId: fixture.owner.id, newEmail, confirmed: true, verificationNote: "Verified synthetic purchase evidence", unlinkGoogle: true, secret }, async email => {
-      if (email.to === newEmail && email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{8}\b/)?.[0] ?? "";
+      if (email.to === newEmail && email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{6}\b/)?.[0] ?? "";
     });
-    assert(/^\d{8}$/.test(code), "Capturing sender must receive the recovery proof");
+    assert(/^\d{6}$/.test(code), "Capturing sender must receive the recovery proof");
     expect(await completeRecovery(db, { email: newEmail, code, secret }, async () => {})).toEqual({ ok: true });
     expect(await readSession(oldClient)).toBeNull();
 
@@ -80,9 +80,9 @@ test("self-service email change makes an older pending support recovery fail its
     const secret = "synthetic-snapshot-recovery-secret";
     let recoveryCode = "";
     const recovery = await initiateRecovery(db, { caseId, actorId: owner.id, newEmail: recoveryEmail, confirmed: true, verificationNote: "Verified synthetic purchase evidence", unlinkGoogle: true, secret }, async email => {
-      if (email.to === recoveryEmail && email.idempotencyKey?.startsWith("recovery-code-")) recoveryCode = email.text.match(/\b\d{8}\b/)?.[0] ?? "";
+      if (email.to === recoveryEmail && email.idempotencyKey?.startsWith("recovery-code-")) recoveryCode = email.text.match(/\b\d{6}\b/)?.[0] ?? "";
     });
-    assert(/^\d{8}$/.test(recoveryCode), "Capturing sender must receive the recovery proof");
+    assert(/^\d{6}$/.test(recoveryCode), "Capturing sender must receive the recovery proof");
 
     const sentBefore = t.sent.length;
     await t.auth.api.requestEmailChangeEmailOTP({ headers: requestHeaders(), body: { newEmail: selfServiceEmail } });

@@ -127,9 +127,10 @@ export function CodeForm() {
         size="touch"
         variant={isComplete && !pending ? "action" : "outline"}
         className={cn(
-          "h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold transition-all duration-[220ms]",
-          !isComplete && !pending && "bg-subtle text-fg-secondary/60 border border-border/80 cursor-not-allowed hover:bg-subtle hover:text-fg-secondary/60",
-          isComplete && !pending && "gap-2 shadow-xs"
+          "h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold transition-all duration-[220ms] select-none",
+          !isComplete && !pending && "bg-subtle text-fg-secondary border border-border-strong/70 cursor-not-allowed hover:bg-subtle hover:text-fg-secondary disabled:opacity-100",
+          isComplete && !pending && "gap-2 shadow-xs !text-white bg-action hover:bg-action-hover active:translate-y-px [&_*]:!text-white",
+          pending && "gap-2 bg-action/90 cursor-not-allowed !text-white [&_*]:!text-white"
         )}
         disabled={!isComplete || pending}
       >
@@ -137,14 +138,18 @@ export function CodeForm() {
           <>
             <LoaderCircle
               aria-hidden
-              className="size-4.5 animate-spin motion-reduce:animate-none"
+              className="size-4.5 animate-spin motion-reduce:animate-none !text-white shrink-0"
             />
-            Checking…
+            <span className="!text-white">Checking…</span>
           </>
         ) : (
           <>
-            Continue
-            {isComplete ? <ArrowRight aria-hidden className="size-4.5" /> : null}
+            <span className={cn(isComplete ? "!text-white" : "text-fg-secondary")}>
+              Continue
+            </span>
+            {isComplete ? (
+              <ArrowRight aria-hidden className="size-4.5 !text-white shrink-0" />
+            ) : null}
           </>
         )}
       </Button>
@@ -169,21 +174,21 @@ export function ClaimForm() {
         type="submit"
         size="touch"
         variant="action"
-        className="h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold gap-2 shadow-xs"
+        className="h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold gap-2 shadow-xs !text-white bg-action hover:bg-action-hover [&_*]:!text-white"
         disabled={pending}
       >
         {pending ? (
           <>
             <LoaderCircle
               aria-hidden
-              className="size-4.5 animate-spin motion-reduce:animate-none"
+              className="size-4.5 animate-spin motion-reduce:animate-none !text-white"
             />
-            Adding…
+            <span className="!text-white">Adding…</span>
           </>
         ) : (
           <>
-            Add to my account
-            <ArrowRight aria-hidden className="size-4.5" />
+            <span className="!text-white">Add to my account</span>
+            <ArrowRight aria-hidden className="size-4.5 !text-white shrink-0" />
           </>
         )}
       </Button>

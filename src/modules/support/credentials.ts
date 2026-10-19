@@ -5,5 +5,5 @@ export function containsActivationCode(body: string): boolean {
   return candidates.some((value) => /\d/.test(value) && /[g-hj-km-np-tv-z]/i.test(value) && normalizeActivationCode(value) !== null);
 }
 
-// shortcut: space-separated or embedded codes are not detected; revisit if support starts accepting those formats.
-export const containsStoredCredential = (body: string) => containsActivationCode(body) || /\b\d{8}\b/.test(body);
+// shortcut: bare, spaced or code-before-word credentials are allowed; revisit if recovery controls change.
+export const containsStoredCredential = (body: string) => containsActivationCode(body) || /\b(?:code|otp|pin|passcode)\b[^\d\n]{0,20}\b\d{6}\b/i.test(body);
