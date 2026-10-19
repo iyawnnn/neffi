@@ -30,12 +30,13 @@ test("already set-up card redirects to its profile", async () => {
 });
 test("no profiles shows the three purposes", async () => {
   const html = await render();
-  expect(html).toContain("What do you want your Neffi to help you do?");
-  for (const [key, label] of [["network", "Network"], ["get_clients", "Get Clients"], ["show_my_work", "Show My Work"]]) {
+  expect(html).toContain("Choose your starting point");
+  for (const [key, label] of [["network", "Network"], ["get_clients", "Get clients"], ["show_my_work", "Show my work"]]) {
     expect(html).toContain(`href="?purpose=${key}"`);
     expect(html).toContain(label);
   }
-  expect(html).toContain("your Neffi ending in WXYZ");
+  expect(html).not.toContain("Profile preview");
+  expect(html).toContain("Card ending in WXYZ");
   expect(html).not.toContain("A".repeat(22));
   expect(m.requireAccount).toHaveBeenCalledWith("/app");
   expect(m.ownedCards).toHaveBeenCalledWith({}, "a1");
@@ -47,22 +48,36 @@ test("existing profiles offer selection or a new profile", async () => {
   expect(html).toContain("Use Ana");
   expect(html).toContain('href="?step=purpose"');
   expect(html).toContain("Create a new profile");
-  expect(await render({ step: "purpose" })).toContain("What do you want your Neffi to help you do?");
+  expect(await render({ step: "purpose" })).toContain("Choose your starting point");
 });
 test("purpose shows ordered essentials and signed-in email", async () => {
   const html = await render({ purpose: "get_clients" });
-  expect(html).toContain("Your essentials");
+  expect(html).toContain("Make it yours");
+  expect(html).toContain('href="?step=purpose"');
+  expect(html).toContain('name="purpose" value="get_clients"');
+  const form = html.slice(html.indexOf("<form"));
   let previous = -1;
-  for (const label of ["Full name", "What you do", "Short intro", "Email", "Phone", "Booking link"]) {
-    const index = html.indexOf(label);
+  for (const label of ["Full name", "Role or headline", "Short intro", "Email", "Phone", "Booking link"]) {
+    const index = form.indexOf(label);
     expect(index).toBeGreaterThan(previous);
     previous = index;
   }
   expect(html).toContain('name="email"');
   expect(html).toContain('value="ana@example.test"');
   expect(html).toContain("Create my Neffi");
-  expect(html).toContain("You can change all of this later.");
+  expect(html).toContain("You can change everything later.");
 });
 test("invalid purpose shows purpose selection", async () => {
-  expect(await render({ purpose: "x" })).toContain("What do you want your Neffi to help you do?");
+  expect(await render({ purpose: "x" })).toContain("Choose your starting point");
+});
+
+test.each([
+  ["network", "LinkedIn or main profile link"],
+  ["get_clients", "Booking link"],
+  ["show_my_work", "Portfolio link"],
+])("%s preserves its purpose value and final field", async (purpose, label) => {
+  const html = await render({ purpose });
+  expect(html).toContain(`name="purpose" value="${purpose}"`);
+  expect(html).toContain(label);
+  expect(html).toContain('href="?step=purpose"');
 });

@@ -8,6 +8,20 @@ import { AppHeader, AppNav } from "./app-nav";
 
 const ACCOUNT = { name: "Ian Macabulos", email: "ian@example.test" };
 
+test("setup has a compact exit header and no app navigation", () => {
+  m.pathname = "/app/setup/test-card";
+  try {
+    const html = renderToStaticMarkup(<AppHeader account={ACCOUNT} unread={0} />);
+    expect(html).toContain("Finish later");
+    expect(html).toContain('href="/app"');
+    expect(html).not.toContain("Account menu");
+    expect(html).not.toContain('aria-label="Main"');
+    expect(renderToStaticMarkup(<AppNav />)).toBe("");
+  } finally {
+    m.pathname = "/app";
+  }
+});
+
 const sectionLinks = (html: string) =>
   [...html.matchAll(/<a\b([^>]*)>(.*?)<\/a>/g)]
     .map(([, attrs, inner]) => ({ attrs, label: inner.replace(/<[^>]+>/g, ""), href: attrs.match(/href="([^"]+)"/)?.[1] }))

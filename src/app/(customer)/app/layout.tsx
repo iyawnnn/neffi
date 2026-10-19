@@ -19,10 +19,10 @@ export default async function CustomerLayout({ children }: LayoutProps<"/app">) 
   const viewer = await requireAccount("/app");
   const [name, unread] = await Promise.all([accountDisplayName(db, viewer.accountId), unreadCount(db, viewer.accountId)]);
   return (
-    <div className="app-type flex flex-1 flex-col has-[main[data-canvas]]:bg-canvas">
+    <div className="app-type flex flex-1 flex-col has-[main[data-canvas]]:bg-canvas has-[main[data-setup]]:bg-canvas">
       <AppHeader account={{ name, email: viewer.email }} unread={unread} />
       {/* Clears the floating bottom bar (66px, 12px off the edge) and the safe area below md, leaving ~28px visual breathing room. */}
-      <div className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+6.625rem)] md:pb-0">{children}</div>
+      <div className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+6.625rem)] has-[main[data-setup]]:pb-0 md:pb-0">{children}</div>
       <AppNav />
       <SessionKeepAlive />
     </div>

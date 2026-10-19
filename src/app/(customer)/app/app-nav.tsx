@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOutAction } from "@/auth/actions";
 import { NeffiLogo } from "@/components/neffi-logo";
+import { SetupHeader } from "@/components/setup-header";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ const isScrolledOnServer = () => false;
 export function AppHeader({ account, unread }: { account: HeaderAccount; unread: number }) {
   const pathname = usePathname();
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, isScrolledOnServer);
+  if (pathname.startsWith("/app/setup/")) return <SetupHeader />;
   return (
     <header className="sticky top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 mx-auto mt-[calc(env(safe-area-inset-top)+0.75rem)] w-full max-w-6xl bg-inherit px-4 md:top-3 md:mt-3 md:px-6">
       <div data-scrolled={scrolled} className="app-shell grid h-[58px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 interact transition-[border-color,box-shadow] md:h-16 md:px-5">
@@ -121,6 +123,7 @@ function AccountMenu({ account, current }: { account: HeaderAccount; current: bo
 // Vermilion icon and a stronger label only; no inner pill.
 export function AppNav() {
   const pathname = usePathname();
+  if (pathname.startsWith("/app/setup/")) return null;
   return (
     <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:hidden">
       <ul className="app-shell mx-auto grid max-w-md grid-cols-3 p-2">
