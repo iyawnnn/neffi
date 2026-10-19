@@ -62,3 +62,38 @@ test("support recovery revokes the old session and signs into the same Account w
     await db.$client.close();
   }
 });
+
+test("self-service email change makes an older pending support recovery fail its email snapshot", async () => {
+  const t = await createTestAuth();
+  const db = t.db;
+  try {
+    const oldEmail = "snapshot-old@example.invalid";
+    const recoveryEmail = "snapshot-recovery@example.invalid";
+    const selfServiceEmail = "snapshot-self-service@example.invalid";
+    const client = t.client();
+    expect((await signInWithEmail(t, client, oldEmail)).response.status).toBe(200);
+    const requestHeaders = () => new Headers({ cookie: client.cookieHeader() });
+    const session = await t.auth.api.getSession({ headers: requestHeaders(), query: { disableRefresh: true } });
+    assert(session, "Initial sign-in must create a session");
+    const owner = await db.transaction(tx => insertAccount(tx, "owner"));
+    const { caseId } = await openCase(db, { actorId: owner.id, type: "account_recovery", summary: "Synthetic snapshot recovery", accountId: session.user.id });
+    const secret = "synthetic-snapshot-recovery-secret";
+    let recoveryCode = "";
+    const recovery = await initiateRecovery(db, { caseId, actorId: owner.id, newEmail: recoveryEmail, confirmed: true, verificationNote: "Verified synthetic purchase evidence", unlinkGoogle: true, secret }, async email => {
+      if (email.to === recoveryEmail && email.idempotencyKey?.startsWith("recovery-code-")) recoveryCode = email.text.match(/\b\d{8}\b/)?.[0] ?? "";
+    });
+    assert(/^\d{8}$/.test(recoveryCode), "Capturing sender must receive the recovery proof");
+
+    const sentBefore = t.sent.length;
+    await t.auth.api.requestEmailChangeEmailOTP({ headers: requestHeaders(), body: { newEmail: selfServiceEmail } });
+    const changeCode = t.sent[sentBefore]?.code;
+    assert(changeCode, "Self-service change must send a code");
+    await t.auth.api.changeEmailEmailOTP({ headers: requestHeaders(), body: { newEmail: selfServiceEmail, otp: changeCode } });
+
+    expect(await completeRecovery(db, { email: recoveryEmail, code: recoveryCode, secret }, async () => {})).toEqual({ ok: false });
+    expect((await db.select().from(s.accountRecoveries).where(eq(s.accountRecoveries.id, recovery.recoveryId)))[0]).toMatchObject({ status: "pending", oldEmail });
+    expect((await db.select().from(s.accounts).where(eq(s.accounts.id, session.user.id)))[0].email).toBe(selfServiceEmail);
+  } finally {
+    await db.$client.close();
+  }
+});

@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
-import { consumeQuota, hmacHex } from "@/auth/otp-quota";
+import { consumeEmailChangeQuota } from "@/auth/otp-quota";
 import { auth } from "@/auth/server";
 import { env } from "@/config/env";
 import { db } from "@/db";
@@ -14,7 +14,7 @@ import type { NoticeKind } from "@/integrations/email/support-templates";
 import { sendSecurityNotice, type SecurityNotice } from "@/modules/accounts/security-notice";
 import type { Viewer } from "@/auth/policy";
 
-export type EmailChangeState = { step?: "code"; email?: string; error?: string };
+export type EmailChangeState = { step?: "code"; email?: string; error?: string; stale?: true; changed?: true };
 const STALE = "For your security, sign out and sign in again, then change your email.";
 async function accountViewer() {
   const result = await authorize("account");
@@ -27,24 +27,35 @@ function notice(viewer: Viewer, kind: NoticeKind, recipients: SecurityNotice["re
 }
 const stale = (error: unknown) => typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 403;
 
+async function recentSession(requestHeaders: Headers, accountId: string): Promise<boolean> {
+  const session = await auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: true } });
+  return session?.user.id === accountId && Date.now() - new Date(session.session.createdAt).getTime() <= 15 * 60_000;
+}
+
 export async function requestEmailChangeAction(_previous: EmailChangeState | undefined, data: FormData): Promise<EmailChangeState> {
   const owner = (await accountViewer()).accountId;
+  const requestHeaders = await headers();
+  if (!await recentSession(requestHeaders, owner)) return { stale: true, error: STALE };
   const parsed = z.email().safeParse(typeof data.get("email") === "string" ? String(data.get("email")).trim().toLowerCase() : "");
   if (!parsed.success) return { error: "Enter a valid email address." };
-  if (!await consumeQuota(db, hmacHex(env.betterAuthSecret, "email-change", owner), 3)) return { error: "Too many tries. Please wait a few minutes and try again." };
-  try { await auth.api.requestEmailChangeEmailOTP({ headers: await headers(), body: { newEmail: parsed.data } }); }
-  catch (error) { return { error: stale(error) ? STALE : "We couldn't send that code. Please try again." }; }
+  if (!await consumeEmailChangeQuota(db, env.betterAuthSecret, owner, parsed.data)) return { error: "Too many tries. Please wait a few minutes and try again." };
+  try { await auth.api.requestEmailChangeEmailOTP({ headers: requestHeaders, body: { newEmail: parsed.data } }); }
+  catch { return { error: "We couldn't send that code. Please try again." }; }
   return { step: "code", email: parsed.data };
 }
 export async function confirmEmailChangeAction(_previous: EmailChangeState | undefined, data: FormData): Promise<EmailChangeState> {
   const viewer = await accountViewer();
+  const requestHeaders = await headers();
+  if (!await recentSession(requestHeaders, viewer.accountId)) return { stale: true, error: STALE };
   const email = typeof data.get("email") === "string" ? String(data.get("email")).trim().toLowerCase() : "";
   const code = data.get("code");
   const failed: EmailChangeState = { step: "code", email, error: "That code is not valid. Check it, or request a new one." };
   if (!z.email().safeParse(email).success || typeof code !== "string" || !/^\d{6}$/.test(code)) return failed;
-  try { await auth.api.changeEmailEmailOTP({ headers: await headers(), body: { newEmail: email, otp: code } }); }
+  try { await auth.api.changeEmailEmailOTP({ headers: requestHeaders, body: { newEmail: email, otp: code } }); }
   catch { return failed; }
   notice(viewer, "email_changed", [{ to: viewer.email, slot: "old" }, { to: email, slot: "new" }]);
+  try { await auth.api.revokeOtherSessions({ headers: requestHeaders }); }
+  catch { return { changed: true, error: "Your email changed, but we couldn't sign out other devices. Use Sign out everywhere below." }; }
   redirect("/app/account?changed=1");
 }
 export async function removeGoogleAction(_previous: { error?: string } | undefined, _data: FormData): Promise<{ error?: string }> {

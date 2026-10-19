@@ -12,6 +12,7 @@ function form(code = "12345678") { const data = new FormData(); data.set("email"
 beforeEach(() => { vi.clearAllMocks(); m.quota.mockResolvedValue(true); m.complete.mockResolvedValue({ ok: false }); });
 test("all expected failure paths have identical customer copy", async () => {
   expect(await completeRecoveryAction(undefined, form())).toEqual({ error: RECOVERY_FAILURE });
+  expect(JSON.stringify(await completeRecoveryAction(undefined, form()))).not.toContain("12345678");
   expect(await completeRecoveryAction(undefined, form("bad"))).toEqual({ error: RECOVERY_FAILURE });
   m.quota.mockResolvedValue(false);
   expect(await completeRecoveryAction(undefined, form())).toEqual({ error: RECOVERY_FAILURE });
@@ -19,6 +20,7 @@ test("all expected failure paths have identical customer copy", async () => {
 test("success offers sign-in and unexpected errors still propagate", async () => {
   m.complete.mockResolvedValue({ ok: true });
   expect(await completeRecoveryAction(undefined, form())).toHaveProperty("ok");
+  expect(JSON.stringify(await completeRecoveryAction(undefined, form()))).not.toContain("12345678");
   m.complete.mockRejectedValue(new Error("database offline"));
   await expect(completeRecoveryAction(undefined, form())).rejects.toThrow("database offline");
 });

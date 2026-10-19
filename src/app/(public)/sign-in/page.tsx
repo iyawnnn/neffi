@@ -20,7 +20,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   const params = await searchParams;
   const error = Array.isArray(params.error) ? params.error[0] : params.error;
   const next = safeNext(Array.isArray(params.next) ? params.next[0] : params.next);
-  if (await getViewer()) redirect(next);
+  if (await getViewer() && next !== "/app/account") redirect(next);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background md:items-center md:justify-center md:p-6 lg:p-10">
@@ -64,14 +64,11 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
             {/* Centered Support Link beneath CTA */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5 text-center">
               <CircleHelp aria-hidden className="size-3.5 shrink-0 text-fg-secondary" />
-              <span className="text-meta text-fg-secondary">
-                Having trouble signing in?
-              </span>
               <Link
-                href="/support"
+                href="/support#account-recovery"
                 className="inline-flex min-h-11 items-center text-meta font-medium text-foreground transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
               >
-                Get help
+                Lost access to your email?
               </Link>
             </div>
           </div>

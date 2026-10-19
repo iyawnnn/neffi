@@ -34,3 +34,21 @@ test("email confirmation submits while switching addresses stays a local action"
   expect(html.match(/<button\b[^>]*>Change email<\/button>/)?.[0]).toContain('type="submit"');
   expect(html.match(/<button\b[^>]*>Use a different address<\/button>/)?.[0]).toContain('type="button"');
 });
+
+test.each(["request", "confirmation"])("stale %s shows an actionable sign-in-again path", step => {
+  vi.mocked(useActionState)
+    .mockReturnValueOnce([step === "request" ? { stale: true, error: "Sign in again" } : { step: "code", email: "new@example.test" }, vi.fn(), false])
+    .mockReturnValueOnce([step === "confirmation" ? { stale: true, error: "Sign in again" } : undefined, vi.fn(), false]);
+  const html = renderToStaticMarkup(<ChangeEmailForm />);
+  expect(html).toContain('href="/sign-in?next=/app/account"');
+  expect(html).toContain("Other devices will be signed out after your email changes.");
+});
+
+test("a completed change with revoke failure cannot resubmit the consumed code", () => {
+  vi.mocked(useActionState)
+    .mockReturnValueOnce([{ step: "code", email: "new@example.test" }, vi.fn(), false])
+    .mockReturnValueOnce([{ changed: true, error: "Your email changed. Use Sign out everywhere below." }, vi.fn(), false]);
+  const html = renderToStaticMarkup(<ChangeEmailForm />);
+  expect(html).toContain("Your email changed");
+  expect(html).not.toContain('name="code"');
+});

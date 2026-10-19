@@ -42,3 +42,11 @@ export async function consumeQuota(db: QuotaDb, key: string, limit: number, now 
 
 export const consumeOtpQuota = (db: QuotaDb, secret: string, email: string, now = new Date()) =>
   consumeQuota(db, hmacHex(secret, "otp-email", email.toLowerCase()), OTP_EMAIL_LIMIT, now);
+
+export async function consumeEmailChangeQuota(db: QuotaDb, secret: string, accountId: string, email: string, now = new Date()): Promise<boolean> {
+  const target = email.toLowerCase();
+  return await consumeQuota(db, hmacHex(secret, "email-change", accountId), OTP_EMAIL_LIMIT, now) &&
+    await consumeQuota(db, hmacHex(secret, "email-change-day", accountId), OTP_EMAIL_DAILY_LIMIT, now, { windowMs: QUOTA_RETENTION_MS }) &&
+    await consumeQuota(db, hmacHex(secret, "email-change-target", target), OTP_EMAIL_LIMIT, now) &&
+    await consumeQuota(db, hmacHex(secret, "email-change-target-day", target), OTP_EMAIL_DAILY_LIMIT, now, { windowMs: QUOTA_RETENTION_MS });
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,19 @@ export function ChangeEmailForm() {
   );
   const [different, setDifferent] = useState(false);
   const showCode = request?.step === "code" && !different;
+  const stale = confirmation?.stale || request?.stale;
 
   return (
     <div className="flex flex-col gap-4">
-      {showCode ? (
+      <p className="text-meta text-fg-secondary">Other devices will be signed out after your email changes.</p>
+      {stale ? (
+        <div className="flex flex-col gap-2">
+          <p role="alert" className="text-meta text-destructive">{confirmation?.stale ? confirmation.error : request?.error}</p>
+          <Link href="/sign-in?next=/app/account" className="inline-flex min-h-11 items-center text-body font-medium text-brand hover:underline">Sign in again →</Link>
+        </div>
+      ) : confirmation?.changed ? (
+        <p role="alert" className="text-meta text-foreground">{confirmation.error}</p>
+      ) : showCode ? (
         <form action={confirmAction} className="flex flex-col gap-4">
           <input type="hidden" name="email" value={request.email} />
           <div className="flex flex-col gap-1.5">
@@ -38,6 +48,7 @@ export function ChangeEmailForm() {
               Enter the 6-digit verification code sent to{" "}
               <span className="font-medium text-foreground">{request.email}</span>.
             </p>
+            <p className="text-meta text-fg-secondary">No code? Check the address and spam folder. The address may be unavailable.</p>
             <Input
               id="email-change-code"
               name="code"

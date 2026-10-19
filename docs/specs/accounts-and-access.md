@@ -35,6 +35,12 @@ OWNER MFA or step-up (revisit when the trusted 2–3-person team grows or at Pro
 
 ## Recovery and notices
 
+The primary recovery path for customers who still control their current email is `/sign-in?next=/app/account` using the existing email code or linked Google, followed by **Change sign-in email** and a code to verify the new address. Both requesting and confirming the change require a session created no more than 15 minutes ago; older sessions must sign in again. No new OTP purpose or `/recover` route is added.
+
+Change-email sends retain the 3-per-Account/10-minute limit and add 10 per Account/24 hours, 3 per target email/10 minutes and 10 per target/24 hours across Accounts. Keys are domain-separated HMACs. An occupied address receives no email and the same generic response. Successful verification updates the email and verified status, schedules notices, then revokes other active sessions while preserving the current session. A revocation failure reports that the email already changed and directs the customer to sign out everywhere; it cannot undo the change or prevent the scheduled notice.
+
+`/support` offers self-service for a controlled inbox and support assistance for a lost inbox, plus **Already have a recovery code? Complete recovery** at `/support/recover`. Support emails a code to the approved new address, not a recovery link. Self-service email change invalidates any pending support recovery through its existing old-email snapshot check; the owner then cancels that pending recovery.
+
 See [support](support-and-corrections.md) and [0012](../decisions/0012-support-controlled-account-recovery.md) for owner verification followed by new-inbox proof. Owner Accounts and occupied new emails are refused. Do not sign in with a proposed address before completing `/support/recover`: email-code sign-in can create another Account and block recovery. Completion keeps Account id and business records, verifies the email and revokes sessions and optional Google.
 
 Self-service email changes notify old (captured before the Better Auth call) and new addresses. Google removal and sign-out-everywhere notify the Account. Google identity create-after notifies only when added to a pre-existing Account, never on new Google signup. Notices run via `after()` following the committed mutation, are best effort, and record Activity results. They reveal neither the other address, codes nor submitted support content.

@@ -15,10 +15,9 @@ test("metadata title is Continue to Neffi", () => {
 test("sign-in help reaches public support without an auth next parameter", async () => {
   m.getViewer.mockResolvedValue(null);
   const html = renderToStaticMarkup(await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }));
-  expect(html).toContain('href="/support"');
+  expect(html).toContain('href="/support#account-recovery"');
   expect(html).not.toContain("/support?next");
-  expect(html).toContain("Having trouble signing in?");
-  expect(html).toContain("Get help");
+  expect(html).toContain("Lost access to your email?");
 });
 
 test("renders responsive hero artwork with desktop and mobile assets", async () => {
@@ -34,4 +33,12 @@ test("redirects already authenticated viewer to safe next destination", async ()
   m.getViewer.mockResolvedValue({ accountId: "acc-1", role: "customer" });
   await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({ next: "/app/cards" }) });
   expect(m.redirect).toHaveBeenCalledWith("/app/cards");
+});
+
+test("an authenticated viewer can sign in again for Account email changes", async () => {
+  m.redirect.mockClear();
+  m.getViewer.mockResolvedValue({ accountId: "acc-1", role: "customer" });
+  const html = renderToStaticMarkup(await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({ next: "/app/account" }) }));
+  expect(m.redirect).not.toHaveBeenCalled();
+  expect(html).toContain("data-sign-in");
 });

@@ -2,7 +2,7 @@ import { beforeAll, expect, test } from "vitest";
 import { eq } from "drizzle-orm";
 import { authOtpQuotas } from "@/db/schema";
 import { createTestDb, type TestDb } from "@/db/testing";
-import { consumeQuota, hmacHex, OTP_EMAIL_WINDOW_MS, QUOTA_RETENTION_MS, pruneQuotas } from "./otp-quota";
+import { consumeQuota, consumeEmailChangeQuota, hmacHex, OTP_EMAIL_WINDOW_MS, QUOTA_RETENTION_MS, pruneQuotas } from "./otp-quota";
 
 let db: TestDb;
 beforeAll(async () => {
@@ -63,4 +63,48 @@ test("prune false retains expired rows while the atomic upsert resets its own wi
   expect(await consumeQuota(db, active, 1, now, { prune: false })).toBe(false);
   expect(await consumeQuota(db, active, 1, new Date(+now + OTP_EMAIL_WINDOW_MS), { prune: false })).toBe(true);
   expect(await db.select().from(authOtpQuotas).where(eq(authOtpQuotas.key, expired))).toHaveLength(1);
+});
+
+test("change-email account window caps sends to different targets at three", async () => {
+  const now = new Date("2026-10-20T00:00:00Z");
+  for (let i = 0; i < 3; i++) expect(await consumeEmailChangeQuota(db, "secret", "account-window", `target-${i}@example.test`, now)).toBe(true);
+  expect(await consumeEmailChangeQuota(db, "secret", "account-window", "another@example.test", now)).toBe(false);
+});
+
+test("change-email account daily cap survives short-window resets", async () => {
+  const now = new Date("2026-10-21T00:00:00Z");
+  for (let i = 0; i < 10; i++) expect(await consumeEmailChangeQuota(db, "secret", "account-day", `daily-${i}@example.test`, new Date(+now + i * OTP_EMAIL_WINDOW_MS))).toBe(true);
+  expect(await consumeEmailChangeQuota(db, "secret", "account-day", "blocked@example.test", new Date(+now + 10 * OTP_EMAIL_WINDOW_MS))).toBe(false);
+  expect(await consumeEmailChangeQuota(db, "secret", "account-day", "reset@example.test", new Date(+now + day))).toBe(true);
+});
+
+test("change-email target window is shared across accounts and email casing", async () => {
+  const now = new Date("2026-10-22T00:00:00Z");
+  for (let i = 0; i < 3; i++) expect(await consumeEmailChangeQuota(db, "secret", `account-${i}`, "Shared@example.test", now)).toBe(true);
+  expect(await consumeEmailChangeQuota(db, "secret", "account-four", "shared@example.test", now)).toBe(false);
+});
+
+test("change-email target daily cap is shared across accounts", async () => {
+  const now = new Date("2026-10-23T00:00:00Z");
+  for (let i = 0; i < 10; i++) expect(await consumeEmailChangeQuota(db, "secret", `account-day-${i}`, "target-day@example.test", new Date(+now + i * OTP_EMAIL_WINDOW_MS))).toBe(true);
+  expect(await consumeEmailChangeQuota(db, "secret", "account-eleven", "target-day@example.test", new Date(+now + 10 * OTP_EMAIL_WINDOW_MS))).toBe(false);
+});
+
+test("all four change-email keys are domain-separated HMACs without account or email text", async () => {
+  const now = new Date("2026-10-24T00:00:00Z");
+  await consumeEmailChangeQuota(db, "secret", "private-account", "private@example.test", now);
+  const rows = await db.select().from(authOtpQuotas).where(eq(authOtpQuotas.windowStartedAt, now));
+  expect(rows.map(row => row.key).sort()).toEqual([
+    hmacHex("secret", "email-change", "private-account"),
+    hmacHex("secret", "email-change-day", "private-account"),
+    hmacHex("secret", "email-change-target", "private@example.test"),
+    hmacHex("secret", "email-change-target-day", "private@example.test"),
+  ].sort());
+  expect(JSON.stringify(rows)).not.toMatch(/private-account|private@example/);
+});
+
+test("concurrent accounts cannot exceed a shared target quota", async () => {
+  const now = new Date("2026-10-25T00:00:00Z");
+  const results = await Promise.all(Array.from({ length: 6 }, (_, i) => consumeEmailChangeQuota(db, "secret", `concurrent-${i}`, "concurrent-target@example.test", now)));
+  expect(results.filter(Boolean)).toHaveLength(3);
 });
