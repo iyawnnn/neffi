@@ -11,7 +11,7 @@ const navigationGroups: { title: string; id: string; items: FooterItem[] }[] = [
   {
     title: "Explore",
     id: "footer-explore",
-    items: [{ label: "Home", href: "/" }, { label: "Product" }, { label: "Guide" }, { label: "Pricing" }],
+    items: [{ label: "Home", href: "/" }, { label: "Product", href: "/product" }, { label: "Guide", href: "/guide" }, { label: "Pricing", href: "/pricing" }],
   },
   {
     title: "Neffi",
@@ -19,7 +19,7 @@ const navigationGroups: { title: string; id: string; items: FooterItem[] }[] = [
     items: [
       { label: "Activate your card", href: "/activate" },
       { label: "Sign in", href: "/sign-in" },
-      { label: "Help" },
+      { label: "Help", href: "/help" },
       { label: "Support", href: "/support" },
     ],
   },
@@ -83,9 +83,9 @@ export function MarketingFooter() {
         </div>
 
         <div className="marketing-footer-legal">
-          <span className="marketing-footer-link marketing-footer-legal-link marketing-footer-terms">Terms &amp; Conditions</span>
+          <Link href="/terms" className="marketing-footer-link marketing-footer-legal-link marketing-footer-terms">Terms &amp; Conditions</Link>
           <p className="marketing-footer-copyright">© 2026 Neffi. All rights reserved.</p>
-          <span className="marketing-footer-link marketing-footer-legal-link marketing-footer-privacy">Privacy Policy</span>
+          <Link href="/privacy" className="marketing-footer-link marketing-footer-legal-link marketing-footer-privacy">Privacy Policy</Link>
         </div>
 
         <div aria-hidden className="marketing-footer-monument">
