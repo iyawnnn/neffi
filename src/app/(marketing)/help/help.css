@@ -1,0 +1,21 @@
+.help-hero { padding-top: clamp(2.5rem, 6vw, 5rem); }
+.help-hero .mp-lead { max-width: 34rem; }
+.help-index { display: grid; margin-top: clamp(2.5rem, 5vw, 4rem); }
+.help-index > a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.5rem; border-top: 1px solid var(--border-strong); }
+.help-index strong { display: block; font-size: 1.25rem; font-weight: 500; letter-spacing: -0.02em; }
+.help-index strong + span { display: block; max-width: 28rem; margin-top: 0.5rem; color: var(--fg-secondary); font-size: 0.9375rem; line-height: 1.5; }
+.help-index > a > span:last-child { flex-shrink: 0; color: var(--action-text); }
+.help-answers { display: grid; gap: 3rem; }
+.help-rail { align-self: start; }
+.help-rail > p { font-size: 0.875rem; color: var(--fg-secondary); }
+.help-rail .mp-text-link { display: flex; font-size: 0.9375rem; }
+.help-topic + .help-topic { margin-top: 4rem; }
+.help-topic .mp-heading { margin-bottom: 1.5rem; font-size: clamp(1.5rem, 2.5vw, 2rem); }
+.help-topic-return { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.5rem; margin-top: 0.5rem; color: var(--fg-secondary); font-size: 0.8125rem; }
+@media (min-width: 769px) {
+  .help-index { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 3rem; }
+}
+@media (min-width: 1024px) {
+  .help-answers { grid-template-columns: 0.7fr 1.8fr; gap: 5rem; }
+  .help-rail { position: sticky; top: 2rem; }
+}
