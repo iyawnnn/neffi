@@ -2,6 +2,8 @@
 
 `/app` is the approved authenticated customer-product visual anchor. Future customer pages inherit its typography, tokens, app chrome, object treatment and interaction language, with layouts appropriate to their own tasks. Profiles, Cards and other customer pages are separate follow-up work; do not copy the dashboard composition onto every route.
 
+The public marketing site has its own reference, [marketing-ui.md](marketing-ui.md); it shares tokens but not this chrome.
+
 This reference describes implemented engineering conventions. Business and higher-level product intent remain in the sources identified by the [documentation index](../README.md#sources-of-truth).
 
 ## Implementation reference

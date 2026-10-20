@@ -30,6 +30,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | How does Neffi behave **today**? Terms and principles | [PRODUCT.md](../PRODUCT.md) | Current, normative summary. Specs win on detail |
 | Stack, surfaces, module boundaries, caching, security, environments, transaction conventions | [architecture/system.md](architecture/system.md) | Current, normative |
 | Authenticated customer UI: implemented typography, tokens, chrome, objects and interactions | [architecture/customer-ui.md](architecture/customer-ui.md) | Current engineering design reference; `/app` is the visual anchor |
+| Public marketing site: implemented visual system, colour roles, dock, divider, motion, anti-patterns | [architecture/marketing-ui.md](architecture/marketing-ui.md) | Current engineering design reference for `(marketing)`; marketing intent stays with Notion |
 | Philippine city/municipality data: official PSGC import and snapshot requirements | [architecture/philippine-localities.md](architecture/philippine-localities.md) | Engineering data source and import workflow |
 | Entities, relationships, state machines | [architecture/domain-model.md](architecture/domain-model.md) | Current, normative |
 | Exact tables, columns, constraints, indexes, triggers | [database/erd.md](database/erd.md) | Generated from migrations. Never edit by hand |
@@ -51,6 +52,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 - [Money and costs](specs/money-and-costs.md): payments, refunds, voids, expenses, stock costs
 - [Accounts and access](specs/accounts-and-access.md): sign-in, roles, authorization, the owner Account view
 - [Support and corrections](specs/support-and-corrections.md): owner cases, Completed-order money, replacements, shipping and verified card recovery
+- [Marketing homepage](specs/marketing-homepage.md): section order, approved copy, section status and what each marketing page owns
 
 ## Decision records
 

@@ -29,7 +29,7 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 
 ## Code layout
 
-- `src/app/` routes: `(public)`, `(customer)/app`, `admin`, `api`. `src/proxy.ts` handles `/c/:token` only.
+- `src/app/` routes: `(marketing)` (the public marketing site, including `/`), `(public)`, `(customer)/app`, `admin`, `api`. `src/proxy.ts` handles `/c/:token` only.
 - `src/modules/<domain>/` server-only domain services that own business rules: `accounts`, `activation`, `activity`, `cards`, `expenses`, `forms`, `inventory`, `orders`, `payments`, `profiles`, `support`, plus `search.ts`. See [`src/modules/README.md`](../../src/modules/README.md).
 - `src/db/` schema, runtime connection, seed and invariant tests. `src/auth/`, `src/config/` (validated environment and isolation), `src/integrations/`, `src/lib/` (pure helpers).
 - Server-only modules start with `import "server-only"`. `src/server-only-boundary.test.ts` lists them, and `pnpm check:bundle` fails CI if a secret value reaches client output.
