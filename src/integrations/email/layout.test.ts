@@ -74,4 +74,3 @@ test("a code never appears in a subject, preheader, link or the document title",
     expect(html.match(new RegExp(code, "g"))).toHaveLength(1);
   }
 });
-
