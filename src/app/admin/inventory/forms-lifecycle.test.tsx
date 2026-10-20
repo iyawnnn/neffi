@@ -8,6 +8,7 @@ const { response, effects, setters, state } = vi.hoisted(() => ({
 vi.mock("react", async (original) => ({
   ...await original<typeof import("react")>(),
   useActionState: () => [response.current, vi.fn(), false],
+  useRef: (initial: unknown) => ({ current: initial }),
   useLayoutEffect: (effect: () => () => void) => effects.push(effect),
   useState: (initial: unknown) => {
     if (initial === 0) return [state.visit, (update: (value: number) => number) => { state.visit = update(state.visit); }];

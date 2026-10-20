@@ -21,7 +21,7 @@ test("implicit submission cannot bypass confirmation; only acceptance sends the 
     };
     vi.spyOn(form, "requestSubmit").mockImplementation((button) => submit(button as HTMLButtonElement));
     await act(async () => submit());
-    expect(action).not.toHaveBeenCalled(); expect(action).not.toHaveBeenCalled();
+    expect(action).not.toHaveBeenCalled();
     await act(async () => host.querySelector<HTMLButtonElement>("button:last-child")!.click());
     expect(action).not.toHaveBeenCalled();
     await act(async () => submit(host.querySelector<HTMLButtonElement>("button[hidden]")));
