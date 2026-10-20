@@ -57,7 +57,7 @@ export async function initiateRecovery(db: Db, input: { caseId: string; actorId:
     throw error;
   }
   let sent = true;
-  try { await send({ to: data.newEmail, ...recoveryCodeEmail(code, now), idempotencyKey: `recovery-code-${recoveryId}` }); }
+  try { await send({ to: data.newEmail, ...recoveryCodeEmail(code), idempotencyKey: `recovery-code-${recoveryId}` }); }
   catch { sent = false; }
   try { await recordActivity(db, { type: sent ? "support_email_sent" : "support_email_failed", actorAccountId: input.actorId, accountId: account.id, supportCaseId: input.caseId, note: `recovery_code ${recoveryId}` }); }
   catch { /* Delivery audit failure must not interrupt the independently attempted old-address notice. */ }

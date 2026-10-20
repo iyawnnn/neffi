@@ -44,7 +44,7 @@ export async function dispatchCaseEmail(db: Db, input: { caseId: string; actorId
     if (previous) return previous.type === "support_email_sent" ? "sent" : "failed";
     const to = await caseRecipient(tx, row);
     if (!to) throw new SupportError("recipient_missing");
-    const template = input.kind === "acknowledgement" ? acknowledgementEmail(row.id, row.createdAt) : caseMessageEmail(input.kind, input.body!.trim());
+    const template = input.kind === "acknowledgement" ? acknowledgementEmail(row.id) : caseMessageEmail(input.kind, input.body!.trim(), row.id, Boolean(replyTo));
     let result: "sent" | "failed" = "sent";
     try {
       await send({ to, ...template, replyTo, idempotencyKey: `case-${row.id}-${input.kind}-${input.attemptId}` });

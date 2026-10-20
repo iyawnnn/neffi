@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { categories, intakeSchema, recoveryCompletionSchema, recoveryInitiationSchema, replySchema, caseReference } from "./domain";
 import { containsActivationCode, containsStoredCredential } from "./credentials";
+import { renderEmail, type EmailMessage } from "@/integrations/email/layout";
 import { acknowledgementEmail, recoveryCodeEmail, securityNoticeEmail, caseMessageEmail } from "@/integrations/email/support-templates";
 
 const input = { email: " Person@Example.test ", name: " Person ", category: "activation", message: " Lost package ", clientKey: "00000000-0000-4000-8000-000000000001", website: "" };
@@ -55,18 +56,23 @@ test("embedded codes are deliberately not treated as standalone credentials", ()
   expect(containsActivationCode("N8KF42PQ0")).toBe(false);
 });
 
+const render = (message: EmailMessage) => renderEmail(message, "https://app.example.test");
 test("acknowledgement and security notices accept no personal content and use fixed headers", () => {
   const at = new Date("2026-10-14T12:00:00Z");
-  const ack = acknowledgementEmail("abcdef12-1234-4000-8000-000000000001", at);
-  expect(ack.subject).toBe("Neffi support received your request");
+  const caseId = "abcdef12-1234-4000-8000-000000000001";
+  const ack = render(acknowledgementEmail(caseId));
+  expect(ack.subject).toBe("We received your Neffi support request");
   expect(ack.text).toContain("abcdef12");
-  const notice = securityNoticeEmail("recovery_started", at, "abcdef12-1234-4000-8000-000000000001");
+  const notice = render(securityNoticeEmail("recovery_started", at, caseId));
   expect(notice.text).toMatch(/recovery/i);
   for (const email of [ack, notice]) {
     expect(email.text).not.toMatch(/@|\b\d{6}\b/);
-    expect(email.text).toContain("/support");
+    expect(email.text).toContain("https://app.example.test/support");
   }
-  expect(recoveryCodeEmail("123456", at).text).toContain("Do not sign in");
-  expect(recoveryCodeEmail("123456", at).text).toContain("123456");
-  expect(caseMessageEmail("reply", "Hello\ncustomer").subject).toBe("A message from Neffi support");
+  const recovery = render(recoveryCodeEmail("123456"));
+  expect(recovery.subject).toBe("Your Neffi recovery code");
+  expect(recovery.text).toContain("Don't sign in with this address");
+  expect(recovery.text).toContain("https://app.example.test/support/recover");
+  expect(recovery.html).toContain(">123456<");
+  expect(caseMessageEmail("reply", "Hello\ncustomer", caseId, true).subject).toBe("A message from Neffi support");
 });

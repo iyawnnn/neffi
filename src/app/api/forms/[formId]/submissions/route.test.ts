@@ -83,7 +83,7 @@ test("created schedules notification after the response; duplicate never schedul
   await call();
   expect(m.after).toHaveBeenCalledOnce();
   await m.after.mock.calls[0][0]();
-  expect(m.notify).toHaveBeenCalledWith({}, m.send, { submissionId: "s1", appOrigin: "http://localhost:3000", replyTo: "vic@e.test", secret: "synthetic-form-secret" });
+  expect(m.notify).toHaveBeenCalledWith({}, m.send, { submissionId: "s1", replyTo: "vic@e.test", secret: "synthetic-form-secret" });
   m.after.mockClear(); m.submit.mockResolvedValue({ status: "duplicate", submissionId: "s1" });
   await call(); expect(m.after).not.toHaveBeenCalled();
 });

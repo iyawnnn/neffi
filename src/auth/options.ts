@@ -149,7 +149,7 @@ export function authOptions({ db, secret, baseURL, google, sendAuthCode, onGoogl
         if (ctx.path !== "/email-otp/send-verification-otp") return;
 
         const body = (ctx.body ?? {}) as { email?: unknown; type?: unknown };
-        // Only sign-in codes exist: no verification, password-reset or change-email mail can ever be triggered.
+        // Only sign-in codes can be requested over HTTP; verification, password-reset and change-email codes are not reachable from the browser.
         if (body.type !== "sign-in") throw new APIError("BAD_REQUEST", { message: "Invalid request" });
         const email = typeof body.email === "string" ? body.email.toLowerCase() : "";
         // Malformed addresses are rejected by Better Auth itself; counting them would only grow the table.

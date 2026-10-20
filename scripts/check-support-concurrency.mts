@@ -253,7 +253,7 @@ try {
   }
   async function recoveryFixture() {
     const target = await recoveryTarget(); let code = "";
-    const { recoveryId } = await initiateRecovery(dbA, target, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{6}\b/)![0]; });
+    const { recoveryId } = await initiateRecovery(dbA, target, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.code!; });
     return { ...target, recoveryId, code };
   }
   const finish = (db: Db, f: Awaited<ReturnType<typeof recoveryFixture>>) => completeRecovery(db, { email: f.newEmail, code: f.code, secret }, noEmail);

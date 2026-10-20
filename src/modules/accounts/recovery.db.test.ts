@@ -3,6 +3,7 @@ import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
 import { insertAccount, insertProfile, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
+import { renderEmail } from "@/integrations/email/layout";
 import type { Email } from "@/integrations/email/resend";
 import { generateRecoveryCode, initiateRecovery, cancelRecovery, completeRecovery, resendRecoveryNotice } from "./recovery";
 import { readFileSync } from "node:fs";
@@ -10,6 +11,7 @@ import { secureAccount } from "./secure";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
 const secret = "synthetic-recovery-secret";
+const render = (email: Email) => renderEmail(email, "https://app.example.test");
 test("recovery generator uses crypto for six digits including leading zeros", () => {
   const codes = Array.from({ length: 2000 }, () => generateRecoveryCode());
   expect(codes.every(code => /^\d{6}$/.test(code))).toBe(true);
@@ -31,9 +33,11 @@ test("initiation stores proof only, defaults Google removal, and sends private n
   const [row] = await tx.select().from(s.accountRecoveries);
   expect(row).toMatchObject({ status: "pending", attempts: 0, unlinkGoogle: true, oldEmail: f.account.email });
   expect(row.codeHmac).toMatch(/^[0-9a-f]{64}$/);
-  const code = sent.find(e => e.to === f.input.newEmail)!.text.match(/\b\d{6}\b/)![0];
+  const code = sent.find(e => e.to === f.input.newEmail)!.code!;
   expect(JSON.stringify(row)).not.toContain(code);
-  expect(sent.find(e => e.to === f.account.email)!.text).not.toMatch(/new@example|\b\d{6}\b/);
+  const oldNotice = render(sent.find(e => e.to === f.account.email)!);
+  expect(oldNotice.text).not.toMatch(/new@example|\b\d{6}\b/);
+  expect(oldNotice.html).not.toContain("new@example");
   expect(sent[0].idempotencyKey).toBe(`recovery-code-${result.recoveryId}`);
   await expect(initiateRecovery(tx, f.input, async () => {})).rejects.toMatchObject({ code: "recovery_live" });
   await cancelRecovery(tx, { caseId: f.support.id, actorId: f.owner.id, recoveryId: result.recoveryId });
@@ -93,7 +97,7 @@ test("secure refuses owner/resolved targets and preserves the only unverified Go
 
 async function pending(tx: TestTx) {
   const f = await fixture(tx); let code = "";
-  const result = await initiateRecovery(tx, f.input, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.text.match(/\b\d{6}\b/)![0]; });
+  const result = await initiateRecovery(tx, f.input, async email => { if (email.idempotencyKey?.startsWith("recovery-code-")) code = email.code!; });
   return { ...f, ...result, code };
 }
 
@@ -126,7 +130,7 @@ test("completion preserves Account id and business data, verifies email, revokes
   expect(await tx.select().from(s.authSessions)).toHaveLength(0); expect(await tx.select().from(s.authIdentities)).toHaveLength(0);
   expect({ cards: await tx.select().from(s.cards), profiles: await tx.select().from(s.profiles), orders: await tx.select().from(s.orders) }).toEqual(before);
   expect(sent.map(e => e.to)).toEqual([f.account.email, f.input.newEmail]);
-  expect(sent.every(e => !e.text.includes(f.account.email) && !e.text.includes(f.input.newEmail) && !e.text.includes(f.code))).toBe(true);
+  expect(sent.every(e => { const { text, html } = render(e); return [f.account.email, f.input.newEmail, f.code].every(value => !text.includes(value) && !html.includes(value)); })).toBe(true);
   expect(await completeRecovery(tx, { email: f.input.newEmail, code: f.code, secret }, async () => {})).toEqual({ ok: false });
 }));
 
@@ -146,7 +150,8 @@ test("manual notice retry uses the old snapshot and never regenerates or resends
   await tx.update(s.accounts).set({ email: "changed@example.test" }).where(eq(s.accounts.id, f.account.id));
   await resendRecoveryNotice(tx, { caseId: f.support.id, actorId: f.owner.id, recoveryId: f.recoveryId, kind: "recovery_started" }, async email => { sent.push(email); });
   expect(sent).toHaveLength(1); expect(sent[0].to).toBe(f.account.email);
-  expect(sent[0].text).not.toContain(f.code);
+  expect(render(sent[0]).text).not.toContain(f.code);
+  expect(render(sent[0]).html).not.toContain(f.code);
   expect(sent[0].idempotencyKey).not.toContain("recovery-code");
 }));
 
@@ -155,7 +160,7 @@ test("post-commit code delivery audit failure still returns initiation and attem
   const insert = vi.spyOn(tx, "insert").mockImplementationOnce(() => { throw new Error("synthetic delivery audit failure"); });
   try {
     await expect(initiateRecovery(tx, f.input, async email => { sent.push(email); })).resolves.toHaveProperty("recoveryId");
-    expect(sent.some(email => email.to === f.account.email && email.subject === "Neffi account security notice")).toBe(true);
+    expect(sent.some(email => email.to === f.account.email && email.subject === "Recovery of your Neffi account was started")).toBe(true);
     expect(await tx.select().from(s.accountRecoveries)).toHaveLength(1);
   } finally { insert.mockRestore(); }
 }));

@@ -21,7 +21,7 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 |---|---|
 | Database | PostgreSQL (Neon in hosted environments), Drizzle ORM, reviewed forward-only SQL migrations in `drizzle/` |
 | Auth | Better Auth with Google and email one-time code; custom Drizzle adapter mapping onto `accounts`, `auth_identities`, `auth_sessions`, `auth_verifications`, `auth_rate_limits`; database-backed rate limits; no passwords or SMS |
-| Email | Resend over `fetch` (no SDK), plain text, behind `src/integrations/email`. Auth codes, form notifications, support acknowledgement/reply/resolution, one-time recovery codes and restricted security notices; no commerce email |
+| Email | Resend over `fetch` (no SDK), behind `src/integrations/email`. Every message is a content model rendered once by `renderEmail` into table-based HTML plus a generated plain-text alternative (no remote fonts, tracking or scripts). Auth codes, form notifications, support acknowledgement/reply/resolution, one-time recovery codes and restricted security notices; no commerce email |
 | Media | Cloudinary signed direct uploads (no SDK), raster images only, verified server-side, never stored in PostgreSQL |
 | Errors | Sentry, errors only, personal-data collection off, request scrubbing |
 | Hosting | Vercel (Node 24); Neon pooled connections for runtime, direct URL for migrations |
