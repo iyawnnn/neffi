@@ -1,0 +1,33 @@
+.pricing-intro { padding-top: clamp(2.5rem, 6vw, 5rem); padding-bottom: 2.5rem; text-align: center; }
+.pricing-intro .mp-lead { margin-inline: auto; }
+.pricing-offer-section { padding-top: 1rem; }
+.pricing-offer { display: grid; gap: 2rem; }
+.pricing-product { display: flex; flex-direction: column; justify-content: center; min-width: 0; overflow: hidden; padding: 1.5rem; border-radius: 1.25rem; background: var(--subtle); }
+.pricing-product-stage { position: relative; display: grid; place-items: center; aspect-ratio: 1.1; padding: 2rem 0.5rem; }
+.pricing-sleeve { position: absolute; width: 79%; height: 65%; border: 1px solid var(--border-strong); background: var(--canvas); transform: rotate(6deg); }
+.pricing-sleeve::after { content: ""; position: absolute; inset: 0.5rem; border: 1px solid var(--border-strong); }
+.pricing-card { position: relative; width: 90%; height: auto; border-radius: 0.75rem; transform: rotate(-8deg); box-shadow: 0 18px 28px -16px color-mix(in srgb, var(--foreground) 28%, transparent); }
+.pricing-product figcaption { position: relative; margin-top: 1rem; font-size: 0.8125rem; line-height: 1.6; color: var(--fg-secondary); text-align: center; }
+.pricing-offer-copy { align-self: center; padding-block: 1rem; }
+.pricing-offer-copy > .mp-copy { margin-top: 1rem; }
+.pricing-availability { margin-block: 2rem; padding-block: 1.5rem; border-block: 1px solid var(--border-strong); }
+.pricing-availability h3 { font-size: 1.25rem; font-weight: 500; letter-spacing: -0.02em; }
+.pricing-availability p { max-width: 30rem; margin-top: 0.75rem; color: var(--fg-secondary); font-size: 1rem; line-height: 1.65; }
+.pricing-order-note { margin-top: 0.75rem; font-size: 0.8125rem; color: var(--fg-secondary); }
+.pricing-offer-copy > .mp-text-link { margin-top: 1rem; }
+.pricing-included { display: grid; gap: 2rem; }
+.pricing-included .mp-lead { max-width: 24rem; font-size: 1.0625rem; }
+.pricing-inclusions > div { padding: 1.5rem 0; border-bottom: 1px solid var(--border-strong); }
+.pricing-inclusions > div:first-child { padding-top: 0; }
+.pricing-inclusions dt { font-size: 1.125rem; font-weight: 500; }
+.pricing-inclusions dd { margin-top: 0.5rem; color: var(--fg-secondary); line-height: 1.7; }
+.pricing-setup { padding-top: 1rem; }
+.pricing-start { display: grid; gap: 1.5rem; margin-bottom: 1.5rem; }
+.pricing-start li { padding-top: 1.5rem; border-top: 1px solid var(--border-strong); }
+.pricing-start h3 { font-size: 1.25rem; font-weight: 500; letter-spacing: -0.02em; }
+.pricing-start p { max-width: 24rem; margin-top: 0.75rem; color: var(--fg-secondary); line-height: 1.7; }
+@media (min-width: 900px) {
+  .pricing-offer { grid-template-columns: 1fr 1fr; gap: clamp(3rem, 6vw, 6rem); }
+  .pricing-included { grid-template-columns: 0.85fr 1.15fr; gap: 5rem; }
+  .pricing-start { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3rem; }
+}
