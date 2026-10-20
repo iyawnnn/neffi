@@ -1,0 +1,1458 @@
+/* Product page. Shares the marketing tokens and the homepage's type scale; its layouts are its own. Spacing is content-driven:
+   no section sets a viewport height or a min-height. The physical card appears once, in "What's in your hand". */
+
+.pp-page {
+  --pp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-x: clip;
+}
+
+.pp-section {
+  padding: clamp(4.5rem, 8vw, 7.5rem) 1.5rem;
+}
+
+.pp-section-minor {
+  padding-block: clamp(3.5rem, 6vw, 5.5rem);
+}
+
+/* A section that continues the one before it, so it does not open with a full section gap. */
+.pp-section-tight {
+  padding-top: clamp(1rem, 3vw, 2rem);
+}
+
+.pp-container {
+  max-width: 73rem;
+  margin-inline: auto;
+}
+
+.pp-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+
+.pp-heading {
+  font-size: clamp(1.875rem, 3vw, 2.5rem);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+
+.pp-support {
+  max-width: 26rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.pp-statement {
+  font-size: clamp(2.25rem, 4.6vw, 3.75rem);
+  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--foreground);
+}
+
+.pp-statement span {
+  color: var(--fg-secondary);
+}
+
+.pp-annotation,
+.pp-eyebrow,
+.pp-field-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-secondary);
+}
+
+@media (min-width: 900px) {
+  .pp-section-head {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .pp-section-head .pp-heading {
+    max-width: 50%;
+  }
+}
+
+/* ---------------------------------------------------------------- actions */
+
+/* Static content CTAs in the hero's material language: quiet inset highlight and depth, no arrows or moving light. */
+.pp-button {
+  display: inline-flex;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 220ms var(--pp-ease), border-color 220ms var(--pp-ease);
+}
+
+.pp-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.pp-button-primary {
+  background: var(--action);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), inset 0 -12px 16px -12px rgb(0 0 0 / 0.35), 0 1px 2px rgb(17 17 19 / 0.14);
+}
+
+.pp-button-secondary {
+  border: 1px solid var(--border-strong);
+  background: var(--canvas) linear-gradient(180deg, rgb(255 255 255 / 0.75), transparent 55%);
+  color: var(--foreground);
+  box-shadow: inset 0 1px 0 rgb(255 255 255), inset 0 -8px 12px -10px rgb(17 17 19 / 0.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pp-button-primary:hover { background-color: var(--action-hover); }
+  .pp-button-secondary:hover {
+    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+    background-color: var(--subtle);
+  }
+}
+
+@media (min-width: 769px) {
+  .pp-button { height: 3.25rem; padding-inline: 1.75rem; }
+}
+
+/* ---------------------------------------------------------------- mark */
+
+/* Crops the mark asset's 800x800 Snow canvas to the glyph (x 260–540, y 290–530). Each use sets its own width and height. */
+.pp-mark {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pp-mark img {
+  position: absolute;
+  width: 285.714%;
+  height: 333.333%;
+  max-width: none;
+  left: -92.857%;
+  top: -120.833%;
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.pp-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1rem, 3svh, 2rem) 1.5rem clamp(3rem, 5vw, 4.5rem);
+  text-align: center;
+}
+
+.pp-wordmark {
+  border-radius: 0.375rem;
+}
+
+.pp-wordmark:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+/* The same crop of the wordmark asset's Snow canvas as the homepage hero. */
+.pp-wordmark > span {
+  position: relative;
+  display: block;
+  aspect-ratio: 533 / 222;
+  height: 1.5rem;
+  overflow: hidden;
+}
+
+.pp-wordmark img {
+  position: absolute;
+  width: 225.14%;
+  height: 225.23%;
+  max-width: none;
+  left: -62.85%;
+  top: -64.41%;
+}
+
+.pp-hero-eyebrow {
+  margin-top: clamp(2rem, 5svh, 3.5rem);
+}
+
+.pp-hero-heading {
+  margin-top: 0.875rem;
+  font-size: clamp(2.75rem, 5.6vw, 4.5rem);
+  line-height: 0.98;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  color: var(--foreground);
+}
+
+.pp-hero-support {
+  max-width: 30rem;
+  margin-top: 1rem;
+  font-size: clamp(1rem, 1.3vw, 1.125rem);
+  line-height: 1.55;
+  color: var(--fg-secondary);
+  text-wrap: balance;
+}
+
+.pp-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+/* ---------------------------------------------------------------- identity stack */
+
+/* An exploded stack of four identity layers. Every plane is a flat HTML sheet under one shared orthographic tilt, so all planes
+   belong to one system; a copy set just below each reads as its thickness. Plane content is sized in em of the plane width (1em =
+   pw / 20), so the object scales as one piece. In the untilted 20 x 11.2em sheet, the tilt puts the left corner at
+   (-0.571pw, +0.021pw) from the plane's centre and the right corner at (+0.571pw, -0.021pw); callouts anchor just outside them. */
+.pp-stack-stage {
+  width: min(100%, 68rem);
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  container-type: inline-size;
+}
+
+.pp-stack {
+  --pw: 66cqw;
+  --gap: calc(var(--pw) * 0.17);
+  --top: 1rem;
+  --tilt: rotateX(66deg) rotateZ(24deg);
+  position: relative;
+  height: calc(var(--top) * 2 + var(--gap) * 3 + var(--pw) * 0.467);
+}
+
+/* A soft contact shadow under the lowest plane. */
+.pp-stack::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--top) + var(--gap) * 3 + var(--pw) * 0.34);
+  left: 50%;
+  width: calc(var(--pw) * 1.1);
+  height: calc(var(--pw) * 0.3);
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgb(17 17 19 / 0.1), transparent);
+}
+
+/* Only the visible, tilted face takes the pointer; the layer box itself is untilted and would catch hovers it does not show. */
+.pp-layer {
+  position: absolute;
+  z-index: calc(4 - var(--i));
+  top: calc(var(--top) + var(--i) * var(--gap));
+  left: calc(50% - var(--pw) / 2);
+  width: var(--pw);
+  height: calc(var(--pw) * 0.56);
+  font-size: calc(var(--pw) / 20);
+  filter: drop-shadow(0 0.9em 1.1em rgb(17 17 19 / 0.07));
+  pointer-events: none;
+  transition: translate 250ms var(--pp-ease);
+}
+
+.pp-layer-edge,
+.pp-layer-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.4em;
+  transform: var(--tilt);
+}
+
+.pp-layer-edge {
+  transform: translateY(0.45em) var(--tilt);
+  background: color-mix(in srgb, var(--foreground) 11%, var(--canvas));
+}
+
+/* Upper planes cover the back of the ones below, so content sits toward each plane's front edge. */
+.pp-layer-face {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.7em;
+  padding: 1.5em 1.8em;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgb(17 17 19 / 0.1);
+  pointer-events: auto;
+  transition: box-shadow 250ms var(--pp-ease);
+}
+
+.pp-layer-name .pp-layer-face {
+  justify-content: center;
+}
+
+.pp-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+}
+
+.pp-layer-tiles {
+  justify-content: center;
+  gap: 0.9em;
+}
+
+.pp-layer-lines {
+  display: grid;
+  gap: 0.5em;
+}
+
+.pp-bar {
+  display: block;
+  height: 0.5em;
+  border-radius: 1em;
+  background: rgb(17 17 19 / 0.12);
+}
+
+.pp-bar-long { width: 8em; }
+.pp-bar-mid { width: 6em; }
+.pp-bar-short { width: 4em; }
+
+.pp-bar-ink {
+  height: 0.7em;
+  background: color-mix(in srgb, var(--foreground) 85%, transparent);
+}
+
+.pp-layer-avatar,
+.pp-tile {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  background: var(--subtle);
+  color: var(--fg-secondary);
+  box-shadow: inset 0 0 0 1px rgb(17 17 19 / 0.06);
+}
+
+.pp-layer-avatar {
+  width: 2.6em;
+  height: 2.6em;
+  border-radius: 50%;
+  color: var(--fg-faint);
+}
+
+.pp-tile {
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 0.6em;
+}
+
+.pp-layer-avatar svg,
+.pp-tile svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.pp-layer-accent,
+.pp-layer-action {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: var(--brand);
+}
+
+.pp-layer-accent {
+  width: 1.4em;
+  height: 0.7em;
+  border-radius: 1em;
+}
+
+.pp-layer-action {
+  width: 3.4em;
+  height: 1.5em;
+  border-radius: 0.5em;
+}
+
+/* Callouts: one per layer, its title line and leader at the layer's centre height (0.28pw below the layer's top), with a
+   Vermilion point on the end nearest the layer, just outside its corner. */
+.pp-stack-callout {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--top) + var(--i) * var(--gap) + var(--pw) * 0.28);
+  display: none;
+  align-items: flex-start;
+  gap: 0.625rem;
+  translate: 0 -0.6rem;
+  text-align: left;
+}
+
+.pp-stack-callout-left { right: calc(50% + var(--pw) * 0.6); }
+
+.pp-stack-callout-right { left: calc(50% + var(--pw) * 0.6); }
+
+.pp-stack-callout-icon {
+  margin-top: 0.1rem;
+  color: var(--fg-faint);
+  transition: color 250ms var(--pp-ease);
+}
+
+.pp-stack-callout-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pp-stack-callout-text {
+  display: grid;
+}
+
+.pp-stack-callout-text > span:first-child {
+  font-size: 0.8125rem;
+  line-height: 1.2rem;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.pp-stack-callout-text > span:last-child {
+  display: none;
+  max-width: 12.5rem;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--fg-secondary);
+}
+
+.pp-stack-leader {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 1px;
+  margin-top: 0.6rem;
+  background: var(--fg-faint);
+  transition: background-color 250ms var(--pp-ease);
+}
+
+.pp-stack-leader::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+.pp-stack-callout-right .pp-stack-leader { order: -1; }
+.pp-stack-callout-right .pp-stack-leader::after { right: auto; left: -2.5px; }
+
+/* Hovering a plane lifts it and strengthens its callout(s); hovering a callout does the same for its plane. */
+@media (hover: hover) and (pointer: fine) {
+  .pp-layer:has(> .pp-layer-face:hover),
+  .pp-stack:has(.pp-stack-callout[data-layer="0"]:hover) .pp-layer[data-layer="0"],
+  .pp-stack:has(.pp-stack-callout[data-layer="1"]:hover) .pp-layer[data-layer="1"],
+  .pp-stack:has(.pp-stack-callout[data-layer="2"]:hover) .pp-layer[data-layer="2"],
+  .pp-stack:has(.pp-stack-callout[data-layer="3"]:hover) .pp-layer[data-layer="3"] {
+    translate: 0 -5px;
+  }
+
+  .pp-layer:has(> .pp-layer-face:hover) .pp-layer-face,
+  .pp-stack:has(.pp-stack-callout[data-layer="0"]:hover) .pp-layer[data-layer="0"] .pp-layer-face,
+  .pp-stack:has(.pp-stack-callout[data-layer="1"]:hover) .pp-layer[data-layer="1"] .pp-layer-face,
+  .pp-stack:has(.pp-stack-callout[data-layer="2"]:hover) .pp-layer[data-layer="2"] .pp-layer-face,
+  .pp-stack:has(.pp-stack-callout[data-layer="3"]:hover) .pp-layer[data-layer="3"] .pp-layer-face {
+    box-shadow: inset 0 0 0 1.5px rgb(17 17 19 / 0.32);
+  }
+
+  .pp-stack-callout:hover .pp-stack-callout-icon,
+  .pp-stack:has(.pp-layer[data-layer="0"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="0"] .pp-stack-callout-icon,
+  .pp-stack:has(.pp-layer[data-layer="1"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="1"] .pp-stack-callout-icon,
+  .pp-stack:has(.pp-layer[data-layer="2"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="2"] .pp-stack-callout-icon,
+  .pp-stack:has(.pp-layer[data-layer="3"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="3"] .pp-stack-callout-icon {
+    color: var(--foreground);
+  }
+
+  .pp-stack-callout:hover .pp-stack-leader,
+  .pp-stack:has(.pp-layer[data-layer="0"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="0"] .pp-stack-leader,
+  .pp-stack:has(.pp-layer[data-layer="1"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="1"] .pp-stack-leader,
+  .pp-stack:has(.pp-layer[data-layer="2"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="2"] .pp-stack-leader,
+  .pp-stack:has(.pp-layer[data-layer="3"] > .pp-layer-face:hover) .pp-stack-callout[data-layer="3"] .pp-stack-leader {
+    background: var(--fg-secondary);
+  }
+}
+
+/* Tablet and small desktop: titles only, shorter leaders. Phones: the stack stands on its own, larger, with tighter spacing. */
+@media (min-width: 700px) {
+  .pp-stack {
+    --pw: 36cqw;
+    --gap: calc(var(--pw) * 0.2);
+  }
+
+  .pp-stack-callout {
+    display: flex;
+  }
+}
+
+@media (min-width: 1100px) {
+  .pp-stack {
+    --pw: 34cqw;
+  }
+
+  .pp-stack-callout {
+    gap: 0.75rem;
+  }
+
+  .pp-stack-callout-text > span:last-child {
+    display: block;
+  }
+
+  .pp-stack-leader {
+    width: 3.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------- profile evolution */
+
+/* Static: the heading, support and "What can change" list on the left, the updated profile on the right. On small screens the
+   profile sits between the intro and the list, so the result is seen before the changes are read. */
+.pp-change {
+  display: grid;
+  gap: 2rem;
+}
+
+.pp-change-support {
+  max-width: 28rem;
+  margin-top: 1.25rem;
+  font-size: clamp(1rem, 1.3vw, 1.0625rem);
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.pp-change-profile {
+  display: grid;
+  justify-items: center;
+}
+
+.pp-change-profile .pe-digital-profile {
+  width: min(328px, 100%);
+}
+
+.pp-change-list h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Small screens: one compact list, each change a tight label-and-value pair, separated by faint rules so nothing floats. */
+.pp-change-list dl {
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pp-change-list dl > div {
+  padding-block: 0.625rem;
+  border-top: 1px solid var(--border);
+}
+
+.pp-change-list dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.pp-change-list dd svg {
+  flex-shrink: 0;
+  color: var(--fg-faint);
+}
+
+.pp-change-before {
+  color: var(--fg-faint);
+}
+
+.pp-change-added {
+  color: var(--brand);
+}
+
+@media (min-width: 900px) {
+  .pp-change {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    grid-template-areas:
+      "intro profile"
+      "list profile";
+    align-items: start;
+    gap: 2.5rem clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .pp-change-intro { grid-area: intro; }
+  .pp-change-list { grid-area: list; }
+
+  .pp-change-profile {
+    grid-area: profile;
+    align-self: center;
+  }
+
+  /* About 7% larger: the 328px profile renders near 351px, scaled whole so its proportions hold. */
+  .pp-change-profile [inert] {
+    zoom: 1.07;
+  }
+
+  /* Wide screens: whitespace alone separates the rows. */
+  .pp-change-list dl {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+    border: 0;
+  }
+
+  .pp-change-list dl > div {
+    padding: 0;
+    border: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- what's in your hand */
+
+.pp-anatomy-intro {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  text-align: center;
+}
+
+.pp-anatomy-lede {
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.pp-anatomy-intro .pp-support {
+  max-width: 30rem;
+}
+
+.pp-card {
+  position: relative;
+  width: min(100%, 36rem);
+  aspect-ratio: 324 / 205;
+  margin: 0 auto 3rem;
+  /* The artwork's own 12px corners, as a fraction of its 324x205 box. */
+  border-radius: 3.7% / 5.85%;
+}
+
+/* Card stock: a plate set just below the face reads as the card's edge. */
+.pp-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--border-strong);
+  translate: 0 4px;
+}
+
+.pp-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgb(17 17 19 / 0.06),
+    0 40px 70px -42px rgb(17 17 19 / 0.34),
+    0 14px 28px -18px rgb(17 17 19 / 0.12);
+}
+
+/* A fixed light from the upper left, so the face reads as a lit surface. */
+.pp-card-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(130% 110% at 30% 18%, rgb(255 255 255 / 0.5), transparent 45%, rgb(17 17 19 / 0.05));
+  pointer-events: none;
+}
+
+.pp-callout {
+  padding-block: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.pp-callout h3 {
+  margin-top: 0.5rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--foreground);
+}
+
+.pp-callout h3 + p {
+  max-width: 17rem;
+  margin-top: 0.375rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--fg-secondary);
+}
+
+.pp-anatomy-note {
+  margin-top: 2.5rem;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+  text-align: center;
+}
+
+/* Callouts sit either side of the card with room to breathe. Each leader starts 1.5rem clear of its text and runs the last
+   ~72px to the card's nearest edge, ending in a small Vermilion point on that edge. Leaders are horizontal, so they never cross
+   each other or the card. */
+@media (min-width: 1100px) {
+  .pp-anatomy-stage {
+    --pp-gap: 6rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 36rem) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: var(--pp-gap);
+    row-gap: 2rem;
+  }
+
+  .pp-card {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  .pp-callout {
+    position: relative;
+    padding: 0;
+    border: 0;
+  }
+
+  .pp-callout::before,
+  .pp-callout::after {
+    content: "";
+    position: absolute;
+    top: 0.4rem;
+  }
+
+  .pp-callout::before {
+    width: calc(var(--pp-gap) - 1.5rem);
+    height: 1px;
+    background: var(--fg-faint);
+  }
+
+  .pp-callout::after {
+    width: 5px;
+    height: 5px;
+    margin-top: -2px;
+    border-radius: 50%;
+    background: var(--brand);
+  }
+
+  .pp-callout-link,
+  .pp-callout-activation {
+    grid-column: 1;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .pp-callout-link h3 + p,
+  .pp-callout-activation h3 + p {
+    margin-left: auto;
+  }
+
+  .pp-callout-link { grid-row: 1; align-self: start; margin-top: 1rem; }
+  .pp-callout-activation { grid-row: 2; align-self: end; margin-bottom: 1.5rem; }
+
+  .pp-callout-link::before,
+  .pp-callout-activation::before { right: calc(-1 * var(--pp-gap)); }
+  .pp-callout-link::after,
+  .pp-callout-activation::after { right: calc(-1 * var(--pp-gap) - 2.5px); }
+
+  /* Level with the contactless mark in the card artwork's upper right. */
+  .pp-callout-nfc {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    margin-top: 2.25rem;
+  }
+
+  .pp-callout-nfc::before { left: calc(-1 * var(--pp-gap)); }
+  .pp-callout-nfc::after { left: calc(-1 * var(--pp-gap) - 2.5px); }
+
+  .pp-anatomy-note {
+    margin-top: 3rem;
+  }
+}
+
+/* ---------------------------------------------------------------- make it yours */
+
+/* A profile studio on the Snow canvas: an open editor beside the live profile. Rules organise only the editor's header and rows;
+   the profile card is the one surface. */
+.pp-studio-section {
+  padding-block: clamp(4.5rem, 7.5vw, 6.5rem);
+  background: var(--canvas);
+}
+
+/* One statement on two set lines. Each line holds together from 600px, so the break never falls mid-phrase; narrower phones may
+   wrap naturally. The heading takes its own width, and the support copy beside it shrinks if it must. */
+.pp-studio-heading > span {
+  display: block;
+}
+
+@media (min-width: 600px) {
+  .pp-studio-heading > span {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 900px) {
+  .pp-section-head .pp-studio-heading {
+    max-width: none;
+  }
+}
+
+.pp-studio {
+  display: grid;
+  gap: 2.25rem;
+}
+
+/* Small screens put the tabs above "Edit profile"; wider ones set them on one row, tabs to the right. */
+.pp-studio-head {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+}
+
+.pp-studio-head > p {
+  padding-block: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.pp-studio-tabs {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.pp-studio-tabs > button {
+  position: relative;
+  height: 2.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: color 200ms var(--pp-ease);
+}
+
+/* A short Vermilion underline under the selected tab. */
+.pp-studio-tabs > button::after {
+  content: "";
+  position: absolute;
+  bottom: 0.25rem;
+  left: 50%;
+  width: 1.25rem;
+  height: 2px;
+  background: var(--brand);
+  translate: -50% 0;
+  opacity: 0;
+  transition: opacity 200ms var(--pp-ease);
+}
+
+.pp-studio-tabs > button[aria-pressed="true"] {
+  color: var(--foreground);
+}
+
+.pp-studio-tabs > button[aria-pressed="true"]::after {
+  opacity: 1;
+}
+
+.pp-studio-tabs > button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Fixed height so switching tabs never moves the page. */
+.pp-studio-rows {
+  min-height: 22rem;
+}
+
+.pp-studio-rows > li {
+  border-bottom: 1px solid var(--border);
+}
+
+.pp-studio-row {
+  display: grid;
+  gap: 0.375rem;
+  padding-block: 0.9375rem;
+}
+
+.pp-studio-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding-block: 0.75rem;
+}
+
+.pp-studio-value {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  color: var(--foreground);
+}
+
+.pp-studio-inline .pp-studio-value {
+  display: block;
+}
+
+.pp-studio-hint {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+}
+
+.pp-studio-photo {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.pp-studio-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-studio-aside {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.pp-studio-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+}
+
+.pp-studio-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* An "on" switch in Ink; Vermilion stays for the primary action and the tab indicator. */
+.pp-studio-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 1.25rem;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--foreground);
+}
+
+.pp-studio-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* The real profile card straight on the canvas, sized for the viewport: about 280px on phones, up to 352px on wide desktops. */
+.pp-studio-preview {
+  display: grid;
+  justify-items: center;
+  gap: 0.875rem;
+}
+
+.pp-studio-preview .pe-digital-profile {
+  width: min(100%, clamp(17.5rem, 26vw, 22rem));
+}
+
+/* The selected tab marks its part of the profile with a faint Vermilion tint or edge. Nothing else changes, so the profile
+   always reads complete. */
+.pp-studio-preview .pe-digital-profile :is(header, .pe-save-action, .pe-quick-actions > button, .pe-profile-links > button) {
+  transition: background-color 220ms var(--pp-ease), box-shadow 220ms var(--pp-ease), border-color 220ms var(--pp-ease);
+}
+
+.pp-studio-preview[data-focus="identity"] .pe-digital-profile header {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand) 5%, transparent);
+}
+
+.pp-studio-preview[data-focus="links"] .pe-quick-actions > button {
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+  color: var(--foreground);
+}
+
+.pp-studio-preview[data-focus="links"] .pe-profile-links > button:not(:last-child),
+.pp-studio-preview[data-focus="contact"] .pe-profile-links > button:last-child {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+}
+
+.pp-studio-preview[data-focus="contact"] .pe-save-action {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
+@media (max-width: 380px) {
+  .pp-studio-tabs { gap: 1.125rem; }
+  .pp-studio-tabs > button { font-size: 0.8125rem; }
+}
+
+@media (min-width: 600px) {
+  .pp-studio-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* On one row the underline sits on the header rule, like a tab indicator. */
+  .pp-studio-tabs > button::after {
+    bottom: -1px;
+  }
+}
+
+@media (min-width: 900px) {
+  .pp-studio {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 2.5rem clamp(2.5rem, 5vw, 4.5rem);
+  }
+}
+
+/* ---------------------------------------------------------------- what you can share */
+
+/* One open field. Wide screens split it into four zones with a single quiet cross (a vertical and a horizontal rule, no outer
+   border); small screens stack the zones with a rule between each. Every zone uses the same grammar and spacing: title, three
+   icon-and-label items, description, so the four descriptions line up across each row. */
+.pp-share-intro {
+  display: grid;
+  gap: 0.875rem;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.pp-share-zone {
+  padding-block: 1.75rem;
+}
+
+.pp-share-zone:first-child { padding-top: 0; }
+.pp-share-zone:last-child { padding-bottom: 0; }
+
+.pp-share-zone + .pp-share-zone {
+  border-top: 1px solid var(--border);
+}
+
+.pp-share-zone h3 {
+  font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+.pp-share-zone > p {
+  max-width: 22rem;
+  margin-top: 1.75rem;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.pp-share-items {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.pp-share-items > li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--fg-secondary);
+  transition: color 200ms var(--pp-ease), translate 200ms var(--pp-ease);
+}
+
+/* One optical size and one muted colour for every icon, line icons and platform marks alike. */
+.pp-share-items > li > span {
+  display: grid;
+  flex-shrink: 0;
+  color: var(--fg-faint);
+  transition: color 200ms var(--pp-ease);
+}
+
+.pp-share-items svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  stroke-width: 1.75;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pp-share-items > li:hover {
+    color: var(--foreground);
+    translate: 2px 0;
+  }
+
+  .pp-share-items > li:hover > span {
+    color: var(--brand);
+  }
+}
+
+@media (min-width: 900px) {
+  .pp-share {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-share-zone,
+  .pp-share-zone + .pp-share-zone {
+    padding: 3.5rem;
+    border: 0;
+  }
+
+  .pp-share-zone:nth-child(odd) {
+    padding-left: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .pp-share-zone:nth-child(even) { padding-right: 0; }
+
+  .pp-share-zone:nth-child(-n + 2) {
+    padding-top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pp-share-zone:nth-child(n + 3) { padding-bottom: 0; }
+}
+
+/* ---------------------------------------------------------------- comparison */
+
+.pp-comparison-statement {
+  margin-top: 0.75rem;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+}
+
+/* A comparison matrix: options down the side, capabilities across. Plain rows sit on hairlines; the Neffi row is the one
+   featured container. Every row shares one column template so the marks line up. Small screens scroll it sideways, bleeding to
+   the page edges, with the option column pinned. */
+.pp-matrix-scroll {
+  margin-inline: -1.5rem;
+  padding: 0.5rem 1.5rem 1.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.pp-matrix {
+  --pp-matrix-cols: minmax(12rem, 1.4fr) repeat(5, minmax(6.5rem, 1fr));
+  display: grid;
+  gap: 0.375rem;
+  min-width: 44rem;
+}
+
+.pp-matrix-row {
+  display: grid;
+  grid-template-columns: var(--pp-matrix-cols);
+  align-items: center;
+  min-height: 4.75rem;
+  padding-inline: 1rem;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.pp-matrix-head {
+  min-height: 0;
+  padding-bottom: 0.875rem;
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+}
+
+.pp-matrix-head > [role="columnheader"] {
+  padding-inline: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-align: center;
+}
+
+.pp-matrix-option {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.pp-matrix-tile {
+  display: grid;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: var(--subtle);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--fg-secondary);
+}
+
+.pp-matrix-tile svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.pp-matrix-name {
+  display: grid;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.pp-matrix-name > span {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fg-secondary);
+}
+
+/* Marks only, no cell text: an Ink check, a muted dash for "limited", a faint X. */
+.pp-matrix-cell {
+  display: grid;
+  place-items: center;
+}
+
+.pp-matrix-cell svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.pp-matrix-yes { color: var(--foreground); }
+.pp-matrix-yes svg { stroke-width: 2.25; }
+.pp-matrix-limited { color: var(--fg-secondary); }
+.pp-matrix-no { color: var(--fg-faint); }
+.pp-matrix-no svg { width: 1rem; height: 1rem; stroke-width: 2; }
+
+/* The featured row: a faint Vermilion tint, a Vermilion-tinted hairline, a white top highlight, one fixed diagonal sheen (the
+   CTA buttons' glare, static) and a soft, restrained warm shadow. Its checks are Vermilion and its tile carries the Neffi mark.
+   overflow: clip rather than hidden, so the row does not become a scroll container and the pinned option cell still sticks. */
+.pp-matrix-featured {
+  --pp-featured-bg: color-mix(in srgb, var(--brand) 5%, var(--background));
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-radius: 1rem;
+  background: var(--pp-featured-bg);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand) 30%, var(--border)),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 16px 36px -24px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+.pp-matrix-featured::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(115deg, transparent 36%, rgb(255 255 255 / 0.7) 47%, transparent 58%);
+  pointer-events: none;
+}
+
+.pp-matrix-featured .pp-matrix-tile {
+  background: var(--background);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand) 35%, var(--border)),
+    0 4px 10px -6px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+
+.pp-matrix-mark {
+  width: 1.4rem;
+  height: 1.2rem;
+}
+
+.pp-matrix-featured .pp-matrix-yes {
+  color: var(--brand);
+}
+
+/* Pinned option column while the matrix scrolls; each pinned cell repeats its row's background so marks pass beneath it. */
+@media (max-width: 768px) {
+  .pp-matrix-option {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    align-self: stretch;
+    padding-right: 0.75rem;
+    background: var(--canvas);
+  }
+
+  .pp-matrix-featured .pp-matrix-option {
+    background: var(--pp-featured-bg);
+  }
+}
+
+@media (min-width: 769px) {
+  .pp-matrix-scroll {
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+  }
+}
+
+/* ---------------------------------------------------------------- facts */
+
+.pp-facts {
+  display: grid;
+  gap: 2rem;
+}
+
+.pp-facts dl {
+  border-top: 1px solid var(--border-strong);
+}
+
+.pp-facts dl > div {
+  display: grid;
+  gap: 0.375rem;
+  padding-block: 1.375rem;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.pp-facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.pp-facts dd {
+  line-height: 1.6;
+  color: var(--fg-secondary);
+}
+
+@media (min-width: 769px) {
+  .pp-facts dl > div {
+    grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .pp-facts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+/* ---------------------------------------------------------------- closing */
+
+/* A brand close: copy beside a large pale mark, no card and no Vermilion panel. */
+.pp-cta-inner {
+  display: grid;
+  justify-items: center;
+  gap: 2.5rem;
+  text-align: center;
+}
+
+.pp-cta-copy {
+  display: grid;
+  justify-items: center;
+}
+
+.pp-cta-copy .pp-heading {
+  margin-top: 0.75rem;
+}
+
+.pp-cta-copy .pp-support {
+  margin-top: 1rem;
+}
+
+.pp-cta-copy .pp-button {
+  margin-top: 1.75rem;
+}
+
+.pp-cta-mark {
+  width: 12rem;
+  height: 10.25rem;
+  opacity: 0.08;
+}
+
+@media (min-width: 900px) {
+  .pp-cta-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .pp-cta-copy {
+    justify-items: start;
+  }
+
+  .pp-cta-mark {
+    justify-self: end;
+    width: clamp(16rem, 28vw, 22rem);
+    height: auto;
+    aspect-ratio: 7 / 6;
+  }
+}
+
+/* ---------------------------------------------------------------- motion */
+
+/* Entrances use backwards fill only, so once they finish, hover can still move the same elements. */
+@media (prefers-reduced-motion: no-preference) {
+  /* The stack settles once, lowest plane first; the callouts fade in after. About 800ms in all. */
+  .pp-stack-stage[data-state="idle"] :is(.pp-layer, .pp-stack-callout) {
+    opacity: 0;
+  }
+
+  .pp-stack-stage[data-state="in"] .pp-layer {
+    animation: pp-settle 500ms var(--pp-ease) calc((3 - var(--i)) * 70ms) backwards;
+  }
+
+  .pp-stack-stage[data-state="in"] .pp-stack-callout {
+    animation: pp-fade 350ms var(--pp-ease) 450ms backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-button,
+  .pp-layer,
+  .pp-layer-face,
+  .pp-stack-callout-icon,
+  .pp-stack-leader,
+  .pp-studio-tabs > button,
+  .pp-studio-tabs > button::after,
+  .pp-studio-preview .pe-digital-profile :is(header, .pe-save-action, .pe-quick-actions > button, .pe-profile-links > button),
+  .pp-share-items > li,
+  .pp-share-items > li > span {
+    transition: none;
+  }
+}
+
+@keyframes pp-settle {
+  from { opacity: 0; translate: 0 6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes pp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

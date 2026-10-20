@@ -1,126 +1,163 @@
-// Inline artwork keeps each structural layer independently animatable.
+import type { CSSProperties } from "react";
 
-export function TapSignalIllustration() {
-  const plane = "M240 48Q244 48 248 50L416 136Q428 142 416 148L248 234Q240 238 232 234L64 148Q52 142 64 136L232 50Q236 48 240 48Z";
+// All three sculptures share one 2:1 isometric projection, so their linework, depth and perspective stay a single family.
+// Boxes are [x0, x1, y0, y1, z0, z1] in plan units; +x runs down-right on screen, +y down-left, z straight up.
+type Box = readonly [number, number, number, number, number, number];
+type Point = (x: number, y: number, z: number) => string;
+
+const projection = (cy: number): Point => (x, y, z) => `${240 + x - y} ${cy + (x + y) / 2 - z}`;
+const polygon = (...points: string[]) => `M${points.join("L")}Z`;
+
+function faces(pt: Point, [x0, x1, y0, y1, z0, z1]: Box) {
+  return {
+    top: polygon(pt(x0, y0, z1), pt(x1, y0, z1), pt(x1, y1, z1), pt(x0, y1, z1)),
+    left: polygon(pt(x0, y1, z1), pt(x1, y1, z1), pt(x1, y1, z0), pt(x0, y1, z0)),
+    right: polygon(pt(x1, y0, z1), pt(x1, y1, z1), pt(x1, y1, z0), pt(x1, y0, z0)),
+  };
+}
+
+// Only the three faces a viewer can see; painter's order (back to front) handles the rest.
+function Block({ pt, box }: { pt: Point; box: Box }) {
+  const { top, left, right } = faces(pt, box);
   return (
-    <svg viewBox="0 0 480 360" aria-hidden="true" focusable="false" className="illo signal-stack">
-      <g className="stack-structure">
-        <path d="M240 48V128M58 142V222M422 142V222M240 236V316" />
-        <path d="M234 128H246M52 222H64M416 222H428M234 316H246" />
+    <>
+      <path className="arch-side" d={left} />
+      <path className="arch-side arch-shade" d={right} />
+      <path className="arch-surface" d={top} />
+    </>
+  );
+}
+
+// A flat footprint dropped a few units below the ground plane: a calm, geometric contact shadow shared by every figure.
+function Shadow({ pt, boxes }: { pt: Point; boxes: Box[] }) {
+  return (
+    <g className="arch-shadow">
+      {boxes.map(([x0, x1, y0, y1]) => (
+        <path key={`${x0} ${y0}`} d={polygon(pt(x0, y0, -7), pt(x1, y0, -7), pt(x1, y1, -7), pt(x0, y1, -7))} />
+      ))}
+    </g>
+  );
+}
+
+export function TapKeyIllustration() {
+  const pt = projection(203);
+  const base: Box = [-90, 90, -90, 90, 0, 12];
+  const top: Box = [-88, 88, -88, 88, 30, 48];
+  const plate = faces(pt, top);
+  const well = polygon(pt(-32, -32, 48), pt(32, -32, 48), pt(32, 32, 48), pt(-32, 32, 48));
+  const core = faces(pt, [-21, 21, -21, 21, 39, 50]);
+  return (
+    <svg viewBox="0 0 480 360" aria-hidden="true" focusable="false" className="illo arch-tap">
+      <Shadow pt={pt} boxes={[base]} />
+      <g className="arch-enter">
+        <Block pt={pt} box={base} />
       </g>
-      <g className="stack-layer stack-layer-5">
-        <g transform="translate(0 80)"><path className="stack-outline" d={plane} /></g>
-      </g>
-      <g className="stack-layer stack-layer-4">
-        <g transform="translate(0 60)"><path className="stack-outline" d={plane} /></g>
-      </g>
-      <g className="stack-layer stack-layer-3">
-        <g transform="translate(0 40)"><path className="stack-outline" d={plane} /></g>
-      </g>
-      <g className="stack-layer stack-layer-2">
-        <g transform="translate(0 20)"><path className="stack-outline" d={plane} /></g>
-      </g>
-      <g className="stack-layer top-surface">
-        <path className="stack-outline" d={plane} />
-        <g className="stack-registration">
-          <path d="M240 64V73M240 211V220M83 142H99M381 142H397" />
-          <path d="M146 100L154 104M326 180L334 184M146 184L154 180M326 104L334 100" />
-          <path d="M219 142H228M252 142H261M240 130V135M240 149V154" />
+      <g className="arch-enter arch-enter-2">
+        <g className="arch-hover arch-tap-layer-2">
+          <Block pt={pt} box={[-83, 83, -83, 83, 12, 21]} />
         </g>
-        <g className="stack-signal-field">
-          <path className="stack-signal stack-signal-1" pathLength={100} d="M268 138C262 129 239 125 222 132C204 139 212 151 234 154C251 156 265 150 269 146" />
-          <path className="stack-signal stack-signal-2" pathLength={100} d="M201 164C173 154 175 136 205 125C235 114 277 120 295 135C307 146 293 160 270 165" />
-          <path className="stack-signal stack-signal-3" pathLength={100} d="M321 135C310 115 263 104 222 109C176 114 148 135 160 154C171 173 214 183 252 178C276 176 297 170 309 161" />
-          <path className="stack-signal stack-signal-4" pathLength={100} d="M182 187C145 176 125 159 132 142C140 118 184 99 230 96C275 93 320 105 342 123C362 140 349 162 321 174" />
+      </g>
+      <g className="arch-enter arch-enter-3">
+        <g className="arch-hover arch-tap-layer-3">
+          <Block pt={pt} box={[-83, 83, -83, 83, 21, 30]} />
         </g>
-        <g className="stack-tap-point">
-          <circle cx="240" cy="142" r="4" />
-          <path d="M369 160L378 155" />
+      </g>
+      <g className="arch-enter arch-enter-4">
+        <g className="arch-hover arch-tap-plate">
+          <path className="arch-side" d={plate.left} />
+          <path className="arch-side arch-shade" d={plate.right} />
+          {/* The well's floor and back walls, then the core's sides, all sit under the plate's top face, which masks them at the rim. */}
+          <path className="arch-recess" d={well} />
+          <path className="arch-recess-wall" d={polygon(pt(-32, -32, 48), pt(32, -32, 48), pt(32, -32, 39), pt(-32, -32, 39))} />
+          <path className="arch-recess-wall arch-shade" d={polygon(pt(-32, -32, 48), pt(-32, 32, 48), pt(-32, 32, 39), pt(-32, -32, 39))} />
+          <g className="arch-hover arch-tap-core">
+            <path className="arch-side" d={core.left} />
+            <path className="arch-side arch-shade" d={core.right} />
+          </g>
+          <path className="arch-surface" fillRule="evenodd" d={`${plate.top}${well}`} />
+          <path className="arch-bevel" d={`M${pt(-80, 80, 48)}L${pt(-80, -80, 48)}L${pt(80, -80, 48)}`} />
+          <g className="arch-hover arch-tap-core">
+            <path className="arch-surface" d={core.top} />
+            <path className="arch-accent-fill" d={polygon(pt(-7, -7, 50), pt(7, -7, 50), pt(7, 7, 50), pt(-7, 7, 50))} />
+          </g>
         </g>
       </g>
     </svg>
   );
 }
 
-export function IdentityStructureIllustration() {
+const rails = [
+  { id: "west", box: [-206, -46, -12, 12, 0, 11], groove: [[-198, 0], [-54, 0]] },
+  { id: "north", box: [-12, 12, -206, -46, 0, 11], groove: [[0, -198], [0, -54]] },
+  { id: "east", box: [46, 206, -12, 12, 0, 11], groove: [[54, 0], [198, 0]] },
+  { id: "south", box: [-12, 12, 46, 206, 0, 11], groove: [[0, 54], [0, 198]] },
+] as const;
+
+function Rail({ pt, id, box, groove: [[ax, ay], [bx, by]] }: { pt: Point } & (typeof rails)[number]) {
   return (
-    <svg viewBox="0 0 480 360" aria-hidden="true" focusable="false" className="illo identity-assembly">
-      <g className="assembly-structural-lines">
-        <path d="M240 63V81M48 166H72M408 166H432M240 247V271" />
-        <path d="M164 161L184 171M296 171L316 161M230 195L250 205" />
+    <g className={`arch-enter arch-enter-${id}`}>
+      <g className={`arch-hover arch-rail-${id}`}>
+        <Block pt={pt} box={box} />
+        <path className="arch-joint" d={`M${pt(ax, ay, 11)}L${pt(bx, by, 11)}`} />
       </g>
-      <g className="assembly-part assembly-part-upper-left">
-        <path className="assembly-outline" d="M240 72L58 166H174L194 156L200 159L212 153L206 150L240 132Z" />
-        <path className="assembly-recess" d="M228 89L83 164M99 156L114 156M240 84V117" />
-        <path className="assembly-registration" d="M160 120L167 124M149 126L156 130M138 132L145 136" />
+    </g>
+  );
+}
+
+export function ConvergenceIllustration() {
+  const pt = projection(186);
+  const hub: Box = [-36, 36, -36, 36, 0, 44];
+  return (
+    <svg viewBox="0 0 480 360" aria-hidden="true" focusable="false" className="illo arch-converge">
+      <Shadow pt={pt} boxes={[hub, ...rails.map((rail) => rail.box)]} />
+      {/* The two rails behind the hub, the hub, then the two in front of it. */}
+      <Rail pt={pt} {...rails[0]} />
+      <Rail pt={pt} {...rails[1]} />
+      <g className="arch-enter">
+        <Block pt={pt} box={hub} />
+        <path className="arch-bevel" d={`M${pt(-29, 29, 44)}L${pt(-29, -29, 44)}L${pt(29, -29, 44)}`} />
+        <path className="arch-inset" d={polygon(pt(-15, -15, 44), pt(15, -15, 44), pt(15, 15, 44), pt(-15, 15, 44))} />
+        {/* The seam where every rail meets the core, at rail height. */}
+        <path className="arch-accent" d={`M${pt(-36, 36, 11)}L${pt(36, 36, 11)}L${pt(36, -36, 11)}`} />
       </g>
-      <g className="assembly-part assembly-part-upper-right">
-        <path className="assembly-outline" d="M240 72L422 166H306L240 132Z" />
-        <path className="assembly-recess" d="M252 89L397 164M366 156H381M252 100V127" />
-        <path className="assembly-registration" d="M313 124L320 120M324 130L331 126M335 136L342 132" />
-      </g>
-      <g className="assembly-part assembly-part-front">
-        <path className="assembly-outline" d="M58 166L240 260L422 166H306L240 200L174 166Z" />
-        <path className="assembly-depth" d="M58 166V194L240 288L422 194V166M240 260V288" />
-        <path className="assembly-recess" d="M83 176L240 248L397 176M174 179L240 213L306 179" />
-        <path className="assembly-registration" d="M117 211V218M126 216V223M354 216V223M363 211V218M231 273L240 278L249 273" />
-      </g>
-      <g className="assembly-part identity-core">
-        <path className="assembly-outline" d="M240 132L306 166L240 200L174 166L194 156L200 159L212 153L206 150Z" />
-        <path className="assembly-recess" d="M240 143L284 166L240 189L196 166Z" />
-        <path className="assembly-depth" d="M196 166V172L240 195L284 172V166M240 189V195" />
-        <g className="assembly-registration">
-          <path d="M240 150V156M240 177V183M207 166H217M263 166H273" />
-          <path d="M225 161L240 153L255 161M225 171L240 179L255 171" />
-        </g>
-        <path className="assembly-accent" d="M200 159L212 153" />
-      </g>
+      <Rail pt={pt} {...rails[2]} />
+      <Rail pt={pt} {...rails[3]} />
     </svg>
   );
 }
 
-export function StayCurrentIllustration() {
+// Six segments of one continuous spine, earliest (front, left) to newest (back, right). Ink is how resolved each state is.
+const segments = [
+  { ink: 0.24, draft: true },
+  { ink: 0.34, draft: true },
+  { ink: 0.46 },
+  { ink: 0.56 },
+  { ink: 0.64 },
+  { ink: 0.72 },
+];
+
+export function LivingSpineIllustration() {
+  const pt = projection(194);
+  const box = (i: number): Box => [-24, 24, 180 - 60 * (i + 1), 180 - 60 * i, 0, 26];
+  const last = segments.length - 1;
   return (
-    <svg viewBox="8 21 432 324" aria-hidden="true" focusable="false" className="illo update-progression">
-      <g className="progression-rail">
-        <path d="M26 200L82 184L138 178L194 154L250 148L306 124L362 118" />
-        <path d="M86 248L142 232L198 226L254 202L310 196L366 172L422 166" />
-        <path className="progression-spine" d="M56 215L112 199L168 193L224 169L280 163L336 139L392 133" />
-      </g>
-      <g className="progression-state update-state-1">
-        <path className="progression-surface" d="M26 200L82 184L142 214L86 230Z" />
-        <path className="progression-depth" d="M86 230V248L142 232V214" />
-        <path className="progression-registration" d="M42 208L48 211M95 238L102 236" />
-      </g>
-      <g className="progression-state update-state-2">
-        <path className="progression-surface" d="M82 184L138 178L198 208L142 214Z" />
-        <path className="progression-depth" d="M142 214V232L198 226V208" />
-        <path className="progression-registration" d="M98 192L104 195M151 222L158 221" />
-      </g>
-      <g className="progression-state update-state-3">
-        <path className="progression-surface" d="M138 178L194 154L254 184L198 208Z" />
-        <path className="progression-depth" d="M198 208V226L254 202V184" />
-        <path className="progression-registration" d="M154 186L160 189M207 214L214 211" />
-      </g>
-      <g className="progression-state update-state-4">
-        <path className="progression-surface" d="M194 154L250 148L310 178L254 184Z" />
-        <path className="progression-depth" d="M254 184V202L310 196V178" />
-        <path className="progression-registration" d="M210 162L216 165M263 192L270 191M222 160L228 163" />
-      </g>
-      <g className="progression-state update-state-5">
-        <path className="progression-surface" d="M250 148L306 124L366 154L310 178Z" />
-        <path className="progression-depth" d="M310 178V196L366 172V154" />
-        <path className="progression-registration" d="M266 156L272 159M319 184L326 181M278 151L284 154" />
-      </g>
-      <g className="progression-state current-state">
-        <path className="progression-surface" d="M306 124L362 118L422 148L366 154Z" />
-        <path className="progression-depth" d="M366 154V172L422 166V148" />
-        <g className="progression-registration">
-          <path d="M322 132L328 135M334 130L340 133M375 162L382 161M386 161L393 160" />
-          <path d="M348 128L358 127L394 145M400 153V160M408 152V159" />
-        </g>
-        <path className="current-accent" d="M410 142L422 148" />
-      </g>
+    <svg viewBox="0 0 480 360" aria-hidden="true" focusable="false" className="illo arch-spine">
+      <Shadow pt={pt} boxes={[[-24, 24, -180, 180, 0, 26]]} />
+      {segments
+        .map(({ ink, draft }, i) => (
+          <g key={i} className={`arch-enter${draft ? " arch-draft" : ""}`} style={{ "--arch-delay": `${i * 70}ms` } as CSSProperties}>
+            <g className="arch-hover arch-segment" style={{ "--seg-ink": ink, "--seg-step": i } as CSSProperties}>
+              <Block pt={pt} box={box(i)} />
+              {i === last && (
+                <>
+                  <path className="arch-bevel" d={`M${pt(-18, -126, 26)}L${pt(-18, -174, 26)}L${pt(18, -174, 26)}`} />
+                  <path className="arch-accent" d={`M${pt(-14, -164, 26)}L${pt(14, -164, 26)}`} />
+                </>
+              )}
+            </g>
+          </g>
+        ))
+        .reverse()}
     </svg>
   );
 }

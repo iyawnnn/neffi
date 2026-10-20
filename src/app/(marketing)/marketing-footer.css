@@ -1,0 +1,270 @@
+.marketing-footer {
+  background: var(--canvas);
+  color: var(--foreground);
+}
+
+.marketing-footer-container {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.marketing-footer-groups {
+  display: grid;
+  gap: 2.5rem;
+  padding-top: 3.5rem;
+}
+
+.marketing-footer-heading {
+  margin-bottom: 1rem;
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.marketing-footer-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+}
+
+/* Pulled left by the targets' padding so the first glyph lines up with the newsletter field. */
+.marketing-footer-socials {
+  display: flex;
+  gap: 0.25rem;
+  margin: 1rem 0 0 -0.75rem;
+}
+
+.marketing-footer-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding-block: 0.5rem;
+  border-radius: 0.125rem;
+  color: var(--fg-secondary);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  transition: color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.marketing-footer-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--fg-secondary);
+  transition: color 180ms ease-out;
+}
+
+.marketing-footer-social > svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+a.marketing-footer-link {
+  cursor: pointer;
+}
+
+a.marketing-footer-link:focus-visible {
+  color: var(--action-text);
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+.marketing-footer-newsletter-copy {
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.marketing-footer-newsletter {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.marketing-footer-newsletter > input {
+  width: 100%;
+  min-width: 0;
+  height: 3rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.6875rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 1rem;
+}
+
+.marketing-footer-newsletter > input::placeholder {
+  color: var(--fg-secondary);
+}
+
+.marketing-footer-newsletter > input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.marketing-footer-newsletter > button {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  height: 3rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+  border-radius: 0.6875rem;
+  color: var(--canvas);
+  background: var(--action);
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--foreground) 14%, transparent);
+  transition: background-color 180ms ease-out;
+}
+
+.marketing-footer-newsletter > button::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, white 12%, transparent) 50%, transparent 75%);
+  background-size: 180% 100%;
+  background-position: 80% 0;
+  transition: background-position 180ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.marketing-footer-link:hover,
+  .marketing-footer-legal-link:hover,
+  .marketing-footer-social:hover {
+    color: var(--action-text);
+  }
+
+  .marketing-footer-newsletter > button:hover {
+    background-color: var(--action-hover);
+  }
+
+  .marketing-footer-newsletter > button:hover::before {
+    background-position: 20% 0;
+  }
+}
+
+.marketing-footer-legal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "terms privacy" "copyright copyright";
+  align-items: center;
+  column-gap: 0.75rem;
+  margin-top: 3.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: var(--fg-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.marketing-footer-terms {
+  grid-area: terms;
+  justify-self: start;
+}
+
+.marketing-footer-privacy {
+  grid-area: privacy;
+  justify-self: end;
+  text-align: right;
+}
+
+.marketing-footer-copyright {
+  grid-area: copyright;
+  justify-self: center;
+  text-align: center;
+}
+
+.marketing-footer-legal-link {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.marketing-footer-monument {
+  overflow: hidden;
+  margin-top: 1rem;
+  /* The only mobile dock clearance: 88px bar + safe area + 12px of air. The raised key deliberately sits over the wordmark. */
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom) + 0.75rem);
+  pointer-events: none;
+}
+
+.marketing-footer-wordmark {
+  position: relative;
+  width: 96%;
+  aspect-ratio: 533 / 222;
+  margin-inline: auto;
+  overflow: hidden;
+  opacity: 0.12;
+}
+
+.marketing-footer-wordmark-image {
+  position: absolute;
+  width: 225.14%;
+  height: 225.23%;
+  max-width: none;
+  left: -62.85%;
+  top: -64.41%;
+}
+
+@media (min-width: 769px) {
+  .marketing-footer-groups {
+    grid-template-columns: minmax(0, 22fr) minmax(0, 26fr) minmax(0, 40fr);
+    column-gap: 6%;
+    padding-top: 4.25rem;
+  }
+
+  .marketing-footer-newsletter {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .marketing-footer-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .marketing-footer-heading,
+  .marketing-footer-links .marketing-footer-link {
+    font-size: 1.125rem;
+  }
+
+  .marketing-footer-newsletter-copy {
+    font-size: 0.875rem;
+  }
+
+  .marketing-footer-legal {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: "terms copyright privacy";
+    margin-top: 3.75rem;
+    padding-top: 1.5rem;
+    column-gap: 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* The floating dock (72px, 6px off the viewport edge) sits over the wordmark's lower edge, not in a reserved band below it. */
+  .marketing-footer-monument {
+    margin-top: 2.5rem;
+    padding-bottom: 2.75rem;
+  }
+
+  .marketing-footer-wordmark {
+    width: 82%;
+    opacity: 0.1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-footer-link,
+  .marketing-footer-social,
+  .marketing-footer-newsletter > button,
+  .marketing-footer-newsletter > button::before {
+    transition: none;
+  }
+}

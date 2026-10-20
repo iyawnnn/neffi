@@ -114,22 +114,44 @@ function TopCatch({ className, fade }: { className: string; fade: "both" | "left
 }
 
 const subscribeToScroll = (onChange: () => void) => {
-  window.addEventListener("scroll", onChange, { passive: true });
-  return () => window.removeEventListener("scroll", onChange);
+  let frame = 0;
+  const scheduleUpdate = () => {
+    if (frame) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = 0;
+      onChange();
+    });
+  };
+  window.addEventListener("scroll", scheduleUpdate, { passive: true });
+  window.addEventListener("resize", scheduleUpdate);
+  const observer = new ResizeObserver(scheduleUpdate);
+  observer.observe(document.body);
+  return () => {
+    window.removeEventListener("scroll", scheduleUpdate);
+    window.removeEventListener("resize", scheduleUpdate);
+    window.cancelAnimationFrame(frame);
+    observer.disconnect();
+  };
 };
-const scrolledFar = () => window.scrollY > 480;
+const scrolledHalfway = () => {
+  const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+  return scrollableHeight > 0 && window.scrollY / scrollableHeight >= 0.5;
+};
 const notScrolledOnServer = () => false;
 
-function TopButton({ hidden }: { hidden: boolean }) {
-  const scrolled = useSyncExternalStore(subscribeToScroll, scrolledFar, notScrolledOnServer);
+function TopButton({ hidden, className, mobile = false }: { hidden: boolean; className: string; mobile?: boolean }) {
+  const scrolled = useSyncExternalStore(subscribeToScroll, scrolledHalfway, notScrolledOnServer);
   const visible = scrolled && !hidden;
   return (
     <button
       type="button"
       inert={!visible}
+      style={mobile ? { bottom: `calc(${BAR} + env(safe-area-inset-bottom) + 2.25rem)` } : undefined}
       onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
       className={cn(
-        "fixed bottom-[2.375rem] left-8 z-40 hidden h-11 cursor-pointer items-center gap-2 rounded-full border border-canvas/15 bg-foreground p-1.5 text-nav font-medium text-canvas shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--foreground)_60%,transparent)] interact transition-[opacity,translate,background-color] hover:bg-foreground/90 motion-reduce:transition-none min-[900px]:inline-flex min-[1200px]:pr-4",
+        "fixed z-40 cursor-pointer items-center gap-2 rounded-full border border-canvas/15 bg-foreground font-medium text-canvas shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--foreground)_60%,transparent)] interact transition-[opacity,translate,background-color] hover:bg-foreground/90 motion-reduce:translate-y-0 motion-reduce:transition-none",
+        mobile ? "h-10 py-1 pl-1 pr-3 text-[0.8125rem]" : "h-11 p-1.5 text-nav min-[1200px]:pr-4",
+        className,
         focusRing,
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0",
       )}
@@ -137,7 +159,7 @@ function TopButton({ hidden }: { hidden: boolean }) {
       <span className="flex size-[1.875rem] items-center justify-center rounded-full bg-brand text-white">
         <ArrowUp aria-hidden className="size-4" strokeWidth={2} />
       </span>
-      <span className="sr-only min-[1200px]:not-sr-only">Back to Top</span>
+      <span className={mobile ? undefined : "sr-only min-[1200px]:not-sr-only"}>{mobile ? "Top" : "Back to Top"}</span>
     </button>
   );
 }
@@ -212,7 +234,7 @@ function DesktopDock({ pathname, moreCurrent }: { pathname: string; moreCurrent:
       onBlur={(event) => {
         if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
-      className="fixed bottom-6 left-1/2 z-40 hidden w-[min(44.5rem,calc(100vw-2rem))] -translate-x-1/2 min-[769px]:block"
+      className="fixed bottom-1.5 left-1/2 z-40 hidden w-[min(44.5rem,calc(100vw-2rem))] -translate-x-1/2 min-[769px]:block"
     >
       <ul className="grid h-[4.5rem] grid-cols-[1fr_1fr_11rem_1fr_1fr] items-center rounded-[18px] border border-white/10 bg-foreground p-2 shadow-[0_16px_40px_-16px_color-mix(in_oklab,var(--foreground)_65%,transparent)]">
         {leading.map(item)}
@@ -244,7 +266,7 @@ function DesktopDock({ pathname, moreCurrent }: { pathname: string; moreCurrent:
       </div>
       {open ? <MorePanel pathname={pathname} onNavigate={() => setOpen(false)} onHover={openNow} onLeave={closeSoon} /> : null}
     </nav>
-    <TopButton hidden={open} />
+    <TopButton hidden={open} className="bottom-[calc(env(safe-area-inset-bottom)+7.5rem)] left-6 hidden min-[769px]:inline-flex min-[900px]:bottom-[2.375rem] min-[900px]:left-8" />
     </>
   );
 }
@@ -471,6 +493,7 @@ function MobileBar({ pathname, moreCurrent }: { pathname: string; moreCurrent: b
           ))}
         </ul>
       </SheetContent>
+      <TopButton hidden={open} mobile className="left-6 inline-flex min-[769px]:hidden" />
     </Sheet>
   );
 }
