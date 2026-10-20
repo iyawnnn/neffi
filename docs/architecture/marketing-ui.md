@@ -31,7 +31,7 @@ Snow dominates, Ink carries structure, Vermilion is the accent: roughly 70 / 20 
 
 - **Geist Sans** for everything (`--font-sans`, loaded in the root layout). **Geist Mono** only for technical/editorial annotations, such as the hero card callouts.
 - Marketing headings use clamped sizes in their components rather than the `/app` type tokens. Hero H1 and section headings are distinct: only the hero reads as a hero.
-- Left-aligned editorial headings for content sections; the hero is the only centred composition.
+- Left-aligned editorial headings for content sections; centred compositions are reserved for page introductions where appropriate. Supporting pages share the visual language, not one repeated hero layout.
 - Breakpoints in use: **768/769px** switches the dock and many layouts (mobile at 768px and below); **900px** switches editorial heading and grid layouts; **1024px** switches the use-case carousel from single-item scrolling to desktop pairs. These are local layout decisions, not new global breakpoints.
 - Mobile layouts are restructured, not shrunk: keep 44px touch targets, no horizontal page overflow, swipe-first carousels, simplified selectors.
 
@@ -43,11 +43,17 @@ Implemented in [`marketing-nav.tsx`](../../src/app/(marketing)/marketing-nav.tsx
 
 **Mobile (768px and below):** a full-width Ink bar fixed to the bottom edge and filling the safe area, with rounded top corners. Icon-and-label items: **Product · Guide · [Neffi key] · Pricing · More**. The centre Get Neffi key is Vermilion with the Snow/Ink [`neffi-mark-on-vermilion.svg`](../../public/neffi-mark-on-vermilion.svg) symbol, seated in a squared, softened recess. More opens a typography-only Snow sheet above the bar.
 
-**More destinations:** Home, Help, Activate your card, Sign in, Support. Privacy and Terms belong in the future footer, not the dock.
+**More destinations:** Home, Help, Activate your card, Sign in, Support. Privacy and Terms belong in the marketing footer, not the dock.
 
-A **Back to Top** control appears after scrolling. Any overlay behind More must leave page content readable without ghosting; on mobile the sheet currently uses a faint Ink tint and no blur.
+A **Back to Top** control appears after 50% scroll progress in the current implementation. Any overlay behind More must leave page content readable without ghosting; on mobile the sheet currently uses a faint Ink tint and no blur. The desktop dock has no decorative Snow scrim. Its position and geometry are unchanged by the supporting pages.
 
 Warm edge accents on the dock are thin, local light catches, never a full orange outline. Get Neffi in the dock currently links to `/pricing` (`GET_NEFFI_HREF`) until an ordering destination exists.
+
+## Footer and supporting pages
+
+The shared [`marketing-footer.tsx`](../../src/app/(marketing)/marketing-footer.tsx) is mounted only by the marketing layout. Its approved composition is preserved: asymmetric Explore / Neffi / Stay in the loop groups, inert newsletter preview and unconfigured social icons, a three-part legal row, and the real pale Ink wordmark on Snow. There is no Vermilion underglow. Terms is left aligned, copyright mathematically centred, and Privacy right aligned on desktop; mobile uses legal links above copyright. The decorative monument provides mobile dock/safe-area clearance. All implemented marketing destinations are now links.
+
+Guide, Pricing, Help, Privacy and Terms use the same layout/chrome. Their structures, source files, content authority and remaining pricing/legal publication requirements live in the [supporting-pages spec](../specs/marketing-pages.md). Shared `marketing-page.tsx` / `marketing-pages.css` provide server-rendered reading primitives, static CTA surfaces and native disclosure answers. Guide is instructional, Pricing product-led, Help an answer index, and the legal routes reading layouts; these do not repeat Home or Product section-for-section. Legal templates are visibly unapproved and `noindex` until reviewed copy exists.
 
 ## Section divider
 

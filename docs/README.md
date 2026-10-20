@@ -53,6 +53,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 - [Accounts and access](specs/accounts-and-access.md): sign-in, roles, authorization, the owner Account view
 - [Support and corrections](specs/support-and-corrections.md): owner cases, Completed-order money, replacements, shipping and verified card recovery
 - [Marketing homepage](specs/marketing-homepage.md): section order, approved copy, section status and what each marketing page owns
+- [Supporting marketing pages](specs/marketing-pages.md): Guide, Pricing, Help and legal reading layouts, content authority and open pricing/legal copy requirements
 
 ## Decision records
 

@@ -9,6 +9,7 @@ The homepage (`/`, [`src/app/(marketing)/page.tsx`](../../src/app/(marketing)/pa
 | **LOCKED** | Approved and implemented. Change only on explicit instruction |
 | **IMPLEMENTING** | Design brief approved, implementation in progress and not yet approved. The brief below is canonical; implementation details are not |
 | **PLANNED** | Purpose and boundaries agreed; not designed. Do not build without a brief |
+| **IMPLEMENTED** | Present in the current marketing implementation; this label does not assert a new design approval |
 
 | # | Section | Status |
 |---|---|---|
@@ -16,8 +17,8 @@ The homepage (`/`, [`src/app/(marketing)/page.tsx`](../../src/app/(marketing)/pa
 | 2 | Identity / value system | LOCKED |
 | 3 | Profile experience | LOCKED |
 | 4 | Real-world use cases | LOCKED |
-| 5 | Setup teaser | PLANNED |
-| 6 | Final CTA | PLANNED |
+| 5 | Setup teaser | IMPLEMENTED |
+| 6 | Final CTA | IMPLEMENTED |
 
 Major sections are separated by the shared [`SectionDivider`](../../src/app/(marketing)/section-divider.tsx).
 
@@ -97,11 +98,11 @@ Implementation: [`page.tsx`](../../src/app/(marketing)/page.tsx) places `UseCase
 
 ## Section 5 — Setup teaser
 
-**Status: PLANNED.** Answers "is Neffi easy to start using?" in a concise story, likely **Activate → Build your profile → Start sharing**. Detailed activation and setup belong to `/guide`; Home must not become the setup guide.
+**Status: IMPLEMENTED.** The existing **From the box to your first tap.** sequence shows **Activate your card → Make it yours → Start sharing** with three custom setup SVGs. Detailed activation and setup belong to `/guide`; Home does not become the setup guide. Files: `setup-journey-section.tsx`, `setup-journey.css`, and `public/marketing/setup/`. This source is preserved by the supporting-page implementation.
 
 ## Section 6 — Final CTA
 
-**Status: PLANNED.** Closes the page, possibly with the brand statement **One tap. Instant connection.**, a Get Neffi action and a link to pricing or the guide. Not designed.
+**Status: IMPLEMENTED.** The existing **Turn one tap into a connection.** close combines a compact Vermilion Get Neffi action to `/pricing` and the real physical card artwork. Files: `final-cta-section.tsx` and `final-cta.css`. This source is preserved by the supporting-page implementation.
 
 ## Page ownership
 
@@ -109,10 +110,12 @@ Implementation: [`page.tsx`](../../src/app/(marketing)/page.tsx) places `UseCase
 |---|---|---|
 | `/` Home | Story, first impression, strongest benefits, digital-experience teaser, use cases, setup teaser, final CTA | Yes |
 | `/product` | Deeper features, physical/digital relationship, editable profile, NFC and QR behaviour, profile capabilities, detailed product exploration | Yes ([`product/`](../../src/app/(marketing)/product/page.tsx)) |
-| `/guide` | Activation, setup, packaging activation flow, first use, QR/NFC guidance, what happens after activation, editing afterwards, setup FAQ | No |
-| `/pricing` | Prices, product options, what is included, quantities and business options, ordering decision | No |
-| `/help` | FAQs, troubleshooting, compatibility, account, support and recovery | No |
-| `/privacy`, `/terms` | Legal content only (linked from the footer) | No |
+| `/guide` | Activation, setup, package contents, first use, QR/NFC guidance, publishing, later updates and setup FAQ | Yes |
+| `/pricing` | One physical/digital product offer, inclusions and buying enquiry; approved price/order destination still required | Yes; no invented price or checkout |
+| `/help` | FAQs, troubleshooting, compatibility, account, support and recovery | Yes |
+| `/privacy`, `/terms` | Legal reading layouts linked from the footer; approved legal content required | Review templates only; noindex |
+
+See [Supporting marketing pages](marketing-pages.md) for page architecture, implementation files, content sources and pricing/legal publication gaps. These routes do not change Home Sections 1–6 or Product.
 
 Existing customer routes linked from the dock's More: `/activate`, `/sign-in`, `/support`. Home never takes content that belongs to another page; no prices, setup steps or FAQs on Home.
 
