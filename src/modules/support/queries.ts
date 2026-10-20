@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import * as s from "../../db/schema";
 import { accountDirectoryDetail } from "../accounts/directory";
 import type { Db } from "../db";
@@ -19,13 +19,22 @@ export async function caseLinkOptions(db: Db, query = "") {
 
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-export async function listCases(db: Db, { before, status, source }: { before?: string; status?: typeof s.supportCaseStatus.enumValues[number]; source?: typeof s.supportCaseSource.enumValues[number] } = {}) {
+type CaseFilters = { status?: typeof s.supportCaseStatus.enumValues[number]; source?: typeof s.supportCaseSource.enumValues[number] };
+const caseFilters = ({ status, source }: CaseFilters) => [status ? eq(s.supportCases.status, status) : undefined, source ? eq(s.supportCases.source, source) : undefined];
+
+export async function countCases(db: Db, filters: CaseFilters = {}) {
+  const [row] = await db.select({ total: count() }).from(s.supportCases).where(and(...caseFilters(filters)));
+  return row.total;
+}
+
+// `offset` + `limit` select a numbered page; without `limit` the list is cursor-based (`before`) at 25 rows.
+export async function listCases(db: Db, { before, offset = 0, limit, ...filters }: CaseFilters & { before?: string; offset?: number; limit?: number } = {}) {
   const cursor = before ? CURSOR.exec(before) : null;
   const rows = await db.select({ id: s.supportCases.id, type: s.supportCases.type, summary: s.supportCases.summary, status: s.supportCases.status, source: s.supportCases.source, assignedToAccountId: s.supportCases.assignedToAccountId, createdAt: s.supportCases.createdAt,
     cursor: sql<string>`${s.supportCases.createdAt}::text || '|' || ${s.supportCases.id}::text`,
-  }).from(s.supportCases).where(and(status ? eq(s.supportCases.status, status) : undefined, source ? eq(s.supportCases.source, source) : undefined, cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(26);
-  const page = rows.slice(0, 25);
-  return { cases: page, next: rows.length > 25 ? page[24].cursor : null };
+  }).from(s.supportCases).where(and(...caseFilters(filters), cursor ? sql`(${s.supportCases.createdAt}, ${s.supportCases.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined)).orderBy(desc(s.supportCases.createdAt), desc(s.supportCases.id)).limit(limit ?? 26).offset(offset);
+  const page = rows.slice(0, limit ?? 25);
+  return { cases: page, next: !limit && rows.length > 25 ? page[24].cursor : null };
 }
 
 export function casesForOrder(db: Db, orderId: string) {

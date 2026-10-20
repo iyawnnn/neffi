@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-const { requireOwner, listCases, getCaseDetail, caseLinkOptions } = vi.hoisted(() => ({ requireOwner: vi.fn(), listCases: vi.fn(), getCaseDetail: vi.fn(), caseLinkOptions: vi.fn() }));
+const { requireOwner, listCases, countCases, getCaseDetail, caseLinkOptions, getOrderDetail } = vi.hoisted(() => ({ requireOwner: vi.fn(), listCases: vi.fn(), countCases: vi.fn(), getCaseDetail: vi.fn(), caseLinkOptions: vi.fn(), getOrderDetail: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireOwner }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/server", () => ({ connection: vi.fn() }));
-vi.mock("@/modules/support/queries", () => ({ listCases, getCaseDetail, caseLinkOptions }));
-vi.mock("@/modules/orders/queries", () => ({ orderAssignees: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/modules/support/queries", () => ({ listCases, countCases, getCaseDetail, caseLinkOptions }));
+vi.mock("@/modules/orders/queries", () => ({ orderAssignees: vi.fn().mockResolvedValue([]), getOrderDetail }));
 vi.mock("@/modules/orders/purchasers", () => ({ getPurchaser: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/modules/accounts/directory", () => ({ accountDirectoryDetail: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/modules/inventory/queries", () => ({ getCardDetail: vi.fn().mockResolvedValue(null) }));
@@ -16,7 +16,7 @@ import NewCase from "./new/page";
 import { AdminNav } from "../admin-nav";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const detail = { id, type: "other", status: "open", summary: "Correct a payment", purchaserId: null, accountId: null, orderId: null, assignedToAccountId: null, createdAt: new Date("2026-10-14"), updatedAt: new Date("2026-10-14"), resolvedAt: null, order: null, account: null, purchaser: null, cards: [], refunds: [], shipments: [], linkedOrders: [], timeline: [], assignees: [] };
-beforeEach(() => { vi.clearAllMocks(); requireOwner.mockResolvedValue({ accountId: id }); listCases.mockResolvedValue({ cases: [], next: null }); getCaseDetail.mockResolvedValue(detail); caseLinkOptions.mockResolvedValue({ orders: [], purchasers: [], accounts: [], cards: [] }); });
+beforeEach(() => { vi.clearAllMocks(); requireOwner.mockResolvedValue({ accountId: id }); listCases.mockResolvedValue({ cases: [], next: null }); countCases.mockResolvedValue(0); getCaseDetail.mockResolvedValue(detail); caseLinkOptions.mockResolvedValue({ orders: [], purchasers: [], accounts: [], cards: [] }); });
 
 test.each(["open", "waiting_on_customer", "resolved"])("owner workspace renders %s and retains notes", async (status) => {
   getCaseDetail.mockResolvedValue({ ...detail, status });
@@ -28,8 +28,10 @@ test.each(["open", "waiting_on_customer", "resolved"])("owner workspace renders 
 
 test("queue renders empty state and Support navigation", async () => {
   const html = renderToStaticMarkup(await Queue({ searchParams: Promise.resolve({}) }));
-  expect(html).toContain("No support cases match");
+  expect(html).toContain("No support cases");
   expect(html).toContain('name="source"');
+  expect(countCases).toHaveBeenCalledWith({}, { status: undefined, source: undefined });
+  expect(listCases).toHaveBeenCalledWith({}, { status: undefined, source: undefined, limit: 20, offset: 0 });
   expect(renderToStaticMarkup(<AdminNav />)).toContain('href="/admin/support"');
 });
 
@@ -72,7 +74,11 @@ test("correction sheets follow case, order and linked-card state", async () => {
 test("new case rejects malformed or nonexistent prefilled records", async () => {
   await expect(NewCase({ searchParams: Promise.resolve({ accountId: "bad" }) })).rejects.toThrow();
   await expect(NewCase({ searchParams: Promise.resolve({ accountId: id }) })).rejects.toThrow();
-  expect(renderToStaticMarkup(await NewCase({ searchParams: Promise.resolve({}) }))).toContain("Open support case");
+  const form = renderToStaticMarkup(await NewCase({ searchParams: Promise.resolve({}) }));
+  expect(form).toContain("Open support case");
+  expect(form).toContain("Related records");
+  expect(form).toContain("Do not paste activation codes");
+  expect(form).toContain('name="assignedToAccountId"');
 });
 
 test("every support page denies customers before data reads", async () => {
@@ -82,4 +88,27 @@ test("every support page denies customers before data reads", async () => {
   await expect(NewCase({ searchParams: Promise.resolve({}) })).rejects.toThrow("denied");
   expect(listCases).not.toHaveBeenCalled();
   expect(getCaseDetail).not.toHaveBeenCalled();
+});
+
+test("the queue pages with real totals and keeps its filters", async () => {
+  countCases.mockResolvedValue(45);
+  listCases.mockResolvedValue({ cases: [{ id, type: "other", summary: "Card will not tap", status: "open", source: "owner", createdAt: new Date("2026-10-19T04:00:00Z") }], next: null });
+  const html = renderToStaticMarkup(await Queue({ searchParams: Promise.resolve({ status: "open", page: "2" }) }));
+  expect(listCases).toHaveBeenCalledWith({}, { status: "open", source: undefined, limit: 20, offset: 20 });
+  expect(html).toContain("Showing 21–40 of 45 cases");
+  expect(html).toContain('href="/admin/support?status=open&amp;page=3"');
+  expect(html).toContain("Page 2 of 3");
+  expect(html).toContain("Card will not tap");
+});
+
+test("the new-case form takes linked records from the URL and refuses ones that do not exist", async () => {
+  getOrderDetail.mockResolvedValue({ number: 1003, purchaser: { name: "Synthetic Buyer" } });
+  const html = renderToStaticMarkup(await NewCase({ searchParams: Promise.resolve({ orderId: id }) }));
+  expect(html).toContain(`name="orderId" value="${id}"`);
+  expect(html).toContain("Order 1003");
+  expect(html).toContain("Synthetic Buyer");
+  expect(html).toContain("1 of 4");
+  getOrderDetail.mockResolvedValue(null);
+  await expect(NewCase({ searchParams: Promise.resolve({ orderId: id }) })).rejects.toThrow();
+  await expect(NewCase({ searchParams: Promise.resolve({ orderId: "not-a-uuid" }) })).rejects.toThrow();
 });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { Circle, CircleCheck, LifeBuoy, Minus } from "lucide-react";
 import { z } from "zod";
 import { requireOwner } from "@/auth/access";
 import { env } from "@/config/env";
@@ -8,19 +9,13 @@ import { db } from "@/db";
 import { eligibleGrcItems } from "@/modules/cards/grc";
 import { cardUrl } from "@/modules/cards/token";
 import { getCardDetail } from "@/modules/inventory/queries";
+import { adminPage, cardTone, DangerZone, DetailList, inlineLink, LinkButton, NextStep, PageHeader, Panel, Section, Status } from "../../../ui";
 import { MatchPackageForm, NfcCheckForm, ProvisionForm, ReplaceForm, ReserveForm, RetireForm } from "../../forms";
 import { dateTime, KIND_LABEL, STATE_LABEL } from "../../format";
 
 export const instant = false;
 
-function Section({ title, children, tone }: { title: string; children: React.ReactNode; tone?: "next" | "danger" }) {
-  return (
-    <section className={`flex flex-col gap-3 ${tone === "next" ? "rounded-lg border border-primary p-5" : tone === "danger" ? "rounded-lg border border-destructive p-4" : "border-t pt-5"}`}>
-      <h2 className={`text-base font-semibold ${tone === "danger" ? "text-destructive" : ""}`}>{title}</h2>
-      {children}
-    </section>
-  );
-}
+const textLink = inlineLink;
 
 export default async function CardPage({ params }: PageProps<"/admin/inventory/cards/[cardId]">) {
   await requireOwner();
@@ -38,145 +33,148 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
   const reservedGrc = card.kind === "grc" && card.state === "reserved";
   const retirable = blank || card.state === "ready" || reservedGrc;
   const eligibleItems = canReserve ? await eligibleGrcItems(db) : [];
+  const provisioning = blank && Boolean(card.publicToken);
 
   return (
-    <main data-admin-section="inventory" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
-      <Link href="/admin/inventory" className="text-sm underline">
-        ← Inventory
-      </Link>
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{KIND_LABEL[card.kind ?? "none"]}</h1>
-        <p className="text-lg font-medium">{blank && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}</p>
-        <p className="break-all font-mono text-xs text-muted-foreground">Card ID: {card.id}</p>
-      </header>
-      <Link className="flex min-h-11 items-center underline" href={`/admin/support/new?${new URLSearchParams({ cardId: card.id, ...(card.orderContext?.orderId ? { orderId: card.orderContext.orderId } : {}), ...(card.owningAccountId ? { accountId: card.owningAccountId } : {}), ...(card.purchaser ? { purchaserId: card.purchaser.id } : {}) })}`}>Open support case</Link>
+    <main data-admin-section="inventory" className={adminPage}>
+      <PageHeader
+        back={{ href: "/admin/inventory", label: "Inventory" }}
+        title={KIND_LABEL[card.kind ?? "none"]}
+        description={
+          <span className="flex flex-col gap-1.5">
+            <Status tone={cardTone(card.state, provisioning)}>{provisioning ? "In provisioning" : STATE_LABEL[card.state]}</Status>
+            <span className="font-mono text-label break-all">Card ID: {card.id}</span>
+          </span>
+        }
+        actions={
+          <LinkButton icon={LifeBuoy} href={`/admin/support/new?${new URLSearchParams({ cardId: card.id, ...(card.orderContext?.orderId ? { orderId: card.orderContext.orderId } : {}), ...(card.owningAccountId ? { accountId: card.owningAccountId } : {}), ...(card.purchaser ? { purchaserId: card.purchaser.id } : {}) })}`}>Open support case</LinkButton>
+        }
+      />
 
       {card.kind === "dbc" ? (
-        <Section title="Provisioning progress">
-          <ol className="grid gap-2 text-sm sm:grid-cols-2">
-            {[
-              { label: "Card provisioned", complete: Boolean(card.publicToken) },
-              { label: "NFC written/tested", complete: Boolean(card.nfcVerifiedAt) },
-              { label: "Activation package matched", complete: Boolean(card.packageMatchedAt) },
-              { label: "Ready for sale", complete: ["ready", "reserved", "released"].includes(card.state) },
-            ].map((step) => (
-              <li key={step.label} className="flex items-start justify-between gap-3">
-                <span>{step.label}</span>
-                <span className={step.complete ? "font-medium" : "text-muted-foreground"}>
-                  {step.complete ? "Complete" : card.state === "retired" ? "Not applicable" : "Pending"}
-                </span>
-              </li>
-            ))}
-          </ol>
-          {card.state === "retired" ? <p className="text-sm text-muted-foreground">This card is retired and cannot be sold.</p> : null}
+        <Section title="Provisioning progress" description={card.state === "retired" ? "This card is retired and cannot be sold." : undefined}>
+          <Panel>
+            <ol className="divide-y">
+              {[
+                { label: "Card provisioned", complete: Boolean(card.publicToken) },
+                { label: "NFC written/tested", complete: Boolean(card.nfcVerifiedAt) },
+                { label: "Activation package matched", complete: Boolean(card.packageMatchedAt) },
+                { label: "Ready for sale", complete: ["ready", "reserved", "released"].includes(card.state) },
+              ].map((step) => {
+                const Icon = step.complete ? CircleCheck : card.state === "retired" ? Minus : Circle;
+                return (
+                  <li key={step.label} className="flex items-center gap-3 px-4 sm:px-5 py-3 text-body">
+                    <Icon aria-hidden className={`size-4 shrink-0 ${step.complete ? "text-emerald-600" : "text-fg-faint"}`} />
+                    <span className="min-w-0 flex-1">{step.label}</span>
+                    <span className={step.complete ? "font-medium" : "text-fg-secondary"}>{step.complete ? "Complete" : card.state === "retired" ? "Not applicable" : "Pending"}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Panel>
         </Section>
       ) : null}
 
       <ProvisionForm key={card.id} cardId={card.id} available={canProvision} />
 
       {isDbc && blank && dbcUri && !card.nfcVerifiedAt ? (
-        <Section title="Next step" tone="next">
-          <h3 className="font-medium">Physical NFC check</h3>
-          <div className="text-sm">
+        <NextStep title="Next step">
+          <h3 className="text-body font-medium">Physical NFC check</h3>
+          <div className="text-body">
             <p className="font-medium">Waiting for physical card</p>
-            <p>You can leave this card here and continue when the NFC card is available.</p>
+            <p className="text-fg-secondary">You can leave this card here and continue when the NFC card is available.</p>
           </div>
-          <NfcCheckForm cardId={card.id} expectedUri={dbcUri} />
-        </Section>
+          <div className="max-w-xl"><NfcCheckForm cardId={card.id} expectedUri={dbcUri} /></div>
+        </NextStep>
       ) : null}
 
       {isDbc && blank && card.nfcVerifiedAt ? (
-        <Section title="Next step" tone="next">
-          <h3 className="font-medium">Match the activation package</h3>
-          <MatchPackageForm cardId={card.id} />
-        </Section>
+        <NextStep title="Next step">
+          <h3 className="text-body font-medium">Match the activation package</h3>
+          <div className="max-w-xl"><MatchPackageForm cardId={card.id} /></div>
+        </NextStep>
       ) : null}
 
       {reservedGrc && card.orderContext?.reviewUrl ? (
-        <Section title="Next step" tone="next">
-          <h3 className="font-medium">Physical NFC check</h3>
-          <NfcCheckForm cardId={card.id} expectedUri={card.orderContext.reviewUrl} />
-        </Section>
+        <NextStep title="Next step">
+          <h3 className="text-body font-medium">Physical NFC check</h3>
+          <div className="max-w-xl"><NfcCheckForm cardId={card.id} expectedUri={card.orderContext.reviewUrl} /></div>
+        </NextStep>
       ) : null}
 
       {canReserve ? (
-        <Section title="Next step" tone="next">
-          <h3 className="font-medium">Reserve for an order</h3>
+        <NextStep title="Next step">
+          <h3 className="text-body font-medium">Reserve for an order</h3>
           {eligibleItems.length > 0 ? (
-            <ReserveForm cardId={card.id} items={eligibleItems} />
+            <div className="max-w-xl"><ReserveForm cardId={card.id} items={eligibleItems} /></div>
           ) : (
-            <p className="text-sm text-muted-foreground">No open Google Review Card order item needs a card right now.</p>
+            <p className="text-meta text-fg-secondary">No open Google Review Card order item needs a card right now.</p>
           )}
-        </Section>
+        </NextStep>
       ) : null}
 
-      <Section title="Card details">
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
-          <dt className="text-muted-foreground">Added</dt>
-          <dd>{dateTime(card.createdAt)}</dd>
-          {card.purchaser ? <><dt className="text-muted-foreground">Purchaser</dt><dd><Link className="underline" href={`/admin/customers/purchasers/${card.purchaser.id}`}>{card.purchaser.name}</Link></dd></> : null}
-          {card.owningAccount ? <><dt className="text-muted-foreground">Owning Account</dt><dd className="break-all"><Link className="underline" href={`/admin/customers/accounts/${card.owningAccountId}`}>{card.owningAccount.email}</Link></dd></> : null}
-          {dbcUri ? (
-            <>
-              <dt className="text-muted-foreground">Card URL</dt>
-              <dd className="break-all font-mono text-xs">{dbcUri}</dd>
-            </>
-          ) : null}
-          {card.orderContext ? (
-            <>
-              <dt className="text-muted-foreground">Order</dt>
-              <dd>
-                {card.orderContext.orderId ? <Link className="underline" href={`/admin/orders/${card.orderContext.orderId}`}>{card.orderContext.orderNumber}</Link> : card.orderContext.orderNumber}
-                {card.orderContext.label ? ` · ${card.orderContext.label}` : ""}
-              </dd>
-              <dt className="text-muted-foreground">Review URL</dt>
-              <dd className="break-all font-mono text-xs">{card.orderContext.reviewUrl}</dd>
-            </>
-          ) : null}
-          {isDbc || reservedGrc ? (
-            <>
-              <dt className="text-muted-foreground">NFC check</dt>
-              <dd>{card.nfcVerifiedAt ? dateTime(card.nfcVerifiedAt) : "Not done"}</dd>
-            </>
-          ) : null}
-          {isDbc ? (
-            <>
-              <dt className="text-muted-foreground">Package match</dt>
-              <dd>{card.packageMatchedAt ? dateTime(card.packageMatchedAt) : "Not done"}</dd>
-              <dt className="text-muted-foreground">Credential</dt>
-              <dd>
-                {card.usableCredentialId ? "One unused credential" : "No usable credential"} · {card.credentialCount} issued
-              </dd>
-            </>
-          ) : null}
-        </dl>
-      </Section>
+      <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-8">
+        <Section title="Card details">
+          <Panel padded className="flex flex-col gap-5">
+            <DetailList
+              rows={[
+                ["Added", dateTime(card.createdAt)],
+                dbcUri ? ["Card URL", <span key="url" className="font-mono text-meta break-all">{dbcUri}</span>] : null,
+              ]}
+            />
+            {card.purchaser || card.owningAccount || card.orderContext ? (
+              <div className="border-t pt-5">
+                <DetailList
+                  rows={[
+                    card.purchaser ? ["Purchaser", <Link key="p" className={textLink} href={`/admin/customers/purchasers/${card.purchaser.id}`}>{card.purchaser.name}</Link>] : null,
+                    card.owningAccount ? ["Owning Account", <Link key="a" className={textLink} href={`/admin/customers/accounts/${card.owningAccountId}`}>{card.owningAccount.email}</Link>] : null,
+                    card.orderContext ? ["Order", <span key="o">{card.orderContext.orderId ? <Link className={textLink} href={`/admin/orders/${card.orderContext.orderId}`}>{card.orderContext.orderNumber}</Link> : card.orderContext.orderNumber}{card.orderContext.label ? ` · ${card.orderContext.label}` : ""}</span>] : null,
+                    card.orderContext ? ["Review URL", <span key="r" className="font-mono text-meta break-all">{card.orderContext.reviewUrl}</span>] : null,
+                  ]}
+                />
+              </div>
+            ) : null}
+            {isDbc || reservedGrc ? (
+              <div className="border-t pt-5">
+                <DetailList
+                  rows={[
+                    ["NFC check", card.nfcVerifiedAt ? dateTime(card.nfcVerifiedAt) : "Not done"],
+                    isDbc ? ["Package match", card.packageMatchedAt ? dateTime(card.packageMatchedAt) : "Not done"] : null,
+                    isDbc ? ["Credential", `${card.usableCredentialId ? "One unused credential" : "No usable credential"} · ${card.credentialCount} issued`] : null,
+                  ]}
+                />
+              </div>
+            ) : null}
+          </Panel>
+        </Section>
 
-      <Section title="Recent activity">
-        <ul className="flex flex-col gap-2 text-sm">
-          {card.activity.map((event, index) => (
-            <li key={index} className="flex flex-col">
-              <span>
-                {event.type.replaceAll("_", " ")} <span className="text-muted-foreground">· {dateTime(event.createdAt)}</span>
-              </span>
-              {event.note ? <span className="break-words text-xs text-muted-foreground">{event.note}</span> : null}
-            </li>
-          ))}
-          {card.activity.length === 0 ? <li className="text-muted-foreground">Nothing recorded yet.</li> : null}
-        </ul>
-      </Section>
+        <Section title="Recent activity">
+          <Panel>
+            <ul className="divide-y">
+              {card.activity.map((event, index) => (
+                <li key={index} className="flex flex-col gap-0.5 px-4 sm:px-5 py-3 text-body">
+                  <span className="font-medium">{event.type.replaceAll("_", " ")}</span>
+                  <span className="text-meta text-fg-secondary tabular-nums">{dateTime(event.createdAt)}</span>
+                  {event.note ? <span className="text-meta break-words text-fg-secondary">{event.note}</span> : null}
+                </li>
+              ))}
+              {card.activity.length === 0 ? <li className="px-4 sm:px-5 py-4 text-meta text-fg-secondary">Nothing recorded yet.</li> : null}
+            </ul>
+          </Panel>
+        </Section>
+      </div>
+
       {isDbc && card.usableCredentialId && (blank || card.state === "ready") ? (
         <Section title="Credential recovery">
-          <ReplaceForm cardId={card.id} credentialId={card.usableCredentialId} />
+          <Panel padded className="max-w-xl"><ReplaceForm cardId={card.id} credentialId={card.usableCredentialId} /></Panel>
         </Section>
       ) : null}
 
       {retirable ? (
-        <Section title="Danger zone" tone="danger">
-          <RetireForm cardId={card.id} />
-        </Section>
+        <DangerZone>
+          <div className="max-w-xl"><RetireForm cardId={card.id} /></div>
+        </DangerZone>
       ) : null}
-
     </main>
   );
 }

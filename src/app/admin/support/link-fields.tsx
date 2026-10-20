@@ -1,10 +1,10 @@
 import type { caseLinkOptions } from "@/modules/support/queries";
-import { inputClass } from "@/components/ui/input";
+import { fieldLabel, Select } from "../ui";
 
 export type LinkOptions = Awaited<ReturnType<typeof caseLinkOptions>>;
 
 export function LinkSelect({ name, label, choices, value, required = false }: { name: string; label: string; choices: { id: string; label: string }[]; value?: string; required?: boolean }) {
-  return <label className="flex flex-col gap-1 text-sm">{label}<select name={name} className={inputClass} defaultValue={value ?? ""} required={required}><option value="">{required ? "Choose a record" : "None"}</option>{choices.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}</option>)}</select></label>;
+  return <label className={fieldLabel}>{label}<Select name={name} defaultValue={value ?? ""} required={required}><option value="">{required ? "Choose a record" : "None"}</option>{choices.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}</option>)}</Select></label>;
 }
 
 export function linkChoices(options: LinkOptions) {

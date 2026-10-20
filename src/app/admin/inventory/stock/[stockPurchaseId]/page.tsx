@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireOwner } from "@/auth/access";
 import { db } from "@/db";
 import { getStockPurchase } from "@/modules/inventory/stock-purchases";
+import { adminPage, cardTone, label, PageHeader, Panel, Section, Status } from "../../../ui";
 import { StockPurchaseForm } from "../../forms";
 
 export const instant = false;
@@ -15,9 +15,17 @@ export default async function StockPurchasePage({ params }: PageProps<"/admin/in
   if (!z.uuid().safeParse(stockPurchaseId).success) notFound();
   const purchase = await getStockPurchase(db, stockPurchaseId);
   if (!purchase) notFound();
-  return <main data-admin-section="inventory" className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
-    <Link className="underline" href="/admin/inventory?view=stock">Stock Purchases</Link><h1 className="text-2xl font-semibold">Stock purchase</h1>
-    <p>{purchase.quantity} cards</p><ul className="flex flex-wrap gap-4">{Object.entries(purchase.states).map(([state, count]) => <li key={state}>{state}: {count}</li>)}</ul>
-    <StockPurchaseForm purchase={purchase} />
-  </main>;
+  return (
+    <main data-admin-section="inventory" className={adminPage}>
+      <PageHeader back={{ href: "/admin/inventory?view=stock", label: "Stock purchases" }} title="Stock purchase" description={`${purchase.quantity} cards`} />
+      <Section title="Card states" description="Where the cards from this delivery are now.">
+        <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          {Object.entries(purchase.states).map(([state, count]) => <li key={state}><Status tone={cardTone(state)}>{label(state)}: {count}</Status></li>)}
+        </ul>
+      </Section>
+      <Section title="Details">
+        <Panel padded className="max-w-xl"><StockPurchaseForm purchase={purchase} /></Panel>
+      </Section>
+    </main>
+  );
 }

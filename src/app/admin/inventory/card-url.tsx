@@ -17,12 +17,12 @@ export function CardUrl({ url }: { url: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">
-      <p className="break-all font-mono text-sm select-all">{url}</p>
-      <Button type="button" variant="outline" className="h-10 self-start" onClick={copy}>
+    <div className="flex flex-col gap-2 rounded-lg border bg-canvas p-3">
+      <p className="font-mono text-meta break-all select-all">{url}</p>
+      <Button type="button" variant="outline" size="touch" className="self-start md:h-9" onClick={copy}>
         Copy URL
       </Button>
-      <p role="status" className="text-sm text-muted-foreground">{message}</p>
+      <p role="status" className="text-meta text-fg-secondary">{message}</p>
     </div>
   );
 }

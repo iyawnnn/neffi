@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useLayoutEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { useActionState, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Ban, CircleAlert, CircleCheck, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { ConfirmDialog, type Confirmation } from "../confirm-dialog";
+import { checkLabel, controlClass, fieldLabel, Input, NextStep, Select, TextLink, Textarea } from "../ui";
 import { CardUrl } from "./card-url";
 import {
   matchPackageAction,
@@ -16,9 +19,9 @@ import {
   type ActionState,
 } from "./actions";
 
-const field = "h-11 w-full rounded-lg border border-input bg-background px-3 text-base";
-const label = "flex flex-col gap-1 text-sm font-medium";
-const check = "flex items-start gap-2 text-sm";
+const field = controlClass;
+const label = fieldLabel;
+const check = checkLabel;
 
 type Action = (previous: ActionState | undefined, data: FormData) => Promise<ActionState>;
 
@@ -36,20 +39,22 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
   }
 
   return (
-    <div role="status" className="flex flex-col gap-4 rounded-lg border-2 border-primary bg-secondary p-5 text-sm">
-      <h2 className="text-xl font-semibold">Activation code — shown once</h2>
-      <p className="break-all font-mono text-2xl font-semibold tracking-wider select-all">{reveal.code}</p>
-      <Button type="button" className="min-h-11 self-start" onClick={copy}>Copy activation code</Button>
-      <p role="status">{message}</p>
-      {reveal.url ? <p className="break-all font-mono text-xs select-all">{reveal.url}</p> : null}
-      <p>
+    <div role="status" className="flex flex-col gap-4 rounded-panel border border-action/50 bg-background p-4 sm:p-5 text-body">
+      <h2 className="text-section">Activation code — shown once</h2>
+      <p className="rounded-lg border bg-canvas px-4 py-3 font-mono text-[1.5rem] leading-8 font-semibold tracking-wider break-all select-all">{reveal.code}</p>
+      <Button type="button" variant="action" size="touch" className="self-start md:h-9" onClick={copy}>Copy activation code</Button>
+      <p role="status" className="text-meta text-fg-secondary">{message}</p>
+      {reveal.url ? <p className="font-mono text-label text-fg-secondary break-all select-all">{reveal.url}</p> : null}
+      <p className="text-meta text-fg-secondary">
         {reveal.instructions ?? "Save this code to the card's package now. It cannot be shown again. If it is lost before release, use Credential recovery."}
       </p>
     </div>
   );
 }
 
-type ActionFormProps = { action: Action; submit: string; variant?: "default" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean };
+// `primary` is the Vermilion main action of a screen; `default` is the quiet secondary; `destructive` is red.
+type ActionFormProps = { action: Action; submit: string; variant?: "default" | "primary" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean; confirm?: Confirmation; className?: string };
+const buttonVariant = { default: "outline", outline: "outline", primary: "action", destructive: "destructive" } as const;
 
 export function ActionForm(props: ActionFormProps) {
   const [visit, setVisit] = useState(0);
@@ -58,37 +63,64 @@ export function ActionForm(props: ActionFormProps) {
   return <ActionFormContent key={visit} {...props} />;
 }
 
-function ActionFormContent({ action, submit, variant = "default", children, available = true, provisioning = false }: ActionFormProps) {
+function ActionFormContent({ action, submit, variant = "default", children, available = true, provisioning = false, confirm, className }: ActionFormProps) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  // Holds the form while its confirmation is open, so confirming submits exactly the form that asked.
+  const [asking, setAsking] = useState<HTMLFormElement | null>(null);
+  const confirmedSubmit = useRef<HTMLButtonElement>(null);
+  const accepted = useRef(false);
   if (!available && !state?.reveal) return null;
 
   const form = (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} onSubmit={confirm ? (event) => {
+      if (accepted.current && (event.nativeEvent as SubmitEvent).submitter === confirmedSubmit.current) return;
+      event.preventDefault();
+      if (!pending && event.currentTarget.reportValidity()) setAsking(event.currentTarget);
+    } : undefined} className={cn("flex flex-col gap-4", className)}>
       {available && !(provisioning && state?.reveal) ? (
         <>
           {children}
-          <Button type="submit" variant={variant} size="touch" className="w-full" disabled={pending}>
+          {confirm ? <button ref={confirmedSubmit} type="submit" hidden name={confirm.field} value="on" disabled={pending} /> : null}
+          <Button
+            type={confirm ? "button" : "submit"}
+            onClick={confirm ? (event) => { const form = event.currentTarget.form; if (form?.reportValidity()) setAsking(form); } : undefined}
+            variant={buttonVariant[variant]}
+            size="touch"
+            className={cn("w-full text-body sm:w-auto sm:self-start md:h-9", variant === "primary" && "font-semibold")}
+            disabled={pending}
+          >
+            {pending ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
             {pending ? "Working…" : submit}
           </Button>
+          {confirm ? <ConfirmDialog open={asking !== null} onOpenChange={(open) => { if (!open) setAsking(null); }} confirmation={{ confirmLabel: submit, ...confirm }} destructive={variant === "destructive"} pending={pending} onConfirm={() => {
+            accepted.current = true;
+            try { if (confirmedSubmit.current) asking?.requestSubmit(confirmedSubmit.current); }
+            finally { accepted.current = false; setAsking(null); }
+          }} /> : null}
         </>
       ) : null}
       {state?.error ? (
-        <p role="alert" className="rounded-lg bg-muted px-3 py-2 text-sm">
+        <p role="alert" className="flex w-full items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-meta text-destructive">
+          <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           {state.error}
         </p>
       ) : null}
-      {state?.ok ? <p role="status" className="text-sm text-muted-foreground">{state.ok}</p> : null}
-      {state?.href ? <Link className="flex min-h-11 items-center underline" href={state.href}>View stock purchase</Link> : null}
+      {state?.ok ? (
+        <p role="status" className="flex w-full items-start gap-2 rounded-lg border border-emerald-600/25 bg-emerald-600/5 px-3 py-2.5 text-meta text-foreground">
+          <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+          {state.ok}
+        </p>
+      ) : null}
+      {state?.href ? <TextLink href={state.href}>View stock purchase</TextLink> : null}
       {state?.reveal ? <Reveal reveal={state.reveal} /> : null}
     </form>
   );
   if (!provisioning || state?.reveal) return form;
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-primary p-5">
-      <h2 className="text-base font-semibold">Next step</h2>
-      <h3 className="font-medium">Provision this card</h3>
+    <NextStep title="Next step">
+      <h3 className="text-body font-medium">Provision this card</h3>
       {form}
-    </section>
+    </NextStep>
   );
 }
 
@@ -101,34 +133,34 @@ function defaultReceivedDate(input: HTMLInputElement | null) {
 
 export function StockForm() {
   return (
-    <ActionForm action={receiveStockAction} submit="Receive stock">
+    <ActionForm action={receiveStockAction} submit="Receive stock" variant="primary">
       <label className={label}>
         Received on
         <input name="receivedOn" type="date" ref={defaultReceivedDate} required className={field} />
       </label>
       <label className={label}>
         Quantity
-        <input name="quantity" type="number" inputMode="numeric" min={1} max={500} required className={field} />
+        <Input name="quantity" type="number" inputMode="numeric" min={1} max={500} required />
       </label>
       <label className={label}>
         Intended product (optional)
-        <select name="intendedKind" defaultValue="" className={field}>
+        <Select name="intendedKind" defaultValue="">
           <option value="">Decide later</option>
           <option value="dbc">Digital Business Card</option>
           <option value="grc">Google Review Card</option>
-        </select>
+        </Select>
       </label>
       <label className={label}>
         Supplier (optional)
-        <input name="supplier" maxLength={100} className={field} />
+        <Input name="supplier" maxLength={100} />
       </label>
       <label className={label}>
         Reference (optional)
-        <input name="reference" maxLength={100} className={field} />
+        <Input name="reference" maxLength={100} />
       </label>
       <label className={label}>
         Notes (optional)
-        <textarea name="notes" maxLength={500} rows={3} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base" />
+        <Textarea name="notes" maxLength={500} rows={3} />
       </label>
       <StockCosts />
     </ActionForm>
@@ -136,52 +168,52 @@ export function StockForm() {
 }
 
 function StockCosts({ purchaseCost, inboundShippingCost }: { purchaseCost?: number | null; inboundShippingCost?: number | null }) {
-  return <>{[["purchaseCost", "Purchase cost", purchaseCost], ["inboundShippingCost", "Inbound shipping cost", inboundShippingCost]].map(([name, title, value]) => <label key={String(name)} className={label}>{title} (optional, pesos)<input name={String(name)} inputMode="decimal" defaultValue={typeof value === "number" ? (value / 100).toFixed(2) : ""} className={field} /></label>)}</>;
+  return <>{[["purchaseCost", "Purchase cost", purchaseCost], ["inboundShippingCost", "Inbound shipping cost", inboundShippingCost]].map(([name, title, value]) => <label key={String(name)} className={label}>{title} (optional, pesos)<Input name={String(name)} inputMode="decimal" defaultValue={typeof value === "number" ? (value / 100).toFixed(2) : ""} /></label>)}</>;
 }
 
 export function StockPurchaseForm({ purchase }: { purchase: { id: string; receivedOn: string; supplier: string | null; reference: string | null; notes: string | null; purchaseCost: number | null; inboundShippingCost: number | null } }) {
   return <ActionForm action={updateStockPurchaseAction} submit="Save stock purchase">
     <input type="hidden" name="stockPurchaseId" value={purchase.id} />
-    <label className={label}>Received on<input name="receivedOn" type="date" defaultValue={purchase.receivedOn} required className={field} /></label>
-    <label className={label}>Supplier<input name="supplier" maxLength={100} defaultValue={purchase.supplier ?? ""} className={field} /></label>
-    <label className={label}>Reference<input name="reference" maxLength={100} defaultValue={purchase.reference ?? ""} className={field} /></label>
-    <label className={label}>Notes<textarea name="notes" maxLength={500} defaultValue={purchase.notes ?? ""} className="rounded-lg border p-3" /></label>
+    <label className={label}>Received on<Input name="receivedOn" type="date" defaultValue={purchase.receivedOn} required /></label>
+    <label className={label}>Supplier<Input name="supplier" maxLength={100} defaultValue={purchase.supplier ?? ""} /></label>
+    <label className={label}>Reference<Input name="reference" maxLength={100} defaultValue={purchase.reference ?? ""} /></label>
+    <label className={label}>Notes<Textarea name="notes" maxLength={500} defaultValue={purchase.notes ?? ""} /></label>
     <StockCosts {...purchase} />
   </ActionForm>;
 }
 
 export function ProvisionForm({ cardId, available }: { cardId: string; available: boolean }) {
   return (
-    <ActionForm action={provisionDbcAction} submit="Provision Digital Business Card" available={available} provisioning>
+    <ActionForm action={provisionDbcAction} submit="Provision Digital Business Card" variant="primary" available={available} provisioning confirm={{ title: "Provision this card?", description: "This generates the permanent card URL and its activation code. The code is shown once, so have the package ready to record it.", confirmLabel: "Provision card" }}>
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-sm text-muted-foreground">Generates the permanent card URL and its activation code. The code is shown once.</p>
+      <p className="text-meta text-fg-secondary">Generates the permanent card URL and its activation code. The code is shown once.</p>
     </ActionForm>
   );
 }
 
 export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expectedUri: string }) {
   return (
-    <ActionForm action={recordNfcCheckAction} submit="Confirm NFC check">
+    <ActionForm action={recordNfcCheckAction} submit="Confirm NFC check" variant="primary">
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-sm">Complete this only when you have the physical card.</p>
+      <p className="text-body">Complete this only when you have the physical card.</p>
       <CardUrl url={expectedUri} />
-      <ol className="list-decimal space-y-1 pl-5 text-sm">
+      <ol className="list-decimal space-y-1 pl-5 text-body">
         <li>Write this URL to the card using NFC Tools.</li>
         <li>Scan the card again using NFC Tools → Read.</li>
         <li>Paste the URL you read from the card below.</li>
       </ol>
       <label className={label}>
         URL read from the card
-        <input name="readBackUri" required autoComplete="off" spellCheck={false} autoCapitalize="off" className={field} />
+        <Input name="readBackUri" required autoComplete="off" spellCheck={false} autoCapitalize="off" />
       </label>
       <label className={check}>
-        <input type="checkbox" name="readBackMatched" required className="mt-1" />The URL on the card matches the Card URL above.
+        <input type="checkbox" name="readBackMatched" required />The URL on the card matches the Card URL above.
       </label>
       <label className={check}>
-        <input type="checkbox" name="phoneOpenedUri" required className="mt-1" />Tapping the card on a phone opens the correct URL.
+        <input type="checkbox" name="phoneOpenedUri" required />Tapping the card on a phone opens the correct URL.
       </label>
       <label className={check}>
-        <input type="checkbox" name="tagLeftWritable" required className="mt-1" />The card is still writable.
+        <input type="checkbox" name="tagLeftWritable" required />The card is still writable.
       </label>
     </ActionForm>
   );
@@ -189,32 +221,29 @@ export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expected
 
 export function MatchPackageForm({ cardId }: { cardId: string }) {
   return (
-    <ActionForm action={matchPackageAction} submit="Match package">
+    <ActionForm action={matchPackageAction} submit="Match package" variant="primary">
       <input type="hidden" name="cardId" value={cardId} />
       <label className={label}>
         Code from the package
-        <input name="activationCode" required autoComplete="off" spellCheck={false} autoCapitalize="off" className={`${field} font-mono`} />
+        <Input name="activationCode" required autoComplete="off" spellCheck={false} autoCapitalize="off" className="font-mono" />
       </label>
-      <p className="text-sm text-muted-foreground">Type the private code printed in the package that goes with this card.</p>
+      <p className="text-meta text-fg-secondary">Type the private code printed in the package that goes with this card.</p>
     </ActionForm>
   );
 }
 
 export function ReplaceForm({ cardId, credentialId }: { cardId: string; credentialId: string }) {
   return (
-    <ActionForm action={replaceCredentialAction} submit="Replace credential" variant="outline">
+    <ActionForm action={replaceCredentialAction} submit="Replace credential" variant="outline" confirm={{ field: "confirm", icon: <KeyRound className="size-5" />, title: "Replace this card's credential?", description: "The current activation code is revoked straight away and a new one is issued. The package has to be matched again before the card can be released." }}>
       <input type="hidden" name="cardId" value={cardId} />
       <input type="hidden" name="credentialId" value={credentialId} />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-meta text-fg-secondary">
         Only for a lost or mismatched unused code before the card is released. This is a recovery action,
         not the next provisioning step. The old code stops working and the package must be matched again.
       </p>
       <label className={label}>
         Reason
-        <input name="reason" required maxLength={200} className={field} />
-      </label>
-      <label className={check}>
-        <input type="checkbox" name="confirm" required className="mt-1" />Revoke the current code and issue a new one.
+        <Input name="reason" required maxLength={200} />
       </label>
     </ActionForm>
   );
@@ -222,11 +251,11 @@ export function ReplaceForm({ cardId, credentialId }: { cardId: string; credenti
 
 export function ReserveForm({ cardId, items }: { cardId: string; items: { orderItemId: string; orderNumber: number; label: string | null; reviewUrl: string | null; remaining: number }[] }) {
   return (
-    <ActionForm action={reserveGrcAction} submit="Reserve Google Review Card">
+    <ActionForm action={reserveGrcAction} submit="Reserve Google Review Card" variant="primary">
       <input type="hidden" name="cardId" value={cardId} />
       <label className={label}>
         Order item
-        <select name="orderItemId" required defaultValue="" className={field}>
+        <Select name="orderItemId" required defaultValue="">
           <option value="" disabled>
             Choose an order item
           </option>
@@ -236,7 +265,7 @@ export function ReserveForm({ cardId, items }: { cardId: string; items: { orderI
               {item.label ? ` · ${item.label}` : ""} · {item.remaining} to go
             </option>
           ))}
-        </select>
+        </Select>
       </label>
     </ActionForm>
   );
@@ -244,15 +273,12 @@ export function ReserveForm({ cardId, items }: { cardId: string; items: { orderI
 
 export function RetireForm({ cardId }: { cardId: string }) {
   return (
-    <ActionForm action={retireCardAction} submit="Retire card" variant="destructive">
+    <ActionForm action={retireCardAction} submit="Retire card" variant="destructive" confirm={{ field: "confirm", icon: <Ban className="size-5" />, title: "Retire this card permanently?", description: "A retired card can no longer be sold, reserved or released, and it cannot be brought back. Use this only for a card that failed or must not be sold." }}>
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-sm text-muted-foreground">For a card that failed or must not be sold. This can&apos;t be undone.</p>
+      <p className="text-meta text-fg-secondary">For a card that failed or must not be sold. This can&apos;t be undone.</p>
       <label className={label}>
         Reason
-        <input name="reason" required maxLength={200} className={field} />
-      </label>
-      <label className={check}>
-        <input type="checkbox" name="confirm" required className="mt-1" />Retire this card permanently.
+        <Input name="reason" required maxLength={200} />
       </label>
     </ActionForm>
   );

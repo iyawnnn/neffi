@@ -17,7 +17,7 @@ test("costs stay on their source; quantity and states derive only from Cards", (
   const [card] = await tx.select().from(cards).where(eq(cards.stockPurchaseId, stockPurchaseId));
   await tx.update(cards).set({ state: "retired" }).where(eq(cards.id, card.id));
   expect(await getStockPurchase(tx, stockPurchaseId)).toMatchObject({ quantity: 3, purchaseCost: 15000, inboundShippingCost: null, supplier: "Updated", states: { blank: 2, retired: 1 } });
-  expect(await listStockPurchases(tx)).toMatchObject([{ id: stockPurchaseId, quantity: 3 }]);
+  expect(await listStockPurchases(tx, { limit: 20 })).toMatchObject([{ id: stockPurchaseId, quantity: 3 }]);
   expect(await getStockPurchase(tx, crypto.randomUUID())).toBeNull();
   expect((await tx.select().from(stockPurchases))).toHaveLength(1);
 }));

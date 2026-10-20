@@ -22,8 +22,17 @@ export async function cardStateCounts(db: Db) {
 // survive; a JS Date would truncate them and skip rows that share a millisecond.
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-// `before` comes from the URL, so anything that is not a cursor this function issued is ignored.
-export async function listCards(db: Db, { before, limit, kind, state }: { before?: string; limit: number; kind?: "dbc" | "grc" | "none"; state?: typeof schema.cards.$inferSelect.state }) {
+type CardFilters = { kind?: "dbc" | "grc" | "none"; state?: typeof schema.cards.$inferSelect.state };
+const cardFilters = ({ kind, state }: CardFilters) => [kind === "none" ? isNull(schema.cards.kind) : kind ? eq(schema.cards.kind, kind) : undefined, state ? eq(schema.cards.state, state) : undefined];
+
+export async function countCards(db: Db, filters: CardFilters = {}) {
+  const [row] = await db.select({ total: count() }).from(schema.cards).where(and(...cardFilters(filters)));
+  return row.total;
+}
+
+// `before` comes from the URL, so anything that is not a cursor this function issued is ignored. `offset` selects a
+// numbered page instead of continuing from the cursor.
+export async function listCards(db: Db, { before, offset = 0, limit, ...filters }: CardFilters & { before?: string; offset?: number; limit: number }) {
   const cursor = before ? CURSOR.exec(before) : null;
   const [cursorAt, cursorId] = cursor ? [cursor[1], cursor[4]] : [];
   const rows = await db
@@ -40,11 +49,11 @@ export async function listCards(db: Db, { before, limit, kind, state }: { before
     .from(schema.cards)
     .where(and(
       cursor ? sql`(${schema.cards.createdAt}, ${schema.cards.id}) < (${cursorAt}::timestamptz, ${cursorId}::uuid)` : undefined,
-      kind === "none" ? isNull(schema.cards.kind) : kind ? eq(schema.cards.kind, kind) : undefined,
-      state ? eq(schema.cards.state, state) : undefined,
+      ...cardFilters(filters),
     ))
     .orderBy(desc(schema.cards.createdAt), desc(schema.cards.id))
-    .limit(limit + 1);
+    .limit(limit + 1)
+    .offset(offset);
   const page = rows.slice(0, limit);
   return {
     cards: page.map((row) => ({

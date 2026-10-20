@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, eq, ilike, sql } from "drizzle-orm";
+import { asc, count, eq, ilike, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { escapeLike } from "../orders/purchasers";
@@ -10,8 +10,15 @@ export async function accountDisplayName(db: Db, id: string): Promise<string | n
   return row?.name.trim() || null;
 }
 
-export function listAccounts(db: Db, query = "") {
-  return db.select({ id: schema.accounts.id, email: schema.accounts.email, role: schema.accounts.role, createdAt: schema.accounts.createdAt }).from(schema.accounts).where(query ? ilike(schema.accounts.email, `%${escapeLike(query)}%`) : undefined).orderBy(asc(schema.accounts.email)).limit(50);
+const accountMatch = (query: string) => (query ? ilike(schema.accounts.email, `%${escapeLike(query)}%`) : undefined);
+
+export async function countAccounts(db: Db, query = "") {
+  const [row] = await db.select({ total: count() }).from(schema.accounts).where(accountMatch(query));
+  return row.total;
+}
+
+export function listAccounts(db: Db, query = "", { offset = 0, limit = 50 }: { offset?: number; limit?: number } = {}) {
+  return db.select({ id: schema.accounts.id, email: schema.accounts.email, role: schema.accounts.role, createdAt: schema.accounts.createdAt }).from(schema.accounts).where(accountMatch(query)).orderBy(asc(schema.accounts.email), asc(schema.accounts.id)).limit(limit).offset(offset);
 }
 
 export async function accountDirectoryDetail(db: Db, id: string) {

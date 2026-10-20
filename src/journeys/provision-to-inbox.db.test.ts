@@ -20,7 +20,7 @@ import { getOrderDetail } from "@/modules/orders/queries";
 import { recordPayment } from "@/modules/payments/record";
 import { createProfileFromStarter, publishProfile } from "@/modules/profiles/profiles";
 import { loadVersionedPublicSceneView } from "@/modules/profiles/view";
-import { search } from "@/modules/search";
+import { searchRecords } from "@/modules/search";
 
 test("real provisioning output flows through sale, gift/bulk claims, publish, public Form and private Inbox", async () => {
   const db = await createTestDb();
@@ -105,8 +105,9 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     const expenses = await expenseReport(db, "2026-10");
     expect(expenses.total).toBe(16_000);
     expect(expenses.rows.filter(row => row.source === "stock").map(row => row.amount)).toEqual([16_000]);
-    expect((await search(db, String(detail.number))).orders.map(row => row.id)).toContain(orderId);
-    expect((await search(db, provisioned[0].publicToken)).cards.map(row => row.id)).toContain(provisioned[0].cardId);
+    const found = (query: string) => searchRecords(db, query, { limit: 20 }).then(result => result.hits);
+    expect((await found(String(detail.number))).filter(hit => hit.type === "order").map(hit => hit.id)).toContain(orderId);
+    expect((await found(provisioned[0].publicToken)).filter(hit => hit.type === "card").map(hit => hit.id)).toContain(provisioned[0].cardId);
     const types = (await db.select({ type: s.activityEvents.type }).from(s.activityEvents)).map(row => row.type);
     for (const [type, count] of [["card_provisioned", 2], ["payment_recorded", 2], ["card_released", 2], ["order_handed_over", 1], ["card_claimed", 2]] as const) expect(types.filter(value => value === type)).toHaveLength(count);
   } finally { await db.$client.close(); }

@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { count, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { OrderError } from "../orders/errors";
@@ -27,8 +27,13 @@ const projection = {
   states: sql<Record<string, number>>`COALESCE((SELECT jsonb_object_agg(s.state, s.n) FROM (SELECT c.state, count(*)::int AS n FROM cards c WHERE c.stock_purchase_id = stock_purchases.id GROUP BY c.state) s), '{}'::jsonb)`,
 };
 
-export async function listStockPurchases(db: Db) {
-  return db.select(projection).from(schema.stockPurchases).orderBy(desc(schema.stockPurchases.receivedOn), desc(schema.stockPurchases.id));
+export async function countStockPurchases(db: Db) {
+  const [row] = await db.select({ total: count() }).from(schema.stockPurchases);
+  return row.total;
+}
+
+export async function listStockPurchases(db: Db, { offset = 0, limit }: { offset?: number; limit: number }) {
+  return db.select(projection).from(schema.stockPurchases).orderBy(desc(schema.stockPurchases.receivedOn), desc(schema.stockPurchases.id)).limit(limit).offset(offset);
 }
 
 export async function getStockPurchase(db: Db, id: string) {

@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -11,6 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    exclude: [...configDefaults.exclude, "**/.worktrees/**", "**/.superpowers/**", "**/.impeccable/**", "**/.pnpm-store/**"],
     // Every database test file also holds its own in-process PGlite. Left uncapped, a worker per core boots them all at
     // once and, on a 16 GB machine, starves the first wave past the hook timeout (flaky, and slower than 8).
     maxWorkers: 8,

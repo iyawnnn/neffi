@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 // 44px text fields shared by every customer form (touch-target rule, M5 Task 10I).
 export const inputClass =

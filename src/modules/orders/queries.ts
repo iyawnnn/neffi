@@ -1,12 +1,21 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { loadOrderFacts } from "./order";
 
 const CURSOR = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?)\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
-export async function listOrders(db: Db, { before, status, assigneeId, purchaserId }: { before?: string; status?: "in_progress" | "completed" | "cancelled"; assigneeId?: string; purchaserId?: string } = {}) {
+type OrderFilters = { status?: "in_progress" | "completed" | "cancelled"; assigneeId?: string; purchaserId?: string };
+const orderFilters = ({ status, assigneeId, purchaserId }: OrderFilters) => [purchaserId ? eq(schema.orders.purchaserId, purchaserId) : undefined, status ? eq(schema.orders.status, status) : undefined, assigneeId ? eq(schema.orders.assignedToAccountId, assigneeId) : undefined];
+
+export async function countOrders(db: Db, filters: OrderFilters = {}) {
+  const [row] = await db.select({ total: count() }).from(schema.orders).where(and(...orderFilters(filters)));
+  return row.total;
+}
+
+// `offset` + `limit` select a numbered page; without `limit` the list is cursor-based (`before`) at 25 rows.
+export async function listOrders(db: Db, { before, offset = 0, limit, ...filters }: OrderFilters & { before?: string; offset?: number; limit?: number } = {}) {
   const cursor = before ? CURSOR.exec(before) : null;
   const lines = db.select({ subtotal: sql<number>`coalesce(sum(coalesce(${schema.orderItems.agreedTotal}, ${schema.orderItems.quantity}::bigint * ${schema.orderItems.unitPrice})), 0)::float8`.as("subtotal") }).from(schema.orderItems).where(eq(schema.orderItems.orderId, schema.orders.id)).as("lines");
   const settledPaid = sql<number>`coalesce((select sum(amount) from payments where order_id = ${schema.orders.id} and voided_at is null), 0) - coalesce((select sum(amount) from refunds where order_id = ${schema.orders.id} and voided_at is null and support_case_id is null), 0)`;
@@ -15,10 +24,10 @@ export async function listOrders(db: Db, { before, status, assigneeId, purchaser
     balance: sql<number>`greatest(${lines.subtotal} + ${schema.orders.shippingFee} - (${settledPaid}), 0)::float8`,
     cursor: sql<string>`${schema.orders.createdAt}::text || '|' || ${schema.orders.id}::text`,
   }).from(schema.orders).innerJoin(schema.purchasers, eq(schema.purchasers.id, schema.orders.purchaserId)).leftJoinLateral(lines, sql`true`)
-    .where(and(purchaserId ? eq(schema.orders.purchaserId, purchaserId) : undefined, status ? eq(schema.orders.status, status) : undefined, assigneeId ? eq(schema.orders.assignedToAccountId, assigneeId) : undefined, cursor ? sql`(${schema.orders.createdAt}, ${schema.orders.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined))
-    .orderBy(desc(schema.orders.createdAt), desc(schema.orders.id)).limit(26);
-  const page = rows.slice(0, 25);
-  return { orders: page, next: rows.length > 25 ? page[24].cursor : null };
+    .where(and(...orderFilters(filters), cursor ? sql`(${schema.orders.createdAt}, ${schema.orders.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined))
+    .orderBy(desc(schema.orders.createdAt), desc(schema.orders.id)).limit(limit ?? 26).offset(offset);
+  const page = rows.slice(0, limit ?? 25);
+  return { orders: page, next: !limit && rows.length > 25 ? page[24].cursor : null };
 }
 
 export function orderAssignees(db: Db) {
