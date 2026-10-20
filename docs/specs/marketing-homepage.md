@@ -15,7 +15,7 @@ The homepage (`/`, [`src/app/(marketing)/page.tsx`](../../src/app/(marketing)/pa
 | 1 | Hero | LOCKED |
 | 2 | Identity / value system | LOCKED |
 | 3 | Profile experience | LOCKED |
-| 4 | Real-world use cases | IMPLEMENTING |
+| 4 | Real-world use cases | LOCKED |
 | 5 | Setup teaser | PLANNED |
 | 6 | Final CTA | PLANNED |
 
@@ -69,26 +69,31 @@ Files: [`profile-experience-section.tsx`](../../src/app/(marketing)/profile-expe
 
 ## Section 4 — Real-world use cases
 
-**Status: IMPLEMENTING.** The brief below is canonical; implementation file names are not yet.
+**Status: LOCKED.** Manually reviewed and approved; the implementation below is canonical.
 
-**Purpose:** where Neffi fits into someone's life and work.
+**Purpose:** show where Neffi fits into real-world introductions and professional/social situations, without repeating product features, profile UI or setup instructions.
 
-- Heading: **For every kind of introduction.** No supporting paragraph.
-- An image-led editorial carousel with exactly six use cases:
+- Heading, on two lines: **For every kind of** / **introduction.**
+- Support: **From work to everyday moments, Neffi gives every introduction an easy next step.** The heading and support form two columns from 900px and stack below that.
+- An editorial carousel with exactly six use cases, in this order:
 
-| Page | Use case | Copy |
-|---|---|---|
-| 1 | Client meetings | Share your details before the conversation moves on. |
-| 1 | Networking events | Turn quick introductions into connections people can keep. |
-| 2 | Freelance & creative work | Put your portfolio, socials, and contact details within reach. |
-| 2 | Sales conversations | Give prospects one place to find you after the meeting. |
-| 3 | Careers & opportunities | Share your experience and work when an opportunity opens up. |
-| 3 | Everyday connections | Be ready to share when the right connection happens unexpectedly. |
+| Desktop page | Use case | Copy | Intent |
+|---|---|---|---|
+| 1 | Client meetings | Share your details before the conversation moves on. | Professional follow-up |
+| 1 | Networking events | Keep the conversation going after the event. Share your details in a tap, so new connections know where to find you. | Event introductions |
+| 2 | Freelance & creative work | Put your portfolio, socials, and contact details within reach. | Portfolio / personal brand |
+| 2 | Sales conversations | Give prospects a clear next step. Keep your details and work together, so they can pick up the conversation later. | Prospect follow-up |
+| 3 | Careers & opportunities | Share your experience and work when an opportunity opens up. | Professional opportunities |
+| 3 | Everyday connections | A good connection can happen anywhere. Share who you are in the moment, with an easy way to get back in touch. | Spontaneous sharing |
 
-- Desktop: two complete items visible, advancing two at a time across three pages. No autoplay, no infinite loop.
-- Mobile: one item at a time, swipe/scroll-snap, all six reachable.
-- Art direction: premium contextual photography (planned). Do not repeat Section 3's UI.
-- Planned images in `public/marketing/use-cases/`: `client-meetings.webp`, `networking-events.webp`, `freelance-creative.webp`, `sales-conversations.webp`, `careers-opportunities.webp`, `everyday-connections.webp`.
+- **Desktop (1024px and up):** two complete panels per page, always smaller left / larger right, at 36% / 64% of the width after the 24px gap. Exactly three positions, starting at cards 1, 3 and 5; arrows advance one pair. Panels share the same height and caption baseline. The content container is at most 1168px wide inside 24px page padding.
+- **Tablet/mobile (below 1024px):** all six panels have equal width and height at a given viewport; arrows advance one item. Native swipe and CSS scroll snap keep all six accessible, with an intentional next-card peek. The track stays inside the 24px page gutters so the continuous Snow canvas remains visible on the right, without horizontal page overflow.
+- **Panels:** a light neutral surface, subtle border and 20px radius contain the illustration, title and description together. On smaller devices the caption fits its content, with 20px bottom padding; on desktop captions share a 128px row.
+- **Controls:** compact circular Previous / Next arrows centred below the track. Accessible names are **Previous use cases** and **Next use cases**; the first previous and final next states are disabled. The track supports ArrowLeft, ArrowRight, Home and End. No autoplay, infinite loop, pagination dots or per-card navigation.
+- **Motion:** controlled 500ms ease-out arrow movement; native scrolling remains snap-based. Reduced motion makes controlled movement immediate and skips the shared section entrance reveal.
+- **Artwork:** finished inline SVG with neutral material fills, thin linework and restrained Vermilion. Illustrations are static/editorial and decorative (`aria-hidden`, non-focusable), with no hover animation, wireless/signal-wave motifs or external stock photography. Distinct object-led compositions show meeting materials; an event lanyard/badge and phone/card; a creative presentation board, tablet and stylus; a proposal handoff; a resume/portfolio; and a notebook/cup with phone/card. The three larger panels use landscape SVG canvases.
+
+Implementation: [`page.tsx`](../../src/app/(marketing)/page.tsx) places `UseCasesSection` immediately after Section 3 and the shared divider. [`use-cases-section.tsx`](../../src/app/(marketing)/use-cases-section.tsx) owns the copy and server-rendered content; [`use-cases-carousel.tsx`](../../src/app/(marketing)/use-cases-carousel.tsx) scopes client state and native-scroll controls; [`use-case-card.tsx`](../../src/app/(marketing)/use-case-card.tsx) owns the panel structure; [`use-case-illustrations.tsx`](../../src/app/(marketing)/use-case-illustrations.tsx) owns the six SVG compositions; [`use-cases.css`](../../src/app/(marketing)/use-cases.css) owns responsive sizing, snap layout and presentation. No carousel dependency is added.
 
 ## Section 5 — Setup teaser
 

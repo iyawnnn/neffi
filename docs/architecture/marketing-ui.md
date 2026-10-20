@@ -32,7 +32,7 @@ Snow dominates, Ink carries structure, Vermilion is the accent: roughly 70 / 20 
 - **Geist Sans** for everything (`--font-sans`, loaded in the root layout). **Geist Mono** only for technical/editorial annotations, such as the hero card callouts.
 - Marketing headings use clamped sizes in their components rather than the `/app` type tokens. Hero H1 and section headings are distinct: only the hero reads as a hero.
 - Left-aligned editorial headings for content sections; the hero is the only centred composition.
-- Breakpoints in use: **768/769px** switches the dock and many layouts (mobile at 768px and below); **900px** switches Sections 2–3 heading and grid layouts. Do not introduce new global breakpoints.
+- Breakpoints in use: **768/769px** switches the dock and many layouts (mobile at 768px and below); **900px** switches editorial heading and grid layouts; **1024px** switches the use-case carousel from single-item scrolling to desktop pairs. These are local layout decisions, not new global breakpoints.
 - Mobile layouts are restructured, not shrunk: keep 44px touch targets, no horizontal page overflow, swipe-first carousels, simplified selectors.
 
 ## Navigation dock
@@ -64,7 +64,7 @@ One reusable divider between major homepage sections: [`section-divider.tsx`](..
 - **Technical illustrations** (Section 2): custom inline SVG, thin Ink and muted-grey strokes with one small Vermilion accent, distinct silhouettes. Source files: [`neffi-tap-signal.svg`](../../public/neffi-tap-signal.svg), [`neffi-identity-structure.svg`](../../public/neffi-identity-structure.svg), [`neffi-stay-current.svg`](../../public/neffi-stay-current.svg), inlined in [`identity-illustrations.tsx`](../../src/app/(marketing)/identity-illustrations.tsx) so parts can animate. No FIG labels, nodes or decorative dots.
 - **Product scenes** (Section 3): curated read-only renderings in the real Neffi profile language. Marketing demo controls are inert and never navigate or download. Show only fields Neffi supports.
 - **Physical product** (hero): the real card artwork ([`neffi-card-front-preview.svg`](../../public/neffi-card-front-preview.svg)), lightweight CSS pseudo-3D. No phone mockups in the hero.
-- **Photography** (from Section 4): premium contextual images of real use, warm and natural. No stock-business clichés or smiling-businessperson imagery, and do not repeat Section 3's UI in photographs.
+- **Use-case / editorial illustrations:** clean static inline SVG with object-led storytelling, distinct silhouettes, minimal decoration and restrained accents. Neutral material fills support the shared Snow / Ink palette. Keep the artwork still; avoid repeated wireless/signal motifs and generic SaaS diagrams. Use-case context does not require stock photography or repeat product UI.
 - **Atmospheric backgrounds**: monochrome, light, tactile and secondary to the foreground product.
 
 ## Motion
@@ -82,7 +82,7 @@ Visible focus rings (Vermilion `outline-brand` on marketing controls), 44px mini
 
 ## Assets
 
-Use semantic names grouped by area under `public/marketing/<area>/`, for example [`neffi-profile-background.png`](../../public/marketing/profile-experience/neffi-profile-background.png) in `profile-experience/`. Planned Section 4 images use `public/marketing/use-cases/` (see the [homepage spec](../specs/marketing-homepage.md#section-4--real-world-use-cases)). Never `image1.png`, `final-final.png` or `background-new.png`.
+Use semantic names grouped by area under `public/marketing/<area>/`, for example [`neffi-profile-background.png`](../../public/marketing/profile-experience/neffi-profile-background.png) in `profile-experience/`. Keep code-based illustrations alongside the marketing components; the use-case artwork is inline SVG rather than external campaign images. Never `image1.png`, `final-final.png` or `background-new.png`.
 
 ## Anti-patterns
 
