@@ -1,0 +1,52 @@
+/* Shared reading, action and spacing primitives for the supporting marketing pages. */
+.mp-page { color: var(--foreground); }
+.mp-header { display: flex; justify-content: center; padding: clamp(1rem, 3svh, 2rem) 1.5rem 0; }
+.mp-home { display: inline-flex; min-height: 2.75rem; align-items: center; border-radius: 0.375rem; }
+.mp-home > span { position: relative; display: block; height: 1.5rem; aspect-ratio: 533 / 222; overflow: hidden; }
+.mp-home img { position: absolute; width: 225.14%; height: 225.23%; max-width: none; left: -62.85%; top: -64.41%; }
+.mp-container { width: 100%; max-width: 73rem; margin-inline: auto; }
+.mp-section { padding: clamp(3.5rem, 7vw, 6rem) 1.5rem; }
+.mp-title { font-size: clamp(2.75rem, 5.5vw, 4.5rem); line-height: 1.04; font-weight: 600; letter-spacing: -0.04em; text-wrap: balance; }
+.mp-heading { font-size: clamp(1.875rem, 3.3vw, 2.75rem); line-height: 1.12; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+.mp-lead { max-width: 36rem; margin-top: 1.5rem; font-size: clamp(1.0625rem, 1.5vw, 1.25rem); line-height: 1.6; color: var(--fg-secondary); text-wrap: pretty; }
+.mp-copy { color: var(--fg-secondary); font-size: 1rem; line-height: 1.7; text-wrap: pretty; }
+.mp-copy > * + * { margin-top: 1rem; }
+.mp-copy strong { color: var(--foreground); font-weight: 500; }
+.mp-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+.mp-button { display: inline-flex; min-height: 3.25rem; align-items: center; justify-content: center; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 500; text-align: center; transition: background-color 180ms ease-out, border-color 180ms ease-out; }
+.mp-button-primary { background: var(--action); color: white; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), inset 0 -10px 14px -12px rgb(0 0 0 / 0.35); }
+.mp-button-secondary { border: 1px solid var(--border-strong); background: var(--canvas); }
+.mp-text-link { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.5rem; color: var(--action-text); font-weight: 500; }
+.mp-page a:focus-visible, .mp-page summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 0.25rem; }
+.mp-page a, .mp-page summary { transition: color 180ms ease-out, background-color 180ms ease-out; }
+.mp-section-intro { display: grid; gap: 1.5rem; margin-bottom: 2.5rem; }
+.mp-section-intro .mp-copy { max-width: 31rem; }
+.mp-questions { border-top: 1px solid var(--border-strong); }
+.mp-questions details { border-bottom: 1px solid var(--border-strong); }
+.mp-questions summary { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-height: 4.5rem; padding: 1.25rem 0; cursor: pointer; list-style: none; font-size: 1.0625rem; font-weight: 500; line-height: 1.5; }
+.mp-questions summary::-webkit-details-marker { display: none; }
+.mp-disclosure-mark { position: relative; width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+.mp-disclosure-mark::before, .mp-disclosure-mark::after { content: ""; position: absolute; background: currentColor; }
+.mp-disclosure-mark::before { top: 6px; left: 0; width: 14px; height: 1px; }
+.mp-disclosure-mark::after { left: 6px; top: 0; width: 1px; height: 14px; }
+.mp-questions details[open] .mp-disclosure-mark::after { display: none; }
+.mp-answer { max-width: 46rem; padding: 0 2rem 1.5rem 0; color: var(--fg-secondary); font-size: 1rem; line-height: 1.7; }
+.mp-answer a { color: var(--action-text); text-decoration: underline; text-underline-offset: 0.2em; }
+.mp-answer > * + * { margin-top: 0.75rem; }
+.mp-next-inner { display: grid; gap: 1.5rem; align-items: center; }
+.mp-next .mp-copy { margin-top: 1rem; max-width: 35rem; }
+.mp-next .mp-button { justify-self: start; }
+.mp-page [id] { scroll-margin-top: 2rem; }
+@media (hover: hover) and (pointer: fine) {
+  .mp-page a:hover { color: var(--action-text); }
+  .mp-page .mp-button-primary:hover { color: white; background-color: var(--action-hover); }
+  .mp-button-secondary:hover { background-color: var(--subtle); border-color: var(--fg-secondary); }
+  .mp-questions summary:hover { color: var(--action-text); }
+}
+@media (min-width: 900px) {
+  .mp-section-intro { grid-template-columns: 1fr 1fr; align-items: end; gap: 4rem; margin-bottom: 3.5rem; }
+  .mp-next-inner { grid-template-columns: 1fr auto; gap: 4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-page a, .mp-page summary { transition: none; }
+}
