@@ -4,6 +4,7 @@ import { HeroCard } from "./hero-card";
 import { IdentitySection } from "./identity-section";
 import { SectionDivider } from "./section-divider";
 import { ProfileExperienceSection } from "./profile-experience-section";
+import { UseCasesSection } from "./use-cases-section";
 
 // The wordmark file is a 1200x500 Snow canvas with the mark off-centre; this crops it to the lettering (533x222 including a little air).
 const WORDMARK = {
@@ -92,6 +93,8 @@ export default function Home() {
       <IdentitySection />
       <SectionDivider />
       <ProfileExperienceSection />
+      <SectionDivider />
+      <UseCasesSection />
     </main>
   );
 }
