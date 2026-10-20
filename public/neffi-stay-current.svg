@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" aria-hidden="true" focusable="false" style="overflow:visible">
+  <style>
+    .update {
+      --up-ink: var(--neffi-ink, #14161B);
+      --up-gray: var(--neffi-gray, #8C95A3);
+      --up-accent: var(--neffi-vermilion, #E8431F);
+    }
+    .update-line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .update-plane-1 .update-line { stroke: var(--up-ink);  stroke-width: 1.5; }
+    .update-plane-2 .update-line { stroke: var(--up-gray); stroke-width: 1.25; stroke-opacity: .9; }
+    .update-plane-3 .update-line { stroke: var(--up-gray); stroke-width: 1.15; stroke-opacity: .7; }
+    .update-plane-4 .update-line { stroke: var(--up-gray); stroke-width: 1;    stroke-opacity: .52; }
+    .update-plane-5 .update-line { stroke: var(--up-gray); stroke-width: 1;    stroke-opacity: .38; }
+    .update-plane-6 .update-line { stroke: var(--up-gray); stroke-width: 1;    stroke-opacity: .26; }
+    .update-accent  .update-line { stroke: var(--up-accent); stroke-width: 2.25; }
+  </style>
+
+  <g class="update">
+    <!-- newest state, furthest back: only the edges not covered by the plane in front -->
+    <g class="update-plane-6">
+      <path class="update-line" pathLength="100"
+            d="M240 111V103Q240 95 248 93.7L357 76.3Q365 75 365 83V157Q365 165 357 166.3L340 169"/>
+    </g>
+    <g class="update-plane-5">
+      <path class="update-line" pathLength="100"
+            d="M215 131V123Q215 115 223 113.7L332 96.3Q340 95 340 103V177Q340 185 332 186.3L315 189"/>
+    </g>
+    <g class="update-plane-4">
+      <path class="update-line" pathLength="100"
+            d="M190 151V143Q190 135 198 133.7L307 116.3Q315 115 315 123V197Q315 205 307 206.3L290 209"/>
+    </g>
+    <g class="update-plane-3">
+      <path class="update-line" pathLength="100"
+            d="M165 171V163Q165 155 173 153.7L282 136.3Q290 135 290 143V217Q290 225 282 226.3L265 229"/>
+    </g>
+    <g class="update-plane-2">
+      <path class="update-line" pathLength="100"
+            d="M140 191V183Q140 175 148 173.7L257 156.3Q265 155 265 163V237Q265 245 257 246.3L240 249"/>
+    </g>
+
+    <!-- current state, closest: complete outline -->
+    <g class="update-plane-1">
+      <path class="update-line" pathLength="100"
+            d="M123 193.7L232 176.3Q240 175 240 183V257Q240 265 232 266.3L123 283.7Q115 285 115 277V203Q115 195 123 193.7Z"/>
+    </g>
+
+    <!-- single vermilion edge on the front plane -->
+    <g class="update-accent">
+      <path class="update-line" pathLength="100" d="M115 224V250"/>
+    </g>
+  </g>
+</svg>

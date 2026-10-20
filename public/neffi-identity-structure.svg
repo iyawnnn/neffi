@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" aria-hidden="true" focusable="false" style="overflow:visible">
+  <style>
+    .identity {
+      --id-ink: var(--neffi-ink, #14161B);
+      --id-gray: var(--neffi-gray, #8C95A3);
+      --id-accent: var(--neffi-vermilion, #E8431F);
+    }
+    .identity-line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .identity-back  .identity-line { stroke: var(--id-gray);  stroke-width: 1;    stroke-opacity: .5; }
+    .identity-axis  .identity-line { stroke: var(--id-gray);  stroke-width: 1;    stroke-opacity: .4; }
+    .identity-middle .identity-line { stroke: var(--id-gray); stroke-width: 1.25; stroke-opacity: .85; }
+    .identity-inner .identity-line { stroke: var(--id-gray);  stroke-width: 1.1;  stroke-opacity: .7; }
+    .identity-front .identity-line { stroke: var(--id-ink);   stroke-width: 1.5; }
+    .identity-accent .identity-line { stroke: var(--id-accent); stroke-width: 2.25; }
+  </style>
+
+  <g class="identity">
+    <!-- rear plane: only the edges not covered by the planes in front -->
+    <g class="identity-back">
+      <path class="identity-line" pathLength="100"
+            d="M188 132.9V112L356 85V197L324 202.1"/>
+    </g>
+
+    <!-- depth axis tying the three planes together -->
+    <g class="identity-axis">
+      <path class="identity-line" pathLength="100" d="M292 137L356 85"/>
+    </g>
+
+    <!-- middle plane -->
+    <g class="identity-middle">
+      <path class="identity-line" pathLength="100"
+            d="M156 158.9V138L324 111V223L292 228.1"/>
+    </g>
+
+    <!-- inner frame, set slightly back inside the front plane -->
+    <g class="identity-inner">
+      <path class="identity-line" pathLength="100"
+            d="M170 172L274 155.3V219.3L170 236Z"/>
+    </g>
+
+    <!-- primary plane -->
+    <g class="identity-front">
+      <path class="identity-line" pathLength="100"
+            d="M124 164L292 137V249L124 276Z"/>
+    </g>
+
+    <!-- single vermilion edge on the front plane -->
+    <g class="identity-accent">
+      <path class="identity-line" pathLength="100" d="M124 198V226"/>
+    </g>
+  </g>
+</svg>

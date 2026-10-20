@@ -216,6 +216,33 @@
   }
 }
 
+/* Light travelling the full rim of the marketing dock's key actions (an SVG dash on a pathLength-normalised rounded rect). */
+@theme {
+  --animate-cta-trace: cta-trace 8s linear infinite;
+
+  @keyframes cta-trace {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -100; }
+  }
+}
+
+/* Homepage hero: the card's slow idle float and the tap-field ring that ripples out from behind it. */
+@theme {
+  --animate-card-float: card-float 9s ease-in-out infinite;
+  --animate-tap-pulse: tap-pulse 7s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+
+  @keyframes card-float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -8px; }
+  }
+
+  @keyframes tap-pulse {
+    0% { transform: scale(0.7); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: scale(1.7); opacity: 0; }
+  }
+}
+
 @utility nav-interact {
   transition-duration: 220ms;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
@@ -258,5 +285,12 @@
     width: 1px;
     border-radius: 0.5px;
     background: var(--border);
+  }
+}
+
+/* Blur only the page; the portalled More sheet and dock remain sharp. */
+@media (max-width: 768px) {
+  body:has([data-marketing-more][data-open]) [data-marketing-content] {
+    filter: blur(2px);
   }
 }
