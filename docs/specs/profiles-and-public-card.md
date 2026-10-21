@@ -37,6 +37,17 @@ On every request the server reads the Card by token. The page renders only if th
 - Scene content is cached per `(profile, scene, content_version)`. Card state, routing and publish status are never cached. Pages are `noindex`.
 - The **Sharing QR** on the Card page encodes exactly `/c/{token}`. The package activation QR is a different, common QR ([0004](../decisions/0004-two-qr-codes.md)).
 
+## Planned changes
+
+[Profile layouts, appearance and guided setup](profile-customization-onboarding.md) ([0013](../decisions/0013-universal-layouts-profile-appearance.md), [0014](../decisions/0014-guided-setup-and-goal.md)) is planned and not implemented. It will:
+- add Classic, Editorial and Showcase layouts, Light/Dark mode and dark accent variants;
+- group public content by role instead of rendering one list;
+- render every link kind with an icon;
+- show the short intro;
+- replace the three purposes with four stored Goals and a step-by-step guided setup that creates no starter Blocks.
+
+This spec describes current behavior until those tasks land.
+
 ## Failure behavior
 
 Edits are validated on the server; invalid, unsafe or oversize input is rejected. If content changes while a page is being resolved, the page fails closed (404 or re-read).

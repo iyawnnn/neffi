@@ -47,6 +47,8 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 
 - [Cards and activation](specs/cards-and-activation.md): inventory, provisioning, release, claim, credentials
 - [Profiles and the public card](specs/profiles-and-public-card.md): Profiles, Scenes, Blocks, Forms, Inbox, `/c/{token}`
+- [Profile layouts, appearance and guided setup](specs/profile-customization-onboarding.md): Classic/Editorial/Showcase, Light/Dark, accents, Goals, guided setup (planned)
+- [Profile mode editor](specs/profile-mode-editor.md): the Scene/Profile mode content editor
 - [Google Review Card](specs/google-review-card.md): the simple GRC model
 - [Orders and fulfilment](specs/orders-and-fulfillment.md)
 - [Money and costs](specs/money-and-costs.md): payments, refunds, voids, expenses, stock costs
@@ -71,6 +73,8 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | [0010](decisions/0010-environment-isolation.md) | Environment isolation |
 | [0011](decisions/0011-fresh-card-state-cached-scene-content.md) | Fresh Card state, cached Scene content, noindex |
 | [0012](decisions/0012-support-controlled-account-recovery.md) | Owner verification and new-inbox proof preserve the Account; no merge or code resend |
+| [0013](decisions/0013-universal-layouts-profile-appearance.md) | Universal layouts are presentations of one Profile model; appearance is Layout + Mode + Accent (planned) |
+| [0014](decisions/0014-guided-setup-and-goal.md) | Guided setup builds the first Profile; Goal only recommends (planned) |
 
 ## Status
 
@@ -89,9 +93,10 @@ These Notion statements disagree with the repository or are stale. Notion is not
 - Step 7 says OWNER MFA/step-up is enabled, the Locked Plan's Step 7 section proposes TOTP/step-up before commercial launch, and Step 8 lists Turnstile and migration rehearsal as M10 deliverables. MFA/step-up and Turnstile are deferred ([roadmap](roadmap.md#deliberately-deferred)).
 - Examples use `tapcard.ph` or `neffi.ph`. No source has locked the final public domain, so use `CARD_URL_ORIGIN`.
 - "Quick Demo" and "Standard vs Custom package" are not part of the implemented product.
+- Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). Update Notion manually.
 - The hub and the AI Build Handoff refer to `docs/superpowers/plans/2026-10-14-neffi-ui-design-system-overhaul.md`, which exists only on the parked `feat/ui-design-system` branch.
 
 ## Open questions
 
 - The final public domain and NFC origin.
-- `profiles.theme` exists in the schema but nothing reads or writes it.
+- `profiles.theme` exists in the schema but nothing reads or writes it. Its removal is planned in [0013](decisions/0013-universal-layouts-profile-appearance.md).

@@ -1,6 +1,6 @@
 # 0003 — Profile owns identity and appearance; Scenes change content focus
 
-**Status:** Accepted (October 10 revision; M6, M7). Supersedes the earlier flat Profile Links model.
+**Status:** Accepted (October 10 revision; M6, M7). Supersedes the earlier flat Profile Links model. Amended by [0013](0013-universal-layouts-profile-appearance.md) (planned): appearance becomes Layout + Mode + Accent, and photo/logo is treated as identity.
 
 ## Context
 
