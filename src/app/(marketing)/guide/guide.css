@@ -1,0 +1,29 @@
+.guide-hero { padding-top: clamp(2.5rem, 6vw, 5rem); }
+.guide-hero-grid { display: grid; align-items: center; gap: 2.5rem; }
+.guide-hero .mp-title { max-width: 12ch; }
+.guide-hero-art { min-width: 0; }
+.guide-package { display: block; width: 100%; height: auto; }
+.guide-hero-art figcaption { margin-top: 0.5rem; color: var(--fg-secondary); font-size: 0.8125rem; line-height: 1.5; text-align: center; }
+.guide-package-section { padding-top: 1rem; }
+.guide-reading-grid { display: grid; gap: 2rem; }
+.guide-contents > div { padding-block: 1.25rem; border-bottom: 1px solid var(--border-strong); }
+.guide-contents > div:first-child { padding-top: 0; }
+.guide-contents dt { font-size: 1.0625rem; font-weight: 500; }
+.guide-contents dd { margin-top: 0.5rem; font-size: 1rem; line-height: 1.6; color: var(--fg-secondary); }
+.guide-note { margin-top: 1.5rem; padding-left: 1rem; border-left: 1px solid var(--brand); color: var(--fg-secondary); font-size: 0.875rem; line-height: 1.6; }
+.guide-chapter { display: grid; align-items: center; gap: 2rem; }
+.guide-chapter-copy .mp-copy { margin-top: 1.5rem; }
+.guide-instructions { display: grid; gap: 1.5rem; margin: 2rem 0 1rem; padding-left: 1.5rem; list-style: decimal; }
+.guide-instructions li { padding-left: 0.5rem; }
+.guide-instructions li::marker { color: var(--action-text); font-weight: 500; }
+.guide-instructions h3 { font-size: 1.0625rem; font-weight: 500; }
+.guide-instructions p { margin-top: 0.5rem; color: var(--fg-secondary); line-height: 1.7; }
+.guide-scene { display: block; width: 100%; max-width: 40rem; height: auto; margin-inline: auto; }
+.guide-update { background: var(--subtle); }
+@media (min-width: 900px) {
+  .guide-hero-grid { grid-template-columns: 1fr 1.05fr; gap: 3rem; }
+  .guide-reading-grid { grid-template-columns: 0.8fr 1.2fr; gap: clamp(3rem, 7vw, 7rem); }
+  .guide-chapter { grid-template-columns: 1fr 1fr; gap: 4rem; }
+  .guide-chapter-reverse .guide-chapter-copy { grid-column: 2; grid-row: 1; }
+  .guide-chapter-reverse .guide-scene { grid-column: 1; grid-row: 1; }
+}
