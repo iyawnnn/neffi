@@ -36,7 +36,7 @@ export function ProductComparison() {
         </div>
 
         {/* A div table (ARIA table roles) rather than <table>, so each option row can be one continuous container. On small
-          screens it scrolls sideways with the sharing-method column pinned. */}
+          screens the whole matrix scrolls sideways. */}
         <div className="pp-matrix-scroll">
           <div role="table" aria-label="How Neffi, a paper-only card and a QR-only profile compare" className="pp-matrix">
             <div role="row" className="pp-matrix-row pp-matrix-head">

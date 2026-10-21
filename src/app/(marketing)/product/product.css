@@ -1145,6 +1145,12 @@
   font-size: clamp(2rem, 4vw, 3.25rem);
 }
 
+/* Keep the absolutely positioned screen-reader labels inside the matrix's scroll region. */
+.pp-matrix-scroll {
+  position: relative;
+  min-width: 0;
+}
+
 /* A comparison matrix: options down the side, capabilities across. Plain rows sit on hairlines; the Neffi row is the one
    featured container. Every row shares one column template so the marks line up. Small screens scroll it (see below). */
 .pp-matrix {
@@ -1166,7 +1172,7 @@
 .pp-matrix-head {
   min-height: 0;
   padding-bottom: 0.875rem;
-  box-shadow: inset 0 -1px 0 var(--border-strong);
+  box-shadow: none;
 }
 
 .pp-matrix-head > [role="columnheader"] {
@@ -1238,8 +1244,7 @@
 .pp-matrix-no svg { width: 1rem; height: 1rem; stroke-width: 2; }
 
 /* The featured row: a faint Vermilion tint, a Vermilion-tinted hairline, a white top highlight, one fixed diagonal sheen (the
-   CTA buttons' glare, static) and a soft, restrained warm shadow. Its checks are Vermilion and its tile carries the Neffi mark.
-   overflow: clip rather than hidden, so the row does not become a scroll container and the pinned option cell still sticks. */
+   CTA buttons' glare, static) and a soft, restrained warm shadow. Its checks are Vermilion and its tile carries the Neffi mark. */
 .pp-matrix-featured {
   --pp-featured-bg: color-mix(in srgb, var(--brand) 5%, var(--background));
   position: relative;
@@ -1278,45 +1283,33 @@
   color: var(--brand);
 }
 
-/* Small screens: the full matrix scrolls sideways (native scrolling), running to the page edges, with the sharing-method column
-   pinned at the page gutter. Each pinned cell repeats its row's background, a leftward shadow in the same colour covers the gutter
-   strip, and a 1px inset keeps the row's hairlines visible beneath it. */
-@media (max-width: 768px) {
+/* Scroll the whole matrix before the desktop columns' 744px minimum exceeds the section's available width. */
+@media (max-width: 791px) {
   .pp-matrix-scroll {
-    margin-inline: -1.5rem;
-    padding: 0.5rem 1.5rem 1.5rem;
+    width: 100%;
+    max-width: 100%;
+    padding-block: 0.5rem 1.5rem;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .pp-matrix-scroll::-webkit-scrollbar {
+    display: none;
   }
 
   .pp-matrix {
-    --pp-matrix-cols: 11.5rem repeat(5, 6.25rem);
+    --pp-matrix-cols: 11.5rem repeat(5, 7.5rem);
     min-width: 0;
     width: max-content;
-  }
-
-  .pp-matrix-option {
-    --pp-pin-bg: var(--canvas);
-    position: sticky;
-    left: 1.5rem;
-    z-index: 1;
-    align-self: stretch;
-    margin-block: 1px;
-    padding-right: 0.75rem;
-    background: var(--pp-pin-bg);
-    box-shadow: -1.5rem 0 0 var(--pp-pin-bg);
-  }
-
-  .pp-matrix-featured .pp-matrix-option {
-    --pp-pin-bg: var(--pp-featured-bg);
   }
 }
 
 /* ---------------------------------------------------------------- facts */
 
 /* An open, centred facts field. Wide screens set two lead facts side by side, then a compact row of three beneath one quiet
-   rule, with a single rule between neighbours and no outer border. Small screens stack all five, centred, on hairlines. */
+   rule, with a single rule between neighbours and no outer border. Small screens use two pairs and a full-width final row. */
 .pp-facts-heading {
   margin-bottom: clamp(1.75rem, 3.5vw, 2.5rem);
   text-align: center;
@@ -1372,6 +1365,54 @@
   }
 }
 
+@media (max-width: 768px) {
+  .pp-facts-heading {
+    margin-bottom: 1.25rem;
+  }
+
+  .pp-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-facts > li {
+    min-width: 0;
+    align-content: start;
+    padding: 1.375rem 1rem;
+  }
+
+  .pp-facts > li + li {
+    border-top: 0;
+  }
+
+  .pp-facts > li:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+
+  .pp-facts > li:nth-child(2),
+  .pp-facts > li:nth-child(4) {
+    border-left: 1px solid var(--border);
+  }
+
+  .pp-facts > li:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .pp-facts-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .pp-facts h3 {
+    margin-top: 0.625rem;
+    font-size: 0.875rem;
+  }
+
+  .pp-facts p {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+}
+
 @media (min-width: 769px) {
   .pp-facts {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1417,6 +1458,14 @@
 
   .pp-facts > li:not(.pp-facts-lead) p {
     max-width: 16rem;
+  }
+}
+
+/* ---------------------------------------------------------------- closing CTA */
+
+@media (max-width: 768px) {
+  .pp-page .final-cta-heading > span {
+    white-space: normal;
   }
 }
 
