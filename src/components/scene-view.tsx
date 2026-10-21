@@ -1,5 +1,4 @@
 import { LinkKindIcon } from "@/components/social-icons";
-import { PLATFORMS } from "@/modules/profiles/platform-registry";
 import type { CSSProperties } from "react";
 import { PublicForm } from "@/components/public-form";
 import { Input, Textarea } from "@/components/ui/input";
@@ -40,7 +39,7 @@ export function SceneViewPreview({ view, visitorActions }: { view: SceneView; vi
         );
         if (block.type === "link" || block.type === "booking") return (
           <a key={block.id} href={block.url} target="_blank" rel="noopener noreferrer" className={actionClass}
-            style={block.type === "booking" ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "var(--accent)" } : { borderColor: "var(--accent)" }}>{block.type === "link" && PLATFORMS[block.kind].publicIcon ? <span className="mr-2 inline-flex"><LinkKindIcon kind={block.kind} className="size-7 rounded-md" /></span> : null}{block.label}</a>
+            style={block.type === "booking" ? { background: "var(--accent)", color: "var(--on-accent)", borderColor: "var(--accent)" } : { borderColor: "var(--accent)" }}>{block.type === "link" ? <span className="mr-2 inline-flex"><LinkKindIcon kind={block.kind} className="size-7 rounded-md" /></span> : null}{block.label}</a>
         );
         if (block.type === "contact") return (
           <section key={block.id} className="flex flex-col gap-1">

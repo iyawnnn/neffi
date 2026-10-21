@@ -14,6 +14,29 @@ const added = [
   { kind: "behance", label: "Behance" }, { kind: "dribbble", label: "Dribbble" },
 ] as const;
 
+test("all persisted platforms have explicit semantic categories and icon identifiers", () => {
+  const links = { portfolio: "globe", shop: "shopping-bag", menu: "utensils", custom: "link", booking: "calendar" };
+  for (const kind of profileLinkType.enumValues) {
+    const platform = PLATFORMS[kind];
+    const neutral = links[kind as keyof typeof links];
+    expect(platform.category, kind).toBe(neutral ? "link" : "social");
+    expect(platform.icon, kind).toBe(neutral ?? kind);
+    if (!neutral) expect(platform.brand?.path, kind).toBeTruthy();
+    expect(platform).not.toHaveProperty("publicIcon");
+  }
+});
+
+test.each(LINK_KINDS)("%s is never gated out of the existing public icon path", kind => {
+  const view = buildSceneView({
+    profile: { fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: null, website: null, location: null, accentColor: null, imageIsLogo: false, layout: "classic", colorMode: "light" },
+    imageUrl: null, scene: { id: "main", name: "Main" }, forms: [],
+    blocks: [{ id: kind, type: "link", position: 0, visible: true, formId: null, content: { kind, url: "https://example.test/" } }],
+  });
+  const html = renderToStaticMarkup(<SceneViewPreview view={view} />);
+  expect(html).toContain("<svg");
+  expect(html).toContain(LINK_KIND_LABELS[kind]);
+});
+
 test("registry and client validation exactly cover the database enum", () => {
   expect(Object.keys(PLATFORMS).sort()).toEqual([...profileLinkType.enumValues].sort());
   expect([...LINK_KINDS].sort()).toEqual([...profileLinkType.enumValues].sort());

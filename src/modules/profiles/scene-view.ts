@@ -1,6 +1,9 @@
 import { LINK_KIND_LABELS, type LinkKind } from "./block-content";
 import { ACCENTS } from "./appearance-options";
+import { onAccent } from "./color-contrast";
 import { parseFormConfig, visibleFields } from "../forms/config";
+
+export { contrast, onAccent } from "./color-contrast";
 
 export type ViewIdentity = {
   fullName: string; initials: string; headline: string | null; company: string | null; bio: string | null;
@@ -37,12 +40,6 @@ const https = (value: unknown) => {
   if (typeof value !== "string") return null;
   try { return new URL(value).protocol === "https:" ? value : null; } catch { return null; }
 };
-const channel = (c: number) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
-const luminance = (hex: string) => { const [r, g, b] = [1, 3, 5].map(i => channel(parseInt(hex.slice(i, i + 2), 16))); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-export const contrast = (a: string, b: string) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-// Text on an accent fill: white unless Ink reads better (Vermilion, Amber), per the design system's "Ink on Vermilion".
-export const onAccent = (accent: string) => (contrast(accent, "#FFFFFF") >= contrast(accent, "#0C0C0D") ? "#FFFFFF" : "#0C0C0D");
-
 // The one mapping from stored rows to what a viewer sees. Owner preview uses it now; M7's public page reuses it.
 export function buildSceneView({ profile, imageUrl, scene, blocks, forms }: SceneViewInput): SceneView {
   const accent = profile.accentColor ?? "#0C0C0D";
