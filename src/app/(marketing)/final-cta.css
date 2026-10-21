@@ -1,0 +1,234 @@
+.final-cta-section {
+  padding-block: clamp(4.5rem, 6vw, 5rem);
+  background: var(--canvas);
+}
+
+.final-cta-container {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.final-cta-panel {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: clamp(26.25rem, calc(50vw + 15.625rem), 29.375rem);
+  overflow: hidden;
+  padding: 3rem clamp(1.25rem, 5.6vw, 1.5rem) 9rem;
+  border-radius: 1.5rem;
+  color: var(--canvas);
+  background-color: var(--brand);
+  /* Low reflected light balances the card without adding another visual object. */
+  background-image:
+    radial-gradient(ellipse 85% 35% at 45% 0%, color-mix(in srgb, var(--canvas) 18%, transparent), transparent),
+    radial-gradient(ellipse 90% 55% at -10% 115%, color-mix(in srgb, var(--canvas) 12%, transparent), transparent),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--foreground) 10%, transparent),
+      color-mix(in srgb, var(--foreground) 16%, transparent) 28%,
+      color-mix(in srgb, var(--foreground) 16%, transparent) 65%,
+      color-mix(in srgb, var(--foreground) 26%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--canvas) 42%, transparent),
+    inset 1px 0 0 color-mix(in srgb, var(--canvas) 12%, transparent),
+    inset -1px 0 0 color-mix(in srgb, var(--canvas) 12%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--foreground) 18%, transparent),
+    0 14px 32px -22px color-mix(in srgb, var(--brand) 36%, transparent);
+}
+
+.final-cta-panel::before,
+.final-cta-panel::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.final-cta-panel::before {
+  top: 3.5rem;
+  left: 6%;
+  width: 80%;
+  height: 4rem;
+  border-radius: 50%;
+  background: var(--canvas);
+  opacity: 0.16;
+  filter: blur(22px);
+  transform: rotate(-12deg);
+}
+
+.final-cta-panel::after {
+  right: 1rem;
+  bottom: -4rem;
+  width: clamp(16rem, 35vw, 24rem);
+  height: clamp(11rem, 22vw, 15rem);
+  background: radial-gradient(ellipse closest-side at 65% 65%, color-mix(in srgb, var(--canvas) 28%, transparent), transparent);
+  filter: blur(24px);
+}
+
+.final-cta-copy {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 64rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.final-cta-heading {
+  font-size: clamp(2rem, 10.4vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.final-cta-heading > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.final-cta-support {
+  max-width: 38rem;
+  margin: 1rem auto 0;
+  color: color-mix(in srgb, var(--canvas) 98%, transparent);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.final-cta-action {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 11.25rem;
+  max-width: 100%;
+  min-height: 3.25rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  color: var(--foreground);
+  background: var(--canvas);
+  background-image: linear-gradient(180deg, color-mix(in srgb, white 65%, transparent), transparent 50%, color-mix(in srgb, var(--foreground) 3%, transparent));
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 95%, transparent),
+    inset 0 -2px 1px color-mix(in srgb, var(--foreground) 10%, transparent),
+    0 4px 10px -4px color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+.final-cta-action::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, white 70%, transparent) 50%, transparent 75%);
+  background-size: 180% 100%;
+  background-position: 80% 0;
+  transition: background-position 180ms ease-out;
+}
+
+.final-cta-action > svg {
+  flex-shrink: 0;
+  transition: transform 180ms ease-out;
+}
+
+.final-cta-action:focus-visible {
+  outline: 2px solid var(--canvas);
+  outline-offset: 4px;
+}
+
+.final-cta-action:focus-visible::before {
+  background-position: 20% 0;
+}
+
+.final-cta-action:focus-visible > svg {
+  transform: rotate(45deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .final-cta-action:hover::before {
+    background-position: 20% 0;
+  }
+
+  .final-cta-action:hover > svg {
+    transform: rotate(45deg);
+  }
+}
+
+.final-cta-card {
+  position: absolute;
+  z-index: 1;
+  right: 1.25rem;
+  bottom: -1.75rem;
+  display: block;
+  width: clamp(9.0625rem, calc(50vw - 2rem), 11.5625rem);
+  height: auto;
+  pointer-events: none;
+  transform: rotate(-6deg);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--canvas) 30%, transparent),
+    0 10px 20px -8px color-mix(in srgb, var(--foreground) 32%, transparent);
+}
+
+@media (min-width: 769px) {
+  .final-cta-panel {
+    min-height: 30rem;
+    padding: 5rem 2.5rem 8rem;
+    border-radius: 1.75rem;
+  }
+
+  .final-cta-panel::before {
+    top: 4.5rem;
+    left: 12%;
+    width: 72%;
+  }
+
+  .final-cta-heading {
+    font-size: clamp(3rem, 4.6vw, 4rem);
+  }
+
+  .final-cta-heading > span {
+    display: inline-block;
+  }
+
+  .final-cta-support {
+    font-size: 1.25rem;
+  }
+
+  .final-cta-action {
+    min-height: 3.5rem;
+    margin-top: 2rem;
+  }
+
+  .final-cta-card {
+    right: 2rem;
+    bottom: -3rem;
+    width: 15rem;
+    transform: rotate(-8deg);
+  }
+}
+
+@media (min-width: 1024px) {
+  .final-cta-card {
+    width: clamp(17.8125rem, 25vw, 19.6875rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .final-cta-action::before,
+  .final-cta-action > svg {
+    transition: none;
+  }
+
+  .final-cta-action:is(:hover, :focus-visible) > svg {
+    transform: none;
+  }
+}

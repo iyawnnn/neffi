@@ -108,7 +108,7 @@ Implementation: [`page.tsx`](../../src/app/(marketing)/page.tsx) places `UseCase
 | Route | Owns | Exists today |
 |---|---|---|
 | `/` Home | Story, first impression, strongest benefits, digital-experience teaser, use cases, setup teaser, final CTA | Yes |
-| `/product` | Deeper features, physical/digital relationship, editable profile, NFC and QR behaviour, profile capabilities, detailed product exploration | No |
+| `/product` | Deeper features, physical/digital relationship, editable profile, NFC and QR behaviour, profile capabilities, detailed product exploration | Yes ([`product/`](../../src/app/(marketing)/product/page.tsx)) |
 | `/guide` | Activation, setup, packaging activation flow, first use, QR/NFC guidance, what happens after activation, editing afterwards, setup FAQ | No |
 | `/pricing` | Prices, product options, what is included, quantities and business options, ordering decision | No |
 | `/help` | FAQs, troubleshooting, compatibility, account, support and recovery | No |

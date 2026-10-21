@@ -1,237 +1,164 @@
-/* Static artwork is the finished state; motion is opt-in below. */
-
+/* Finished sculptures remain visible without JavaScript and with reduced motion. */
 .illo {
-  --art-ink: var(--foreground);
-  --art-gray: var(--fg-faint);
-  --art-accent: var(--brand);
+  --arch-ink: var(--foreground);
+  --arch-neutral: var(--fg-faint);
+  --arch-surface: var(--canvas);
+  --arch-side: color-mix(in srgb, var(--foreground) 6%, var(--canvas));
+  --arch-shade: color-mix(in srgb, var(--foreground) 11%, var(--canvas));
+  --arch-recess: color-mix(in srgb, var(--fg-faint) 14%, var(--canvas));
+  --arch-active: 0;
   display: block;
   width: 100%;
   height: auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
-/* ---------------------------------------------------------------- signal stack */
-
-.signal-stack path {
-  fill: none;
+.illo path {
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
-.stack-outline { stroke: var(--art-gray); stroke-width: 1; }
-.stack-layer-5 { --stack-delay: 0ms; --stack-apart: 3px; }
-.stack-layer-4 { --stack-delay: 90ms; --stack-apart: 1.5px; }
-.stack-layer-3 { --stack-delay: 180ms; --stack-apart: 0px; }
-.stack-layer-2 { --stack-delay: 270ms; --stack-apart: -1.5px; }
-.top-surface { --stack-delay: 360ms; --stack-apart: -4px; }
-.stack-layer-5 .stack-outline { stroke-opacity: 0.18; }
-.stack-layer-4 .stack-outline { stroke-opacity: 0.28; }
-.stack-layer-3 .stack-outline { stroke-opacity: 0.42; }
-.stack-layer-2 .stack-outline { stroke-opacity: 0.65; }
-.top-surface > .stack-outline { stroke: var(--art-ink); stroke-width: 1.35; stroke-opacity: 0.8; }
+.arch-surface {
+  fill: var(--arch-surface);
+  stroke: var(--arch-ink);
+  stroke-width: 1.4;
+  stroke-opacity: 0.72;
+}
 
-.stack-structure {
+.arch-side {
+  fill: var(--arch-side);
+  stroke: var(--arch-neutral);
+  stroke-width: 1;
+  stroke-opacity: 0.7;
+}
+
+.arch-joint,
+.arch-bevel {
   fill: none;
-  stroke: var(--art-gray);
-  stroke-width: 0.75;
-  stroke-dasharray: 2 5;
-  opacity: 0.3;
+  stroke: var(--arch-neutral);
+  stroke-width: 0.9;
+  stroke-opacity: 0.65;
 }
 
-.stack-registration { stroke: var(--art-gray); stroke-width: 0.8; opacity: 0.65; }
-.stack-signal-field { transform-origin: 240px 142px; }
-.stack-signal { stroke: var(--art-ink); stroke-width: 1; stroke-dasharray: 100; }
-.stack-signal-1 { stroke-opacity: 0.8; --signal-delay: 520ms; }
-.stack-signal-2 { stroke-opacity: 0.55; --signal-delay: 580ms; }
-.stack-signal-3 { stroke-opacity: 0.35; --signal-delay: 640ms; }
-.stack-signal-4 { stroke-opacity: 0.2; --signal-delay: 700ms; }
-.stack-tap-point { transform-origin: 240px 142px; }
-.stack-tap-point circle { fill: var(--art-accent); }
-.stack-tap-point path { stroke: var(--art-accent); stroke-width: 1.5; }
+.arch-bevel {
+  stroke-opacity: 0.4;
+}
 
-/* ---------------------------------------------------------------- identity assembly */
+.arch-recess {
+  fill: var(--arch-recess);
+  stroke: none;
+}
 
-.identity-assembly path {
+.arch-recess-wall {
+  fill: var(--arch-side);
+  stroke: var(--arch-neutral);
+  stroke-width: 0.9;
+  stroke-opacity: 0.65;
+}
+
+/* The face turned away from the light, one step darker than the lit side. */
+.arch-shade {
+  fill: var(--arch-shade);
+}
+
+.arch-inset {
+  fill: var(--subtle);
+  stroke: var(--arch-neutral);
+  stroke-width: 1;
+  stroke-opacity: 0.65;
+}
+
+.arch-shadow {
+  fill: var(--arch-ink);
+  opacity: 0.05;
+}
+
+.arch-accent {
   fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+  stroke: var(--brand);
+  stroke-width: 1.6;
+  stroke-opacity: calc(0.7 + var(--arch-active) * 0.3);
 }
 
-.assembly-outline { stroke: var(--art-ink); stroke-width: 1.35; stroke-opacity: 0.7; }
-.assembly-recess { stroke: var(--art-gray); stroke-width: 1; stroke-opacity: 0.65; }
-.assembly-depth { stroke: var(--art-gray); stroke-width: 1; stroke-opacity: 0.45; }
-.assembly-registration { stroke: var(--art-gray); stroke-width: 0.8; stroke-opacity: 0.6; opacity: 0.45; }
-.assembly-structural-lines { stroke: var(--art-gray); stroke-width: 0.75; stroke-dasharray: 2 5; stroke-opacity: 0.6; opacity: 0.25; }
-.identity-core .assembly-outline { stroke-opacity: 0.85; }
-.assembly-accent { stroke: var(--art-accent); stroke-width: 1.5; }
-
-.identity-core { --assembly-delay: 0ms; --assembly-from: 0 4px; --assembly-apart: translate(0, 0); }
-.assembly-part-upper-left { --assembly-delay: 140ms; --assembly-from: -10px -5px; --assembly-apart: translate(-4px, -2px); }
-.assembly-part-upper-right { --assembly-delay: 240ms; --assembly-from: 10px -5px; --assembly-apart: translate(4px, -2px); }
-.assembly-part-front { --assembly-delay: 340ms; --assembly-from: 0 12px; --assembly-apart: translate(0, 5px); }
-
-/* ---------------------------------------------------------------- update progression */
-
-.update-progression path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+.arch-accent-fill {
+  fill: var(--brand);
+  fill-opacity: calc(0.8 + var(--arch-active) * 0.2);
+  stroke: var(--brand);
+  stroke-width: 1;
 }
 
-.progression-state { stroke: var(--art-gray); stroke-opacity: var(--state-ink); }
-.progression-surface { stroke-width: 1; }
-.progression-depth { stroke-width: 1; opacity: 0.65; }
-.progression-registration { stroke-width: 0.8; opacity: 0.65; }
-.current-state { stroke: var(--art-ink); }
-.current-state .progression-surface { stroke-width: 1.5; }
-.current-accent { stroke: var(--art-accent); stroke-width: 1.5; stroke-opacity: 1; }
-
-.update-state-1 { --state-ink: 0.24; --state-delay: 0ms; --state-apart: translate(0, 0); }
-.update-state-2 { --state-ink: 0.34; --state-delay: 100ms; --state-apart: translate(1px, -0.25px); }
-.update-state-3 { --state-ink: 0.46; --state-delay: 200ms; --state-apart: translate(2px, -0.5px); }
-.update-state-4 { --state-ink: 0.6; --state-delay: 300ms; --state-apart: translate(3px, -0.75px); }
-.update-state-5 { --state-ink: 0.76; --state-delay: 400ms; --state-apart: translate(4px, -1px); }
-.current-state { --state-ink: 0.85; --state-delay: 500ms; --state-apart: translate(6px, -1.5px); }
-
-.progression-rail {
-  stroke: var(--art-gray);
-  stroke-width: 0.8;
-  stroke-opacity: 0.35;
-  transform-origin: 26px 200px;
+/* Spine segments resolve from draft linework to the finished state. */
+.arch-segment :is(.arch-side, .arch-surface) {
+  stroke-opacity: var(--seg-ink);
 }
-.progression-spine { stroke-dasharray: 2 5; stroke-opacity: 0.5; }
 
-/* ---------------------------------------------------------------- motion */
+.arch-draft :is(.arch-side, .arch-surface) {
+  fill: var(--arch-surface);
+}
 
-/* Reveal plays each entrance once. Static artwork is complete; entrance uses translate/opacity and hover uses transform. */
+.identity-art:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+
+.arch-enter {
+  --arch-delay: 0ms;
+}
+
+.arch-enter-2 { --arch-delay: 60ms; }
+.arch-enter-3 { --arch-delay: 120ms; }
+.arch-enter-4 { --arch-delay: 180ms; }
+.arch-enter-west { --arch-delay: 60ms; }
+.arch-enter-north { --arch-delay: 120ms; }
+.arch-enter-east { --arch-delay: 180ms; }
+.arch-enter-south { --arch-delay: 240ms; }
+
 @media (prefers-reduced-motion: no-preference) {
-  /* Bottom-up assembly completes before the outward signal draw finishes at 1.05s. */
-  .illo-figure[data-state="idle"] .stack-layer,
-  .illo-figure[data-state="idle"] .stack-structure,
-  .illo-figure[data-state="idle"] .stack-tap-point { opacity: 0; }
-  .illo-figure[data-state="idle"] .stack-signal { stroke-dashoffset: 100; }
-  .illo-figure[data-state="in"] .stack-layer {
-    animation: stack-assemble 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--stack-delay) both;
-  }
-  .illo-figure[data-state="in"] .stack-structure { animation: stack-details 500ms ease-out both; }
-  .illo-figure[data-state="in"] .stack-tap-point { animation: stack-assemble 300ms ease-out 480ms both; }
-  .illo-figure[data-state="in"] .stack-signal {
-    animation: illo-draw 350ms cubic-bezier(0.22, 1, 0.36, 1) var(--signal-delay) both;
-  }
-  .stack-layer,
-  .stack-signal-field,
-  .stack-tap-point,
-  .stack-registration {
-    transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease-out;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .signal-stack:hover .stack-layer { transform: translateY(var(--stack-apart)); }
-    .signal-stack:hover .stack-signal-field { transform: scale(1.035); }
-    .signal-stack:hover .stack-tap-point { transform: scale(1.12); }
-    .signal-stack:hover .stack-registration { opacity: 1; }
+  .illo-figure[data-state="idle"] .arch-enter { opacity: 0; }
+
+  .illo-figure[data-state="in"] .arch-enter {
+    animation: architecture-resolve 600ms cubic-bezier(0.22, 1, 0.36, 1) var(--arch-delay) both;
   }
 
-  /* The core anchors first; the fitted parts converge before the seam resolves. */
-  .illo-figure[data-state="idle"] .assembly-part,
-  .illo-figure[data-state="idle"] .assembly-registration,
-  .illo-figure[data-state="idle"] .assembly-structural-lines,
-  .illo-figure[data-state="idle"] .assembly-accent { opacity: 0; }
-  .illo-figure[data-state="in"] .assembly-part {
-    animation: identity-assemble 480ms cubic-bezier(0.22, 1, 0.36, 1) var(--assembly-delay) both;
+  .arch-hover {
+    transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .illo-figure[data-state="in"] .assembly-registration {
-    animation: assembly-register 250ms ease-out 650ms both;
+
+  .arch-accent,
+  .arch-accent-fill {
+    transition: stroke-opacity 360ms ease-out, fill-opacity 360ms ease-out;
   }
-  .illo-figure[data-state="in"] .assembly-structural-lines {
-    animation: assembly-guides 250ms ease-out 650ms both;
+
+  /* Tap key: the plates part a few pixels while the core presses into its well. */
+  .arch-tap-layer-2 { transform: translateY(calc(var(--arch-active) * -2px)); }
+  .arch-tap-layer-3 { transform: translateY(calc(var(--arch-active) * -4px)); }
+  .arch-tap-plate { transform: translateY(calc(var(--arch-active) * -6px)); }
+  .arch-tap-core { transform: translateY(calc(var(--arch-active) * 4px)); }
+
+  /* Convergence: each rail slides along its own axis and seats against the hub. */
+  .arch-rail-west { transform: translate(calc(var(--arch-active) * 6px), calc(var(--arch-active) * 3px)); }
+  .arch-rail-north { transform: translate(calc(var(--arch-active) * -6px), calc(var(--arch-active) * 3px)); }
+  .arch-rail-east { transform: translate(calc(var(--arch-active) * -6px), calc(var(--arch-active) * -3px)); }
+  .arch-rail-south { transform: translate(calc(var(--arch-active) * 6px), calc(var(--arch-active) * -3px)); }
+
+  /* Living spine: the spine lengthens along its axis, the newest segment travelling furthest. */
+  .arch-segment {
+    transform: translate(
+      calc(var(--arch-active) * var(--seg-step) * 1.6px),
+      calc(var(--arch-active) * var(--seg-step) * -0.8px)
+    );
   }
-  .illo-figure[data-state="in"] .assembly-accent {
-    animation: assembly-seam 220ms ease-out 800ms both;
-  }
-  .assembly-part {
-    transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .assembly-registration,
-  .assembly-structural-lines { transition: stroke-opacity 400ms ease-out; }
-  .assembly-accent { transition: stroke-width 400ms ease-out; }
+
+  .identity-art:focus-visible .illo { --arch-active: 1; }
 
   @media (hover: hover) and (pointer: fine) {
-    .identity-assembly:hover .assembly-part { transform: var(--assembly-apart); }
-    .identity-assembly:hover .assembly-registration,
-    .identity-assembly:hover .assembly-structural-lines { stroke-opacity: 1; }
-    .identity-assembly:hover .assembly-accent { stroke-width: 2; }
-  }
-
-  /* States advance left to right, followed by the connecting rail and current edge. */
-  .illo-figure[data-state="idle"] .progression-state,
-  .illo-figure[data-state="idle"] .progression-rail,
-  .illo-figure[data-state="idle"] .current-accent { opacity: 0; }
-  .illo-figure[data-state="in"] .progression-state {
-    animation: progression-arrive 350ms cubic-bezier(0.22, 1, 0.36, 1) var(--state-delay) both;
-  }
-  .illo-figure[data-state="in"] .progression-rail {
-    animation: progression-connect 250ms ease-out 650ms both;
-  }
-  .illo-figure[data-state="in"] .current-accent {
-    animation: progression-connect 180ms ease-out 850ms both;
-  }
-  .progression-state { transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1); }
-  .progression-rail {
-    transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1), stroke-opacity 400ms ease-out;
-  }
-  .current-accent { transition: stroke-width 400ms ease-out; }
-
-  @media (hover: hover) and (pointer: fine) {
-    .update-progression:hover .progression-state { transform: var(--state-apart); }
-    .update-progression:hover .progression-rail { transform: scaleX(1.015); stroke-opacity: 0.5; }
-    .update-progression:hover .current-accent { stroke-width: 2; }
+    .identity-art:hover .illo { --arch-active: 1; }
   }
 }
 
-@keyframes illo-draw {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
-
-@keyframes stack-assemble {
-  from { opacity: 0; translate: 0 6px; }
+@keyframes architecture-resolve {
+  from { opacity: 0; translate: 0 5px; }
   to { opacity: 1; translate: 0 0; }
-}
-
-@keyframes stack-details {
-  from { opacity: 0; }
-  to { opacity: 0.3; }
-}
-
-@keyframes identity-assemble {
-  from { opacity: 0; translate: var(--assembly-from); }
-  to { opacity: 1; translate: 0 0; }
-}
-
-@keyframes assembly-register {
-  from { opacity: 0; }
-  to { opacity: 0.45; }
-}
-
-@keyframes assembly-guides {
-  from { opacity: 0; }
-  to { opacity: 0.25; }
-}
-
-@keyframes assembly-seam {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes progression-arrive {
-  from { opacity: 0; translate: -6px 1.5px; }
-  to { opacity: 1; translate: 0 0; }
-}
-
-@keyframes progression-connect {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }

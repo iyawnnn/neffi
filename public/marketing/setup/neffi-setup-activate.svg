@@ -1,0 +1,132 @@
+<svg width="600" height="420" viewBox="0 0 600 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Activate your Neffi card</title>
+  <desc id="desc">An opened Neffi card sleeve: the flap stands up showing three setup steps and a white activation-code sticker, with the Neffi card tucked in the thumb-notch pocket. A simple phone sits beside it.</desc>
+  <defs>
+    <filter id="blurSoft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="blurTight" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter>
+    <linearGradient id="flapShade" x1="0" y1="-225" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F3F1EC"/>
+      <stop offset="0.75" stop-color="#ECE9E3"/>
+      <stop offset="1" stop-color="#E3DFD8"/>
+    </linearGradient>
+    <linearGradient id="pocketShade" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DCD7CF"/>
+      <stop offset="1" stop-color="#E6E2DB"/>
+    </linearGradient>
+    <path id="neffiMark" d="M139.869 126.956H126V103.85C126 96.0092 127.277 90.2189 133.111 84.541C141.253 76.6153 156.645 74.8453 164.499 84.2042C168.412 88.8659 169.227 94.3492 169.227 100.235V110.672C169.227 117.11 175.85 120.609 180.545 116.736C183.016 114.698 183.163 111.936 183.163 108.957V98.1956H196.874V109.304C196.874 126.854 172.058 135.038 159.892 120.453C157.408 117.475 155.755 113.624 155.755 109.69V96.9941C155.755 84.9661 139.869 86.2395 139.869 98.0267V126.956Z"/>
+    <path id="pocketFront" d="M0 183V-8L18 100H103A32 24 0 0 0 167 100H252L270 -8V183Z"/>
+  </defs>
+
+  <!-- ================= PACKAGE (opened sleeve) ================= -->
+  <g id="package" transform="translate(118 228) rotate(-2) scale(0.85)">
+
+    <!-- ground shadow -->
+    <rect x="10" y="150" width="262" height="44" rx="20" fill="#6B6052" opacity="0.22" filter="url(#blurSoft)"/>
+    <rect x="2" y="176" width="270" height="10" rx="5" fill="#6B6052" opacity="0.18" filter="url(#blurTight)"/>
+
+    <!-- closing flap, standing open and leaning slightly back -->
+    <g id="flap" transform="scale(1 0.9)">
+      <path d="M0 0V-201Q0 -215 14 -215H100Q106 -215 107 -220Q108 -225 114 -225H156Q162 -225 163 -220Q164 -215 170 -215H256Q270 -215 270 -201V0Z" fill="url(#flapShade)" stroke="#D9D4CC" stroke-width="0.8"/>
+      <!-- tuck tab -->
+      <path d="M100 -215Q106 -215 107 -220Q108 -225 114 -225H156Q162 -225 163 -220Q164 -215 170 -215Z" fill="#DDD8D0"/>
+      <path d="M103 -215H167" stroke="#CFC9C0" stroke-width="0.6"/>
+
+      <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif" fill="#111113" text-anchor="middle">
+        <text x="135" y="-168" font-size="10.5" font-weight="600">Get started in 3 simple steps</text>
+
+        <!-- step icons -->
+        <g stroke="#111113" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <!-- 1 scan -->
+          <path d="M43 -146v-5h5 M56 -151h5v5 M61 -134v5h-5 M48 -129h-5v-5"/>
+          <path d="M48 -146h4v4h-4z M53 -137h3v3h-3z" stroke-width="1.2"/>
+          <!-- 2 code -->
+          <rect x="122" y="-149" width="26" height="17" rx="3.5"/>
+          <!-- 3 profile -->
+          <circle cx="218" cy="-145" r="4.6"/>
+          <path d="M209.5 -129.5c1-4.6 4.4-7 8.5-7s7.5 2.4 8.5 7"/>
+          <!-- step numbers -->
+          <circle cx="52" cy="-114" r="6.4" stroke-width="0.9"/>
+          <circle cx="135" cy="-114" r="6.4" stroke-width="0.9"/>
+          <circle cx="218" cy="-114" r="6.4" stroke-width="0.9"/>
+        </g>
+        <g stroke="none">
+          <circle cx="130" cy="-140.5" r="1.3"/><circle cx="135" cy="-140.5" r="1.3"/><circle cx="140" cy="-140.5" r="1.3"/>
+        </g>
+        <g font-size="7.4" font-weight="600">
+          <text x="52" y="-111.3">1</text><text x="135" y="-111.3">2</text><text x="218" y="-111.3">3</text>
+        </g>
+
+        <!-- step titles -->
+        <g font-size="8.6" font-weight="600">
+          <text x="52" y="-94">Scan</text>
+          <text x="135" y="-94">Enter your code</text>
+          <text x="218" y="-94">Make it yours</text>
+        </g>
+        <!-- step descriptions (kept as quiet text lines) -->
+        <g fill-opacity="0.22">
+          <rect x="34" y="-86" width="36" height="2.6" rx="1.3"/><rect x="40" y="-80" width="24" height="2.6" rx="1.3"/>
+          <rect x="116" y="-86" width="38" height="2.6" rx="1.3"/><rect x="124" y="-80" width="22" height="2.6" rx="1.3"/>
+          <rect x="199" y="-86" width="38" height="2.6" rx="1.3"/><rect x="204" y="-80" width="28" height="2.6" rx="1.3"/>
+        </g>
+
+        <!-- activation-code sticker (white paper label) -->
+        <g id="activation-sticker">
+          <rect x="59" y="-60" width="152" height="43" rx="4" fill="#5A5248" fill-opacity="0.16" filter="url(#blurTight)" transform="translate(0 1.4)"/>
+          <rect x="58" y="-61" width="154" height="43" rx="4" fill="#FFFFFF" stroke="#E2DED7" stroke-width="0.6"/>
+          <text x="135" y="-47" font-size="6.6" fill-opacity="0.6">Your activation code</text>
+          <text x="135" y="-28" font-size="13" font-weight="600" letter-spacing="1.6" fill-opacity="0.9">N8KF-42PQ</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- back panel, inside of pocket -->
+    <rect x="0" y="-1" width="270" height="184" rx="3" fill="url(#pocketShade)"/>
+
+    <!-- card, tucked in the pocket (geometry from neffi-card-front-preview) -->
+    <g id="card" transform="translate(24 8) scale(0.686)">
+      <rect x="4" y="6" width="320" height="200" rx="12" fill="#5A5248" opacity="0.16" filter="url(#blurTight)"/>
+      <path d="M311.32 0.188965H12.2084C5.5705 0.188965 0.189453 5.57001 0.189453 12.2079V191.887C0.189453 198.524 5.5705 203.906 12.2084 203.906H311.32C317.958 203.906 323.339 198.524 323.339 191.887V12.2079C323.339 5.57001 317.958 0.188965 311.32 0.188965Z" fill="#FFFFFF" stroke="#D2CFC9" stroke-width="0.8"/>
+      <g fill="#111113">
+        <path d="M287.25 29.0201C288.637 30.9287 288.637 33.5139 287.25 35.4226C286.842 35.9842 286.056 36.1089 285.495 35.7008C284.933 35.2929 284.809 34.5068 285.217 33.9452C285.964 32.9171 285.964 31.5255 285.217 30.4975C284.809 29.9358 284.933 29.1497 285.495 28.7419C286.056 28.3337 286.842 28.4584 287.25 29.0201Z"/>
+        <path d="M291.657 25.8184C294.43 29.6365 294.43 34.8061 291.657 38.6242C291.248 39.1858 290.463 39.3102 289.901 38.902C289.339 38.4942 289.215 37.708 289.623 37.1464C291.757 34.2097 291.757 30.2329 289.623 27.2962C289.215 26.7346 289.339 25.9484 289.901 25.5406C290.463 25.1324 291.248 25.2568 291.657 25.8184Z"/>
+        <path d="M296.063 22.6171C300.224 28.3438 300.224 36.0986 296.063 41.8254C295.655 42.387 294.869 42.5114 294.307 42.1036C293.746 41.6954 293.621 40.9096 294.029 40.348C297.55 35.5022 297.55 28.9402 294.029 24.0945C293.621 23.5329 293.746 22.7471 294.307 22.3389C294.869 21.9311 295.655 22.0554 296.063 22.6171Z"/>
+        <path d="M300.469 19.4158C306.017 27.0516 306.017 37.3909 300.469 45.0267C300.061 45.5883 299.275 45.713 298.714 45.3048C298.152 44.897 298.027 44.1109 298.435 43.5492C303.343 36.7945 303.343 27.648 298.435 20.8932C298.027 20.3316 298.152 19.5455 298.714 19.1376C299.275 18.7295 300.061 18.8542 300.469 19.4158Z"/>
+        <use href="#neffiMark"/>
+      </g>
+      <circle cx="189.597" cy="84.2137" r="8.2137" fill="#E64A35"/>
+    </g>
+
+    <!-- pocket front with thumb notch -->
+    <g id="pocket-front">
+      <use href="#pocketFront" fill="#5A5248" opacity="0.14" filter="url(#blurTight)" transform="translate(0 -1.5)"/>
+      <use href="#pocketFront" fill="#F4F2EE" stroke="#D9D4CC" stroke-width="0.8"/>
+      <!-- side gusset folds -->
+      <path d="M0 -8L18 100V183M270 -8L252 100V183" stroke="#E4E0D9" stroke-width="0.8"/>
+      <!-- top edge highlight -->
+      <path d="M18.6 100.6H103M167 100.6H251.4" stroke="#FFFFFF" stroke-width="0.9"/>
+      <!-- paper thickness at the base -->
+      <path d="M0 183H270" stroke="#DCD7CF" stroke-width="1.6"/>
+    </g>
+  </g>
+
+  <!-- ================= PHONE CUE (secondary) ================= -->
+  <g id="phone" transform="translate(408 228) rotate(4) scale(0.88)">
+    <rect x="4" y="8" width="88" height="168" rx="15" fill="#6B6052" opacity="0.16" filter="url(#blurSoft)"/>
+    <rect x="0" y="0" width="88" height="168" rx="15" fill="#FFFFFF" stroke="#111113" stroke-opacity="0.4" stroke-width="1.4"/>
+    <rect x="34" y="7" width="20" height="5" rx="2.5" fill="#111113" fill-opacity="0.45"/>
+    <!-- screen content -->
+    <rect x="12" y="30" width="44" height="4" rx="2" fill="#111113" fill-opacity="0.75"/>
+    <rect x="12" y="39" width="56" height="2.6" rx="1.3" fill="#111113" fill-opacity="0.2"/>
+    <g stroke="#111113" stroke-opacity="0.22" stroke-width="0.8" fill="#FBFAF8">
+      <rect x="12" y="56" width="13" height="16" rx="2.5"/>
+      <rect x="28" y="56" width="13" height="16" rx="2.5"/>
+      <rect x="44" y="56" width="13" height="16" rx="2.5"/>
+      <rect x="60" y="56" width="13" height="16" rx="2.5" stroke="#111113" stroke-opacity="0.8"/>
+    </g>
+    <g fill="#111113" fill-opacity="0.85">
+      <circle cx="18.5" cy="64" r="1.8"/><circle cx="34.5" cy="64" r="1.8"/><circle cx="50.5" cy="64" r="1.8"/>
+      <rect x="66" y="59.5" width="1" height="9" rx="0.5"/>
+    </g>
+    <rect x="12" y="140" width="64" height="14" rx="7" fill="#111113" fill-opacity="0.8"/>
+  </g>
+</svg>

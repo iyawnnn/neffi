@@ -5,6 +5,8 @@ import { IdentitySection } from "./identity-section";
 import { SectionDivider } from "./section-divider";
 import { ProfileExperienceSection } from "./profile-experience-section";
 import { UseCasesSection } from "./use-cases-section";
+import { SetupJourneySection } from "./setup-journey-section";
+import { FinalCtaSection } from "./final-cta-section";
 
 // The wordmark file is a 1200x500 Snow canvas with the mark off-centre; this crops it to the lettering (533x222 including a little air).
 const WORDMARK = {
@@ -52,7 +54,7 @@ export default function Home() {
           over the CTAs. */}
         <div className="relative z-10 mt-[clamp(1rem,3.2svh,2.5rem)] flex flex-col items-center text-center">
           <p className="text-sm font-medium text-fg-secondary">
-            Digital business card, made physical.
+            Your profile, ready to tap.
           </p>
           <h1 className="mt-[clamp(0.5rem,1.6svh,1rem)] max-w-[15ch] text-[clamp(2rem,min(8.4vw,6.8svh),4.5rem)] leading-[1.04] font-semibold tracking-[-0.035em] text-balance text-foreground min-[769px]:max-w-[18ch]">
             Share who you are with a tap.
@@ -95,6 +97,9 @@ export default function Home() {
       <ProfileExperienceSection />
       <SectionDivider />
       <UseCasesSection />
+      <SectionDivider />
+      <SetupJourneySection />
+      <FinalCtaSection />
     </main>
   );
 }
