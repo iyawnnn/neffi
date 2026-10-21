@@ -13,7 +13,7 @@ test("the committed ERD matches the schema migrated from zero", () => {
 
 test("the ERD catalogs composite and nullable relationships, partial indexes and integrity guards", () => {
   expect(erd).toContain("27 tables");
-  expect(erd).toContain("16 enums");
+  expect(erd).toContain("19 enums");
   expect(erd).toContain("profiles_default_scene_fk");
   expect(erd).toContain("form_submissions_form_client_key_unique");
   expect(erd).toContain("scene_blocks_form_only_on_form");

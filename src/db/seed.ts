@@ -33,9 +33,11 @@ export const SEED_IDS = {
   itemCancelledDbc: id(53),
   profileAna: id(60),
   profileBenDraft: id(61),
+  profileEditorialDraft: id(67),
   sceneAnaMain: id(62),
   sceneAnaEvents: id(63),
   sceneBenMain: id(64),
+  sceneEditorialMain: id(68),
   formAna: id(65),
   cardBlank: id(70),
   cardProvisioningDbc: id(71),
@@ -134,8 +136,9 @@ export async function seed(db: SeedDb): Promise<void> {
     ]);
 
     await tx.insert(schema.profiles).values([
-      { id: S.profileAna, accountId: S.customerAna, status: "draft", fullName: "Ana Synthetic", headline: "Synthetic Designer", email: "hello@example.test", accentColor: "#2f6fed" },
-      { id: S.profileBenDraft, accountId: S.customerBen },
+      { id: S.profileAna, accountId: S.customerAna, status: "draft", fullName: "Ana Synthetic", headline: "Synthetic Designer", email: "hello@example.test", layout: "classic", colorMode: "light", accentColor: "#1F5FAE" },
+      { id: S.profileBenDraft, accountId: S.customerBen, layout: "showcase", colorMode: "dark", goal: "freelance", accentColor: "#B83A6B" },
+      { id: S.profileEditorialDraft, accountId: S.customerBen, layout: "editorial", colorMode: "light", accentColor: "#0E7C86" },
     ]);
     await tx.insert(schema.profileLinks).values([
       { profileId: S.profileAna, type: "linkedin", url: "https://example.test/in/ana", position: 0 },
@@ -146,6 +149,7 @@ export async function seed(db: SeedDb): Promise<void> {
       { id: S.sceneAnaMain, profileId: S.profileAna, name: "Main" },
       { id: S.sceneAnaEvents, profileId: S.profileAna, name: "Events" },
       { id: S.sceneBenMain, profileId: S.profileBenDraft, name: "Main" },
+      { id: S.sceneEditorialMain, profileId: S.profileEditorialDraft, name: "Main" },
     ]);
     await tx.insert(schema.formDefinitions).values({
       id: S.formAna, profileId: S.profileAna, preset: "connect", title: "Let's connect",
@@ -163,6 +167,7 @@ export async function seed(db: SeedDb): Promise<void> {
     });
     await tx.update(schema.profiles).set({ defaultSceneId: S.sceneAnaMain, status: "published" }).where(eq(schema.profiles.id, S.profileAna));
     await tx.update(schema.profiles).set({ defaultSceneId: S.sceneBenMain }).where(eq(schema.profiles.id, S.profileBenDraft));
+    await tx.update(schema.profiles).set({ defaultSceneId: S.sceneEditorialMain }).where(eq(schema.profiles.id, S.profileEditorialDraft));
 
     const stock = { stockPurchaseId: S.openingStock };
     const dbc = { ...stock, productId: S.productDbc, kind: "dbc" as const };

@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { boolean, check, foreignKey, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { accounts } from "./auth";
 import { createdAt, timestamps } from "./columns";
-import { blockType, formPreset, profileLinkType, profileStatus } from "./enums";
+import { blockType, formPreset, profileColorMode, profileGoal, profileLayout, profileLinkType, profileStatus } from "./enums";
 
 export const profiles = pgTable(
   "profiles",
@@ -22,8 +22,9 @@ export const profiles = pgTable(
     email: text(),
     website: text(),
     location: text(),
-    // One of Neffi's maintained themes (validated in the profiles module).
-    theme: text().notNull().default("default"),
+    layout: profileLayout().notNull().default("classic"),
+    colorMode: profileColorMode().notNull().default("light"),
+    goal: profileGoal(),
     accentColor: text(),
     // Cloudinary asset id only; image binaries never live in Postgres.
     imageAssetId: text(),
