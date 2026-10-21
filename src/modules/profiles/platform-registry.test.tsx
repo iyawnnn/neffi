@@ -49,7 +49,7 @@ test.each(added)("$label has metadata, branded icons, canonical validation and p
     expect(parseBlockContent("link", { kind, url })).toEqual({ ok: false });
   }
   const view = buildSceneView({
-    profile: { fullName: "Ana Cruz", headline: null, company: null, bio: null, phone: null, email: null, website: null, location: null, accentColor: null, imageIsLogo: false },
+    profile: { fullName: "Ana Cruz", headline: null, company: null, bio: null, phone: null, email: null, website: null, location: null, accentColor: null, imageIsLogo: false, layout: "classic", colorMode: "light" },
     imageUrl: null, scene: { id: "s1", name: "Main" }, forms: [],
     blocks: [{ id: "b1", type: "link", position: 0, visible: true, formId: null, content: { kind, label: null, url: "https://example.com/you" } }],
   });

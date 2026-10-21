@@ -1,4 +1,9 @@
 // Neffi-maintained accent swatches (Brand Identity: customer profiles keep their own colours).
+export const LAYOUTS = ["classic", "editorial", "showcase"] as const;
+export type Layout = (typeof LAYOUTS)[number];
+export const COLOR_MODES = ["light", "dark"] as const;
+export type ColorMode = (typeof COLOR_MODES)[number];
+
 export const ACCENTS = [
   { name: "Ink", hex: "#0C0C0D" },
   { name: "Ocean", hex: "#1F5FAE" },

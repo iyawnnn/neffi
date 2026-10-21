@@ -11,6 +11,7 @@ const selectProfile = (db: Db, where: SQL | undefined) => db.select({
   fullName: schema.profiles.fullName, headline: schema.profiles.headline, company: schema.profiles.company,
   bio: schema.profiles.bio, phone: schema.profiles.phone, email: schema.profiles.email,
   website: schema.profiles.website, location: schema.profiles.location, accentColor: schema.profiles.accentColor,
+  layout: schema.profiles.layout, colorMode: schema.profiles.colorMode,
   imageAssetId: schema.profiles.imageAssetId, imageIsLogo: schema.profiles.imageIsLogo, defaultSceneId: schema.profiles.defaultSceneId, activeSceneId: schema.profiles.activeSceneId,
 }).from(schema.profiles).where(where);
 type ViewProfile = Awaited<ReturnType<typeof selectProfile>>[number];

@@ -6,7 +6,9 @@ import { CardError, lockCard } from "../cards/card";
 import type { Db } from "../db";
 import { PRESETS } from "../forms/config";
 import { ProfileError } from "./errors";
-import { ACCENTS, LIMITS, publishGaps, type Identity, type PublishGap } from "./rules";
+import { ACCENTS, COLOR_MODES, LAYOUTS, type ColorMode, type Layout } from "./appearance-options";
+import { GOALS, isGoal, NO_GOAL, type Goal } from "./goals";
+import { LIMITS, publishGaps, type Identity, type PublishGap } from "./rules";
 import { PURPOSES, starterBlocks, type Essentials, type Purpose } from "./starters";
 
 // Every profile mutation starts here: the WHERE on account_id is the ownership check, FOR UPDATE serializes edits.
@@ -82,6 +84,36 @@ export async function createProfileFromStarter(
   });
 }
 
+export async function createProfileFromSetup(
+  db: Db,
+  input: { accountId: string; cardId: string; goal: Goal | null; identity: Identity },
+): Promise<{ profileId: string; created: boolean }> {
+  if (input.goal !== null && !isGoal(input.goal)) throw new ProfileError("invalid");
+  return db.transaction(async (tx) => {
+    await tx.select({ id: schema.accounts.id }).from(schema.accounts).where(eq(schema.accounts.id, input.accountId)).for("update");
+    const card = await lockCard(tx, input.cardId).catch((error) => {
+      if (error instanceof CardError) return null;
+      throw error;
+    });
+    if (!card || card.ownerAccountId !== input.accountId || card.kind !== "dbc" || card.state !== "released") throw new ProfileError("not_found");
+    if (card.profileId) return { profileId: card.profileId, created: false };
+
+    const [{ n }] = await tx.select({ n: count() }).from(schema.profiles).where(eq(schema.profiles.accountId, input.accountId));
+    if (n >= LIMITS.profilesPerAccount) throw new ProfileError("limit_reached");
+
+    const recommendation = input.goal ? GOALS[input.goal] : NO_GOAL;
+    const [profile] = await tx
+      .insert(schema.profiles)
+      .values({ accountId: input.accountId, ...input.identity, goal: input.goal, layout: recommendation.layout, colorMode: "light", accentColor: null })
+      .returning({ id: schema.profiles.id });
+    const [scene] = await tx.insert(schema.scenes).values({ profileId: profile.id, name: recommendation.sceneName }).returning({ id: schema.scenes.id });
+    await tx.update(schema.profiles).set({ defaultSceneId: scene.id }).where(eq(schema.profiles.id, profile.id));
+    await tx.update(schema.cards).set({ profileId: profile.id }).where(eq(schema.cards.id, card.id));
+    await recordActivity(tx, { type: "card_profile_changed", actorAccountId: input.accountId, accountId: input.accountId, cardId: card.id });
+    return { profileId: profile.id, created: true };
+  });
+}
+
 const unread = sql<number>`count(${schema.formSubmissions.id}) filter (where ${schema.formSubmissions.readAt} is null)`.mapWith(Number);
 
 export async function ownedProfiles(db: Db, accountId: string) {
@@ -106,6 +138,9 @@ export type OwnedProfile = {
   website: string | null;
   location: string | null;
   accentColor: string | null;
+  layout: Layout;
+  colorMode: ColorMode;
+  goal: Goal | null;
   imageAssetId: string | null;
   imageIsLogo: boolean;
   defaultSceneId: string;
@@ -121,6 +156,7 @@ export async function getOwnedProfile(db: Db, accountId: string, profileId: stri
       id: schema.profiles.id, status: schema.profiles.status, fullName: schema.profiles.fullName, headline: schema.profiles.headline,
       company: schema.profiles.company, bio: schema.profiles.bio, phone: schema.profiles.phone, email: schema.profiles.email,
       website: schema.profiles.website, location: schema.profiles.location, accentColor: schema.profiles.accentColor,
+      layout: schema.profiles.layout, colorMode: schema.profiles.colorMode, goal: schema.profiles.goal,
       imageAssetId: schema.profiles.imageAssetId, imageIsLogo: schema.profiles.imageIsLogo,
       defaultSceneId: schema.profiles.defaultSceneId, activeSceneId: schema.profiles.activeSceneId,
     })
@@ -177,12 +213,50 @@ export async function updateIdentity(db: Db, input: { accountId: string; profile
   });
 }
 
-export async function updateAppearance(db: Db, input: { accountId: string; profileId: string; accentColor: string; imageIsLogo: boolean }): Promise<void> {
+export async function updateAppearance(db: Db, input: { accountId: string; profileId: string; accentColor: string; layout?: Layout; colorMode?: ColorMode; imageIsLogo?: boolean }): Promise<void> {
   if (!ACCENTS.some((accent) => accent.hex === input.accentColor)) throw new ProfileError("invalid");
+  if (input.layout !== undefined && !LAYOUTS.includes(input.layout)) throw new ProfileError("invalid");
+  if (input.colorMode !== undefined && !COLOR_MODES.includes(input.colorMode)) throw new ProfileError("invalid");
   await db.transaction(async (tx) => {
     const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
-    await tx.update(schema.profiles).set({ accentColor: input.accentColor, imageIsLogo: input.imageIsLogo }).where(eq(schema.profiles.id, p.id));
+    await tx.update(schema.profiles).set({
+      accentColor: input.accentColor,
+      ...(input.layout === undefined ? {} : { layout: input.layout }),
+      ...(input.colorMode === undefined ? {} : { colorMode: input.colorMode }),
+      ...(input.imageIsLogo === undefined ? {} : { imageIsLogo: input.imageIsLogo }),
+    }).where(eq(schema.profiles.id, p.id));
     await bumpProfileContentVersion(tx, p.id);
+  });
+}
+
+export async function setProfileGoal(db: Db, input: { accountId: string; profileId: string; goal: Goal | null }): Promise<void> {
+  if (input.goal !== null && !isGoal(input.goal)) throw new ProfileError("invalid");
+  await db.transaction(async (tx) => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    await tx.update(schema.profiles).set({ goal: input.goal }).where(eq(schema.profiles.id, p.id));
+    await bumpProfileContentVersion(tx, p.id);
+  });
+}
+
+export async function upsertContactBlock(db: Db, input: { accountId: string; profileId: string; saveContact: boolean }): Promise<void> {
+  if (typeof input.saveContact !== "boolean") throw new ProfileError("invalid");
+  await db.transaction(async (tx) => {
+    const profile = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    if (!profile.defaultSceneId) throw new ProfileError("default_scene");
+    const [existing] = await tx
+      .select({ id: schema.sceneBlocks.id })
+      .from(schema.sceneBlocks)
+      .where(and(eq(schema.sceneBlocks.sceneId, profile.defaultSceneId), eq(schema.sceneBlocks.type, "contact")))
+      .orderBy(asc(schema.sceneBlocks.position))
+      .limit(1);
+    if (existing) {
+      await tx.update(schema.sceneBlocks).set({ content: { saveContact: input.saveContact } }).where(eq(schema.sceneBlocks.id, existing.id));
+    } else {
+      const [{ n }] = await tx.select({ n: count() }).from(schema.sceneBlocks).where(eq(schema.sceneBlocks.sceneId, profile.defaultSceneId));
+      if (n >= LIMITS.blocksPerScene) throw new ProfileError("limit_reached");
+      await tx.insert(schema.sceneBlocks).values({ sceneId: profile.defaultSceneId, type: "contact", position: n, content: { saveContact: input.saveContact } });
+    }
+    await bumpProfileContentVersion(tx, profile.id);
   });
 }
 

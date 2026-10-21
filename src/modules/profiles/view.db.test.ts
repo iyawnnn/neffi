@@ -4,7 +4,7 @@ import { cards, profiles } from "@/db/schema";
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo" } }));
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter, publishProfile, unpublishProfile, updateIdentity } from "./profiles";
+import { createProfileFromStarter, publishProfile, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
 import { loadOwnerSceneView } from "./view";
 
 let db: TestDb;
@@ -22,6 +22,15 @@ test("loads the shown Default Scene for an owned starter profile", () => rollbac
   expect(view?.scene.name).toBe("Clients");
   expect(view?.blocks.map(b => b.type)).toEqual(["booking", "form", "contact"]);
   expect(view?.identity.image).toBeNull();
+  expect(view?.appearance).toEqual({ layout: "classic", mode: "light", accent: "#0C0C0D" });
+}));
+
+test("scene views expose curated appearance metadata but never Goal", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await tx.update(profiles).set({ layout: "showcase", colorMode: "dark", goal: "freelance", accentColor: "#1F5FAE" }).where(eq(profiles.id, input.profileId));
+  const view = await loadOwnerSceneView(tx, input);
+  expect(view?.appearance).toEqual({ layout: "showcase", mode: "dark", accent: "#1F5FAE" });
+  expect(JSON.stringify(view)).not.toContain("freelance");
 }));
 test("another profile's scene falls back to the shown Scene", () => rollback(db, async tx => {
   const input = await setup(tx);
@@ -56,6 +65,21 @@ test("a changed revision cannot populate an old public cache key", () => rollbac
   expect(await loadVersionedPublicSceneView(tx, key)).not.toBeNull();
   await updateIdentity(tx, { ...input, identity: { fullName: "Changed", headline: "Designer", bio: null, phone: null, email: "ana@e.test", website: null, company: null, location: null } });
   expect(await loadVersionedPublicSceneView(tx, key)).toBeNull();
+}));
+
+test("appearance updates invalidate old public cache keys and load through both public loaders", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await publishProfile(tx, input);
+  const [profile] = await tx.select().from(profiles).where(eq(profiles.id, input.profileId));
+  const key = { profileId: input.profileId, sceneId: profile.defaultSceneId!, version: profile.contentVersion };
+  const cached = await loadVersionedPublicSceneView(tx, key);
+  await updateAppearance(tx, { ...input, layout: "editorial", colorMode: "dark", accentColor: "#1F5FAE" });
+  expect(await loadVersionedPublicSceneView(tx, key)).toBeNull();
+  expect(await loadCurrentPublicSceneView(tx, key, async () => cached)).toBeNull();
+  const current = { ...key, version: key.version + 1 };
+  const expected = { layout: "editorial", mode: "dark", accent: "#1F5FAE" };
+  expect((await loadPublicSceneView(tx, current))?.appearance).toEqual(expected);
+  expect((await loadVersionedPublicSceneView(tx, current))?.appearance).toEqual(expected);
 }));
 test.each(["unpublish", "delete shown scene"])("%s during cached resolution never returns a stale DTO", change => rollback(db, async tx => {
   const input = await setup(tx);

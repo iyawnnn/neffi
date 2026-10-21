@@ -1,4 +1,5 @@
 import { LINK_KIND_LABELS, type LinkKind } from "./block-content";
+import { ACCENTS } from "./appearance-options";
 import { parseFormConfig, visibleFields } from "../forms/config";
 
 export type ViewIdentity = {
@@ -13,9 +14,13 @@ export type ViewBlock =
   | { id: string; type: "contact"; saveContact: boolean; phone: string | null; email: string | null; website: string | null; location: string | null }
   | { id: string; type: "booking"; label: string; url: string }
   | { id: string; type: "form"; formId: string; title: string; fields: ReturnType<typeof visibleFields> };
-export type SceneView = { identity: ViewIdentity; scene: { id: string; name: string }; blocks: ViewBlock[] };
+export type SceneView = {
+  identity: ViewIdentity;
+  appearance: { layout: "classic" | "editorial" | "showcase"; mode: "light" | "dark"; accent: string };
+  scene: { id: string; name: string }; blocks: ViewBlock[];
+};
 export type SceneViewInput = {
-  profile: { fullName: string | null; headline: string | null; company: string | null; bio: string | null; phone: string | null; email: string | null; website: string | null; location: string | null; accentColor: string | null; imageIsLogo: boolean };
+  profile: { fullName: string | null; headline: string | null; company: string | null; bio: string | null; phone: string | null; email: string | null; website: string | null; location: string | null; accentColor: string | null; imageIsLogo: boolean; layout: SceneView["appearance"]["layout"]; colorMode: SceneView["appearance"]["mode"] };
   imageUrl: string | null;
   scene: { id: string; name: string };
   blocks: { id: string; type: string; position: number; visible: boolean; content: unknown; formId: string | null }[];
@@ -69,5 +74,8 @@ export function buildSceneView({ profile, imageUrl, scene, blocks, forms }: Scen
       if (form && parsed.ok) view.push({ id: block.id, type: "form", formId: form.id, title: form.title, fields: visibleFields(parsed.config) });
     }
   }
-  return { identity, scene, blocks: view };
+  return {
+    identity, scene, blocks: view,
+    appearance: { layout: profile.layout, mode: profile.colorMode, accent: ACCENTS.find(a => a.hex === profile.accentColor)?.hex ?? "#0C0C0D" },
+  };
 }

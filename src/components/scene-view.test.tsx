@@ -5,6 +5,7 @@ import type { SceneView } from "@/modules/profiles/scene-view";
 import { SceneViewPreview } from "./scene-view";
 
 const base: SceneView = {
+  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D" },
   identity: { fullName: "Ana Cruz", initials: "AC", headline: "Designer", company: null, bio: null, phone: null, email: null, website: null, location: null, accent: "#0C0C0D", onAccent: "#FFFFFF", image: null },
   scene: { id: "s1", name: "Main" }, blocks: [],
 };
