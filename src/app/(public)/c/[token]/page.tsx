@@ -1,9 +1,11 @@
+import type { CSSProperties } from "react";
+import { profileTheme } from "@/modules/profiles/profile-theme";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { headers } from "next/headers";
-import { SceneViewPreview } from "@/components/scene-view";
+import { ProfileRenderer } from "@/components/profile/profile-renderer";
 import { db } from "@/db";
 import { CARD_REQUEST_HEADER, readCardRequest } from "@/modules/cards/request";
 import { loadCurrentPublicSceneView } from "@/modules/profiles/view";
@@ -26,15 +28,15 @@ export default async function CardPage({ params }: PageProps<"/c/[token]">) {
   const view = await loadCurrentPublicSceneView(db, snapshot, cachedSceneView);
   if (!view) notFound();
   return (
-    <main className="flex flex-1 flex-col bg-[#F2F0EA] text-[#0C0C0D]">
+    <main className="flex flex-1 flex-col bg-[var(--pf-bg)] text-[var(--pf-fg)]" style={{ ...profileTheme(view.appearance.accent, view.appearance.mode), colorScheme: view.appearance.mode } as CSSProperties}>
       {snapshot.owner ? (
-        <nav aria-label="Manage your Neffi" className="flex flex-wrap items-center justify-center gap-2 border-b border-[#D8D5CE] bg-[#F8F7F3] px-5 py-2 text-sm">
-          <span className="text-[#74736F]">Only you see this</span>
-          <Link href={`/app/profiles/${snapshot.profileId}/scenes/${view.scene.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-[#D8D5CE] px-3 font-medium">Edit</Link>
-          <Link href={`/app/profiles/${snapshot.profileId}`} className="inline-flex min-h-11 items-center rounded-lg border border-[#D8D5CE] px-3 font-medium">Switch scene</Link>
+        <nav aria-label="Manage your Neffi" className="pf-owner-bar flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm">
+          <span>Only you see this</span>
+          <Link href={`/app/profiles/${snapshot.profileId}/scenes/${view.scene.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--pf-border)] px-3 font-medium">Edit</Link>
+          <Link href={`/app/profiles/${snapshot.profileId}`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--pf-border)] px-3 font-medium">Switch scene</Link>
         </nav>
       ) : null}
-      <SceneViewPreview view={view} visitorActions={{ saveContactHref: `/c/${token}/contact` }} />
+      <ProfileRenderer view={view} visitorActions={{ saveContactHref: `/c/${token}/contact` }} />
     </main>
   );
 }

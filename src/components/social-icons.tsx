@@ -7,8 +7,14 @@ import { cn } from "@/lib/utils";
 
 const GENERIC: Record<string, LucideIcon> = { portfolio: Globe, booking: CalendarDays, shop: ShoppingBag, menu: UtensilsCrossed };
 
-export function LinkKindIcon({ kind, className }: { kind: LinkKind; className?: string }) {
-  const brand = PLATFORMS[kind].brand;
+export function LinkKindIcon({ kind, className, monochrome = false }: { kind: LinkKind; className?: string; monochrome?: boolean }) {
+  const brand = PLATFORMS[kind]?.brand;
+  if (monochrome) {
+    const Icon = GENERIC[kind] ?? Link2;
+    return <span aria-hidden className={cn("inline-flex size-6 shrink-0 items-center justify-center", className)}>
+      {brand ? <svg viewBox="0 0 24 24" className="size-6 fill-current"><path d={brand.path} /></svg> : <Icon className="size-6" strokeWidth={1.6} />}
+    </span>;
+  }
   if (brand) return (
     <span aria-hidden className={cn("inline-flex size-9 shrink-0 items-center justify-center rounded-[10px]", className)} style={{ background: brand.color }}>
       <svg viewBox="0 0 24 24" className="size-5 fill-white"><path d={brand.path} /></svg>
