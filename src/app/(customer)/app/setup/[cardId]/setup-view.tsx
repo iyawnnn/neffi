@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   AlignLeft,
-  ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
   FolderOpen,
@@ -12,10 +11,15 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { ButtonLink } from "@/components/app-ui";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { isPurpose, type Purpose } from "@/modules/profiles/purpose-options";
+import { type Purpose } from "@/modules/profiles/purpose-options";
+
+import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
+import { SetupProgress } from "@/components/setup-header";
+import { nextStep, SKIPPABLE_STEPS, STEP_TITLES, type SetupStep } from "./setup-steps";
 
 const options = {
   network: { label: "Network", description: "Share your details and make it easy to stay connected.", icon: Users, linkPlaceholder: "linkedin.com/in/yourname" },
@@ -23,79 +27,50 @@ const options = {
   show_my_work: { label: "Show my work", description: "Put your projects and portfolio front and center.", icon: FolderOpen, linkPlaceholder: "yourportfolio.com" },
 } satisfies Record<Purpose, { label: string; description: string; icon: typeof Users; linkPlaceholder: string }>;
 
-export function SetupView({ suffix, purpose, children }: { suffix: string; purpose?: string; children?: ReactNode }) {
-  const essentials = isPurpose(purpose);
-  const choosingProfile = !essentials && !!children;
+export function SetupView({ suffix, step, children, backHref, preview }: {
+  suffix: string; step?: SetupStep; children?: ReactNode; backHref?: string; preview?: ReactNode;
+}) {
   return (
     <main data-setup className="w-full flex-1">
-      <div className="mx-auto flex w-full max-w-[440px] flex-col px-4 pt-4 pb-10 sm:px-6 sm:pt-5 sm:pb-12 md:max-w-[1080px] md:pt-6 md:pb-14">
-        <div className="mx-auto flex w-full max-w-[440px] flex-col">
-          {essentials && (
-            <div className="mb-3 sm:mb-3.5">
-              <Link
-                href="?step=purpose"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-meta font-medium text-fg-secondary transition-colors duration-[220ms] hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-              >
-                <ArrowLeft aria-hidden className="size-3.5" />Back
-              </Link>
-            </div>
-          )}
-          {!choosingProfile && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-meta text-fg-secondary">
-                <p className="font-medium text-fg-secondary">Step {essentials ? "2" : "1"} of 2</p>
-                <p className="text-label text-fg-faint sm:text-meta">Card ending in {suffix}</p>
-              </div>
-              <div
-                role="progressbar"
-                aria-label="Setup progress"
-                aria-valuemin={0}
-                aria-valuemax={2}
-                aria-valuenow={essentials ? 2 : 1}
-                className="mt-2.5 h-[3px] w-full overflow-hidden rounded-full bg-border/60"
-              >
-                <div className={essentials ? "h-full w-full rounded-full bg-brand" : "h-full w-1/2 rounded-full bg-brand"} />
-              </div>
-              <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:mt-6 sm:text-[1.75rem]">
-                {essentials ? "Make it yours" : "Choose your starting point"}
-              </h1>
-              <p className="mt-2 text-[0.8125rem] text-fg-secondary leading-normal sm:text-body sm:leading-relaxed">
-                {essentials
-                  ? "Add the details people should see first. You can edit everything later."
-                  : "Choose what you want your Neffi to focus on first. You can change this later."}
-              </p>
-            </>
-          )}
-          {essentials ? (
-            <div className="mt-5 sm:mt-6">{children}</div>
-          ) : children ? (
-            <div className="flex flex-col gap-4 sm:gap-[18px]">
-              <p className="text-label text-fg-faint sm:text-meta">Card ending in {suffix}</p>
-              {children}
-            </div>
-          ) : (
-            <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3">
-              {Object.entries(options).map(([key, { label, description, icon: Icon }]) => (
-                <Link
-                  key={key}
-                  href={`?purpose=${key}`}
-                  className="group flex min-h-[86px] items-center gap-3.5 rounded-xl border border-border bg-background px-4 py-3.5 interact transition-[background-color,border-color] hover:border-border-strong hover:bg-brand/[0.03] focus-visible:border-brand focus-visible:bg-brand/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:min-h-[88px] sm:gap-4 sm:px-5 sm:py-4"
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/[0.05] text-action-text">
-                    <Icon aria-hidden className="size-4" strokeWidth={1.6} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-base font-semibold leading-snug">{label}</span>
-                    <span className="mt-0.5 block text-meta leading-normal text-fg-secondary sm:text-body sm:leading-relaxed">{description}</span>
-                  </span>
-                  <ArrowRight aria-hidden className="size-4 shrink-0 nav-interact nav-arrow group-focus-visible:text-brand motion-safe:group-focus-visible:-rotate-45" />
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="mx-auto w-full max-w-[528px] px-4 pt-5 pb-12 sm:px-6 sm:pt-8 md:pb-16">
+        <SetupProgress step={step} backHref={backHref} preview={preview} />
+        <p className="mt-5 text-meta text-fg-secondary">Card ending in {suffix}</p>
+        {step && <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">{STEP_TITLES[step]}</h1>}
+        <div className="mt-5 flex flex-col gap-4 sm:mt-6">{children}</div>
       </div>
     </main>
+  );
+}
+
+export function GoalFields({ goal, disabled = false }: { goal?: string | null; disabled?: boolean }) {
+  return (
+    <>
+      <p className="text-body text-fg-secondary">A few simple steps, then you&apos;re ready to share.</p>
+      <fieldset className="flex min-w-0 flex-col gap-2.5">
+        <legend className="mb-3 text-body font-medium">What will you use Neffi for?</legend>
+        {[...Object.entries(GOALS), ["", NO_GOAL] as const].map(([value, option]) => (
+          <label key={value} className="flex min-h-[76px] cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 has-[:checked]:border-brand has-[:checked]:bg-brand/[0.03] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand">
+            <input type="radio" name="goal" value={value} required defaultChecked={goal !== undefined && (goal ?? "") === value} className="size-4 shrink-0 accent-brand" />
+            <span className="min-w-0"><span className="block text-body font-semibold">{option.label}</span><span className="mt-1 block text-meta text-fg-secondary">{option.helper}</span></span>
+          </label>
+        ))}
+      </fieldset>
+      <Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={disabled}>Continue <ArrowRight aria-hidden className="size-4" /></Button>
+    </>
+  );
+}
+
+export function SetupPlaceholder({ step, profileId, sceneId }: { step: SetupStep; profileId: string; sceneId: string }) {
+  const next = nextStep(step);
+  const optional = SKIPPABLE_STEPS.includes(step);
+  return (
+    <>
+      <p className="text-body text-fg-secondary">This step&apos;s editor is coming in the next setup tasks. Your saved profile is unchanged.</p>
+      {(step === "you" || step === "contact") && <ButtonLink href={`/app/profiles/${profileId}/identity`} variant="outline" className="w-full">Edit your details</ButtonLink>}
+      {step === "contact" && <ButtonLink href={`/app/profiles/${profileId}/scenes/${sceneId}`} variant="outline" className="w-full">Edit profile content</ButtonLink>}
+      {!optional && next && step !== "review" && step !== "done" && <Button variant="action" size="touch" className="h-12 w-full" disabled>Continue</Button>}
+      {optional && next && <Link href={`?step=${next}`} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 font-medium focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>}
+    </>
   );
 }
 

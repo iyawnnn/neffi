@@ -1,18 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
-vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles }));
-vi.mock("./actions", () => ({ createProfileAction: vi.fn(), chooseProfileAction: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
-  notFound: () => { throw new Error("NOT_FOUND"); },
-}));
+vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
+vi.mock("./actions", () => ({ createProfileAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 import SetupPage from "./page";
-
 const render = async (query: Record<string, string | string[]> = {}) => renderToStaticMarkup(await SetupPage({ params: Promise.resolve({ cardId: "c1" }), searchParams: Promise.resolve(query) }));
 beforeEach(() => {
   vi.resetAllMocks();
@@ -20,64 +15,65 @@ beforeEach(() => {
   m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "A".repeat(22) + "WXYZ", profileId: null }]);
   m.ownedProfiles.mockResolvedValue([]);
 });
-test("unknown card is not found", async () => {
+function draft(gaps: string[] = ["contact", "content"]) {
+  m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "TESTWXYZ", profileId: "p1" }]);
+  m.getOwnedProfile.mockResolvedValue({ id: "p1", status: "draft", goal: "freelance", fullName: "Ana", gaps, defaultSceneId: "s1" });
+}
+test("unowned card is not found before profile reads", async () => {
   m.ownedCards.mockResolvedValue([]);
   await expect(render()).rejects.toThrow("NOT_FOUND");
+  expect(m.getOwnedProfile).not.toHaveBeenCalled();
 });
-test("already set-up card redirects to its profile", async () => {
-  m.ownedCards.mockResolvedValue([{ id: "c1", profileId: "p1" }]);
-  await expect(render()).rejects.toThrow("REDIRECT:/app/profiles/p1");
-});
-test("no profiles shows the three purposes", async () => {
+test("new setup shows five canonical Goals and explicit Continue, no progress bar", async () => {
   const html = await render();
-  expect(html).toContain("Choose your starting point");
-  for (const [key, label] of [["network", "Network"], ["get_clients", "Get clients"], ["show_my_work", "Show my work"]]) {
-    expect(html).toContain(`href="?purpose=${key}"`);
-    expect(html).toContain(label);
-  }
-  expect(html).not.toContain("Profile preview");
-  expect(html).toContain("Card ending in WXYZ");
+  for (const label of ["Let&#x27;s set up your Neffi", "Networking / Professional", "Freelance / Creative", "Business / Sales", "Student / Job Seeking", "Not sure yet", "Continue", "1 of 7"]) expect(html).toContain(label);
+  expect(html).not.toContain('role="progressbar"');
   expect(html).not.toContain("A".repeat(22));
-  expect(m.requireAccount).toHaveBeenCalledWith("/app");
-  expect(m.ownedCards).toHaveBeenCalledWith({}, "a1");
+  expect(html).toContain("WXYZ");
 });
-test("existing profiles offer selection or a new profile", async () => {
+test("existing-profile chooser is retained; explicit goal enters new setup", async () => {
   m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana" }]);
-  const html = await render();
-  expect(html).toContain("Show one of your profiles on this card");
-  expect(html).toContain("Use Ana");
-  expect(html).toContain('href="?step=purpose"');
-  expect(html).toContain("Create a new profile");
-  expect(await render({ step: "purpose" })).toContain("Choose your starting point");
+  expect(await render()).toContain("Show one of your profiles on this card");
+  expect(await render()).toContain('href="?step=goal"');
+  expect(await render({ step: "goal" })).toContain("What will you use Neffi for?");
 });
-test("purpose shows ordered essentials and signed-in email", async () => {
-  const html = await render({ purpose: "get_clients" });
-  expect(html).toContain("Make it yours");
-  expect(html).toContain('href="?step=purpose"');
-  expect(html).toContain('name="purpose" value="get_clients"');
-  const form = html.slice(html.indexOf("<form"));
-  let previous = -1;
-  for (const label of ["Full name", "Role or headline", "Short intro", "Email", "Phone", "Booking link"]) {
-    const index = form.indexOf(label);
-    expect(index).toBeGreaterThan(previous);
-    previous = index;
-  }
-  expect(html).toContain('name="email"');
-  expect(html).toContain('value="ana@example.test"');
-  expect(html).toContain("Create my Neffi");
-  expect(html).toContain("You can change everything later.");
+test("You keeps the existing essentials fallback and carries goal without creating on GET", async () => {
+  const html = await render({ step: "you", goal: "business" });
+  expect(html).toContain("Let&#x27;s start with you");
+  expect(html).toContain('name="goal" value="business"');
+  expect(html).toContain("Full name");
+  expect(html).toContain("2 of 7");
 });
-test("invalid purpose shows purpose selection", async () => {
-  expect(await render({ purpose: "x" })).toContain("Choose your starting point");
+test.each([undefined, "unknown"])("draft resumes from persisted gaps for %s", async step => {
+  draft();
+  await expect(render(step ? { step } : {})).rejects.toThrow("REDIRECT:?step=contact");
+  expect(m.getOwnedProfile).toHaveBeenCalledWith({}, "a1", "p1");
 });
-
-test.each([
-  ["network", "LinkedIn or main profile link"],
-  ["get_clients", "Booking link"],
-  ["show_my_work", "Portfolio link"],
-])("%s preserves its purpose value and final field", async (purpose, label) => {
-  const html = await render({ purpose });
-  expect(html).toContain(`name="purpose" value="${purpose}"`);
-  expect(html).toContain(label);
-  expect(html).toContain('href="?step=purpose"');
+test.each([{ gaps: ["name"] }, { gaps: [] }])("resume handles %j", async ({ gaps }) => {
+  draft(gaps);
+  await expect(render()).rejects.toThrow(`REDIRECT:?step=${gaps.length ? "you" : "review"}`);
+});
+test.each(["photo", "contact", "links", "look", "style", "review", "done"])("direct %s without Draft is guarded", async step => {
+  await expect(render({ step })).rejects.toThrow("REDIRECT:?step=goal");
+});
+test("optional steps and previous saved steps can be revisited without writes", async () => {
+  draft();
+  const html = await render({ step: "photo" });
+  expect(html).toContain("Add a photo or logo");
+  expect(html).toContain("Skip for now");
+  expect(html).toContain('href="?step=contact"');
+  expect(html).toContain('href="?step=you"');
+  expect(await render({ step: "goal" })).toContain("What will you use Neffi for?");
+});
+test("published route redirects hub except explicit done shell", async () => {
+  draft([]);
+  m.getOwnedProfile.mockResolvedValue({ id: "p1", status: "published", gaps: [] });
+  await expect(render()).rejects.toThrow("REDIRECT:/app/profiles/p1");
+  expect(await render({ step: "done" })).toContain("Your Neffi is live");
+});
+test("Draft cannot enter done, and reload keeps explicit allowed step", async () => {
+  draft();
+  await expect(render({ step: "done" })).rejects.toThrow("REDIRECT:?step=contact");
+  expect(await render({ step: "style" })).toContain("Make it yours");
+  expect(await render({ step: "style" })).toContain("Make it yours");
 });

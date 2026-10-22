@@ -61,7 +61,8 @@ export async function claimAction(_previous: ActivateState | undefined, _data: F
   if (!(await consumeQuota(db, quotaKey("activation-claim", accountId), CLAIMS_PER_ACCOUNT))) return { error: MESSAGES.tooMany };
   const result = await claimCard(db, { credentialId, accountId });
   await clearChallenge();
-  redirect(result.status === "unavailable" ? "/activate?notice=unavailable" : "/app?added=1");
+  if (result.status === "claimed") redirect(`/app/setup/${result.cardId}`);
+  redirect(result.status === "already_yours" ? "/app" : "/activate?notice=unavailable");
 }
 
 // Keeps the accepted code so the customer can sign in with the right account and finish.

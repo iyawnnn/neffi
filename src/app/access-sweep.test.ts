@@ -108,7 +108,8 @@ const classifiedExports: Record<string, readonly string[]> = {
   ],
   "./(customer)/app/setup/[cardId]/actions.ts": [
     "createProfileAction",
-    "chooseProfileAction"
+    "chooseProfileAction",
+    "continueGoalAction"
   ],
   "./(public)/activate/actions.ts": [
     "checkCodeAction",
