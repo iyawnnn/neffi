@@ -29,7 +29,7 @@ function render(view = full, visitor = true) {
   return host;
 }
 
-test.each(["classic", "editorial", "showcase", "unknown"])("%s renders Classic during T5 without dropping featured content", layout => {
+test.each(["classic", "showcase", "unknown"])("%s renders Classic without dropping featured content", layout => {
   const host = render({ ...full, appearance: { ...full.appearance, layout: layout as SceneView["appearance"]["layout"] } });
   expect(host.querySelector('[data-layout="classic"]')).toBeTruthy();
   expect(host.querySelectorAll("h3")).toHaveLength(1);
@@ -71,7 +71,7 @@ test("minimal profiles have no empty sections or invented actions", () => {
 test("rendered contact details have restrained decorative icons", () => {
   const host = render();
   for (const [href, icon] of [["tel:+639171234567", "phone"], ["mailto:ana@example.test", "mail"], ["https://ana.example.test", "globe"]]) {
-    const glyph = host.querySelector(`.pf-contact a[href="${href}"] > svg`);
+    const glyph = host.querySelector(`.pf-contact a[href="${href}"]`)?.closest("dd")?.previousElementSibling?.querySelector("svg");
     expect(glyph?.classList.contains(`lucide-${icon}`)).toBe(true);
     expect(glyph?.getAttribute("width")).toBe("16");
     expect(glyph?.getAttribute("aria-hidden")).toBe("true");

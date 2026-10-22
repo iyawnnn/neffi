@@ -17,8 +17,10 @@ beforeEach(() => {
   m.profile.mockResolvedValue({ id: "p1", status: "draft", defaultSceneId: "s1", gaps: [] });
   m.view.mockResolvedValue(profileFixture);
 });
-test("Draft shows preview and Publish", async () => {
+test.each(["classic", "editorial"] as const)("Draft %s shows preview and Publish", async layout => {
+  m.view.mockResolvedValue({ ...profileFixture, appearance: { ...profileFixture.appearance, layout } });
   const html = await render();
+  expect(html).toContain(`data-layout="${layout}"`);
   expect(html).toContain("Your Neffi is ready");
   expect(html).toContain("data-preview");
   expect(html).toContain("Publish");
