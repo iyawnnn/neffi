@@ -41,21 +41,21 @@ export function PublicForm({ formId, title, fields }: { formId: string; title: s
     setState({ ...(await sendInquiry(formId, key, new FormData(event.currentTarget))), pending: false });
   }
   if (state.result === "sent") return (
-    <section className="flex flex-col gap-2 rounded-xl border border-[#D8D5CE] bg-[#F8F7F3] p-4">
-      <h2 className="break-words text-lg font-medium">{title}</h2>
+    <section className="pf-form">
+      <h2 className="pf-section-title">{title}</h2>
       <p role="status">Thanks, your message was sent.</p>
     </section>
   );
   return (
-    <form onSubmit={submit} className="relative flex flex-col gap-3 rounded-xl border border-[#D8D5CE] bg-[#F8F7F3] p-4">
-      <h2 className="break-words text-lg font-medium">{title}</h2>
+    <form onSubmit={submit} className="pf-form">
+      <h2 className="pf-section-title">{title}</h2>
       {fields.map(field => {
         const invalid = state.fields.includes(field.key) || undefined;
         const props = { name: field.key, required: field.required, "aria-invalid": invalid, autoComplete: AUTOCOMPLETE[field.key] };
         return (
-          <label key={field.key} className="flex flex-col gap-1 text-sm font-medium">
+          <label key={field.key} className="pf-field-label">
             {field.label}{field.required ? " (required)" : ""}
-            {field.kind === "long" ? <Textarea {...props} maxLength={2000} /> : <Input {...props} type={field.kind} maxLength={field.kind === "email" ? 254 : 500} />}
+            {field.kind === "long" ? <Textarea {...props} className="pf-field" maxLength={2000} /> : <Input {...props} className="pf-field" type={field.kind} maxLength={field.kind === "email" ? 254 : 500} />}
           </label>
         );
       })}
@@ -63,7 +63,7 @@ export function PublicForm({ formId, title, fields }: { formId: string; title: s
         <label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
       </div>
       {state.result ? <p role="alert" className="text-sm">{INQUIRY_MESSAGES[state.result]}</p> : null}
-      <button type="submit" disabled={state.pending} className="min-h-12 rounded-lg px-4 font-medium disabled:opacity-60" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+      <button type="submit" disabled={state.pending} className="pf-action min-h-12">
         {state.pending ? "Sending…" : "Send"}
       </button>
     </form>

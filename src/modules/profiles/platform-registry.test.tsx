@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { profileLinkType } from "@/db/schema/enums";
 import { LinkKindIcon } from "@/components/social-icons";
-import { SceneViewPreview } from "@/components/scene-view";
+import { ProfileRenderer } from "@/components/profile/profile-renderer";
 import { LINK_KINDS, LINK_KIND_LABELS } from "./block-options";
 import { parseBlockContent } from "./block-content";
 import { buildSceneView } from "./scene-view";
@@ -32,7 +32,7 @@ test.each(LINK_KINDS)("%s is never gated out of the existing public icon path", 
     imageUrl: null, scene: { id: "main", name: "Main" }, forms: [],
     blocks: [{ id: kind, type: "link", position: 0, visible: true, formId: null, content: { kind, url: "https://example.test/" } }],
   });
-  const html = renderToStaticMarkup(<SceneViewPreview view={view} />);
+  const html = renderToStaticMarkup(<ProfileRenderer view={view} />);
   expect(html).toContain("<svg");
   expect(html).toContain(LINK_KIND_LABELS[kind]);
 });
@@ -78,7 +78,7 @@ test.each(added)("$label has metadata, branded icons, canonical validation and p
   });
   expect(view.blocks).toEqual([{ id: "b1", type: "link", kind, label, url: "https://example.com/you" }]);
   for (const visitorActions of [undefined, { saveContactHref: "/c/token/contact" }]) {
-    const html = renderToStaticMarkup(<SceneViewPreview view={view} visitorActions={visitorActions} />);
+    const html = renderToStaticMarkup(<ProfileRenderer view={view} visitorActions={visitorActions} />);
     expect(html).toContain(label);
     expect(html).toContain(PLATFORMS[kind].brand!.path);
     expect(html).toContain('href="https://example.com/you"');

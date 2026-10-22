@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireAccount } from "@/auth/access";
-import { SceneViewPreview } from "@/components/scene-view";
+import { ProfileRenderer } from "@/components/profile/profile-renderer";
 import { db } from "@/db";
 import { getOwnedProfile } from "@/modules/profiles/profiles";
 import { PUBLISH_GAP_COPY } from "@/modules/profiles/rules";
@@ -20,9 +20,9 @@ export default async function PublishPage({ params }: PageProps<"/app/profiles/[
   if (!view) notFound();
   return (
     <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10">
-      <div className="flex w-full max-w-sm flex-col gap-4">
+      <div className="flex w-full max-w-[480px] flex-col gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">{profile.gaps.length ? "Finish your Neffi" : "Your Neffi is ready"}</h1>
-        <SceneViewPreview view={view} />
+        <div className="overflow-hidden rounded-3xl border border-border"><ProfileRenderer view={view} /></div>
         {profile.gaps.length ? (
           <>
             <ul className="list-inside list-disc text-sm">{profile.gaps.map(gap => <li key={gap}>{PUBLISH_GAP_COPY[gap]}</li>)}</ul>
