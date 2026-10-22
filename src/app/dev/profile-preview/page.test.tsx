@@ -33,3 +33,16 @@ test("Editorial fixture uses the real layout and keeps fixture links on that lay
   expect(html).toContain("averylongpublicemailaddress");
   expect(html).not.toContain("<form");
 });
+
+test.each(["full", "link-featured", "minimal"])("Showcase %s fixture uses its real layout without live controls", async sample => {
+  const html = renderToStaticMarkup(await page({ layout: "showcase", sample }));
+  expect(html).toContain('data-layout="showcase"');
+  expect(html).toContain("?layout=showcase&amp;mode=dark");
+  expect(html).not.toContain("<form");
+  if (sample === "full") expect(html).toContain("A home for independent ideas");
+  if (sample === "link-featured") {
+    expect(html).not.toContain("A home for independent ideas");
+    expect(html).toContain('aria-label="Featured"');
+  }
+  if (sample === "minimal") expect(html).not.toContain('aria-label="Featured"');
+});

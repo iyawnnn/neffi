@@ -29,7 +29,7 @@ function render(view = full, visitor = true) {
   return host;
 }
 
-test.each(["classic", "showcase", "unknown"])("%s renders Classic without dropping featured content", layout => {
+test.each(["classic", "unknown"])("%s renders Classic without dropping featured content", layout => {
   const host = render({ ...full, appearance: { ...full.appearance, layout: layout as SceneView["appearance"]["layout"] } });
   expect(host.querySelector('[data-layout="classic"]')).toBeTruthy();
   expect(host.querySelectorAll("h3")).toHaveLength(1);
@@ -91,8 +91,9 @@ test("uses T4 intro dedupe and renders About once", () => {
   expect(host.querySelector("header")?.textContent).not.toContain(base.identity.bio);
 });
 
-test("Showcase's featured link is restored once in the temporary Classic fallback", () => {
+test("Showcase's featured link renders once in the real Showcase layout", () => {
   const host = render({ ...base, appearance: { ...base.appearance, layout: "showcase" }, blocks: [full.blocks[1]] });
+  expect(host.querySelector('[data-layout="showcase"] .pf-showcase')).toBeTruthy();
   expect(host.querySelectorAll('a[href="https://example.test/work"]')).toHaveLength(1);
   expect(host.querySelector('[aria-label="Work"]')).toBeNull();
 });
