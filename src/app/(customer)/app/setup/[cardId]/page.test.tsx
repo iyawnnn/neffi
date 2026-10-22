@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn(), view: vi.fn(), limit: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn(), view: vi.fn(), limit: vi.fn(), scene: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: m.limit }) }) }) } }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
@@ -9,6 +9,8 @@ vi.mock("./actions", () => ({ saveYouAction: vi.fn(), savePhotoAction: vi.fn(), 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 vi.mock("@/modules/profiles/view", () => ({ loadOwnerSceneView: m.view }));
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
+vi.mock("@/modules/profiles/editor", () => ({ sceneForEditing: m.scene }));
+import { setupDraft } from "./setup-draft";
 import SetupPage from "./page";
 const render = async (query: Record<string, string | string[]> = {}) => renderToStaticMarkup(await SetupPage({ params: Promise.resolve({ cardId: "c1" }), searchParams: Promise.resolve(query) }));
 beforeEach(() => {
@@ -18,6 +20,7 @@ beforeEach(() => {
   m.ownedProfiles.mockResolvedValue([]);
   m.view.mockResolvedValue(null);
   m.limit.mockResolvedValue([]);
+  m.scene.mockResolvedValue({ blocks: [] });
 });
 function draft(gaps: string[] = ["contact", "content"]) {
   m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "TESTWXYZ", profileId: "p1" }]);
@@ -80,4 +83,14 @@ test("Draft cannot enter done, and reload keeps explicit allowed step", async ()
   await expect(render({ step: "done" })).rejects.toThrow("REDIRECT:?step=contact");
   expect(await render({ step: "style" })).toContain("Make it yours");
   expect(await render({ step: "style" })).toContain("Make it yours");
+});
+
+test("Links loads the owned Default mode and real view without creating content", async () => {
+  draft(); m.view.mockResolvedValue(setupDraft(null, { fullName: "Ana" }));
+  const html = await render({ step: "links" });
+  expect(html).toContain("Add something else");
+  expect(html).toContain("Added to your profile");
+  expect(html).toContain('href="?step=look"');
+  expect(m.scene).toHaveBeenCalledWith(expect.anything(), "a1", "p1", "s1");
+  expect(m.view).toHaveBeenCalledWith(expect.anything(), { accountId: "a1", profileId: "p1", sceneId: "s1" });
 });

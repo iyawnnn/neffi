@@ -10,6 +10,8 @@ import { and, eq } from "drizzle-orm";
 import { sceneBlocks } from "@/db/schema";
 import { env } from "@/config/env";
 import { imageUrl } from "@/integrations/media/cloudinary";
+import { sceneForEditing } from "@/modules/profiles/editor";
+import { SetupLinks } from "./setup-links";
 import { loadOwnerSceneView } from "@/modules/profiles/view";
 import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction } from "./actions";
 import { SETUP_STEPS } from "./setup-steps";
@@ -52,6 +54,14 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
   const goal = isGoal(rawGoal) ? rawGoal : profile?.goal ?? null;
   const previous = previousStep(step);
   const backHref = previous ? `?step=${previous}${!profile && previous === "goal" && rawGoal !== undefined ? `&goal=${goal ?? ""}` : ""}` : "/app";
+  if (step === "links" && profile) {
+    const [view, scene] = await Promise.all([
+      loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }),
+      sceneForEditing(db, viewer.accountId, profile.id, profile.defaultSceneId),
+    ]);
+    if (!view || !scene) notFound();
+    return <SetupLinks suffix={card.publicToken.slice(-4)} goal={goal} profileId={profile.id} sceneId={profile.defaultSceneId} blocks={scene.blocks} view={view} />;
+  }
   if (step === "you" || step === "photo" || step === "contact") {
     const view = profile ? await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }) : null;
     const [contactBlock] = profile ? await db.select({ content: sceneBlocks.content }).from(sceneBlocks).where(and(eq(sceneBlocks.sceneId, profile.defaultSceneId), eq(sceneBlocks.type, "contact"))).limit(1) : [];

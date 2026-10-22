@@ -5,6 +5,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), notFou
 vi.mock("@/db", () => { throw new Error("Preview must not import the database"); });
 vi.mock("@/auth/access", () => { throw new Error("Preview must not import authentication"); });
 vi.mock("@/app/(customer)/app/setup/[cardId]/actions", () => { throw new Error("Preview must not import setup actions"); });
+vi.mock("@/app/(customer)/app/profiles/[profileId]/scenes/[sceneId]/actions", () => ({ loadItemAction: vi.fn(), mutateItemAction: vi.fn() }));
 vi.mock("@/app/(customer)/app/profiles/[profileId]/image-upload", () => ({ ImageUpload: () => <div>Development image uploader</div> }));
 import PreviewPage from "./page";
 const page = (query: Record<string, string | string[]> = {}) => PreviewPage({ searchParams: Promise.resolve(query) });
@@ -56,4 +57,8 @@ test("Photo and Contact fixtures cover empty, existing photo/logo, filled and va
   expect(emptyContact).toContain("customer@example.invalid");
   expect(filledContact).toContain("ana@example.test");
   expect(errorContact).toContain("Public email");
+});
+test("Links preview uses the real setup Links surface for empty and existing synthetic items", async () => {
+  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "freelance", items: "empty" }))).toContain("Add something else");
+  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "business", items: "existing" }))).toContain("Added to your profile");
 });

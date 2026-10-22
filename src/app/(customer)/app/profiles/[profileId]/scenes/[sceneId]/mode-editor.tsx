@@ -4,7 +4,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Toast } from "@base-ui/react/toast";
 import { ArrowDown, ArrowLeft, ArrowUp, ChevronRight, Ellipsis, Eye, EyeOff, FileText, Link2, LoaderCircle, Pencil, Plus, Trash2, X, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type FormEvent, type ReactNode } from "react";
 import { LinkKindIcon } from "@/components/social-icons";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,14 +12,22 @@ import { BLOCK_SECTIONS, type BlockSection, type LinkKind } from "@/modules/prof
 import type { BlockType } from "@/modules/profiles/block-content";
 import { PLATFORM_GROUPS, PLATFORMS } from "@/modules/profiles/platform-registry";
 import type { blockForEditing, sceneForEditing } from "@/modules/profiles/editor";
-import { loadItemAction, mutateItemAction, type SceneActionState } from "./actions";
+import type { loadItemAction, mutateItemAction, SceneActionState } from "./actions";
 import { BLOCK_META, BlockTile } from "./block-meta";
 import { ItemFields } from "./item-fields";
 import { FormFields } from "./form-editor";
 
-type Item = NonNullable<Awaited<ReturnType<typeof sceneForEditing>>>["blocks"][number];
+export type ModeEditorItem = NonNullable<Awaited<ReturnType<typeof sceneForEditing>>>["blocks"][number];
+type Item = ModeEditorItem;
 type LoadedItem = NonNullable<Awaited<ReturnType<typeof blockForEditing>>>;
-type Intent = { section: BlockSection; type?: BlockType; kind?: LinkKind; item?: LoadedItem; loading?: boolean; remove?: Item };
+type Intent = { section: BlockSection; type?: BlockType; kind?: LinkKind; item?: LoadedItem; loading?: boolean; remove?: Item; content?: Record<string, unknown>; all?: boolean };
+export type ModeEditorActions = { load: typeof loadItemAction; mutate: typeof mutateItemAction };
+export type ModeEditorControls = {
+  choose: (type: BlockType, kind: LinkKind | undefined, label: string | undefined, trigger: HTMLElement) => void;
+  openAll: (trigger: HTMLElement) => void;
+  edit: (item: Item, trigger: HTMLElement) => void;
+  remove: (item: Item, trigger: HTMLElement) => void;
+};
 const SECTIONS = [
   { key: "links", title: "Socials & links", description: "Add your social media and important links.", icon: Link2, empty: "Add Facebook, LinkedIn, Instagram or another link." },
   { key: "content", title: "Content", description: "Showcase your work and tell your story.", icon: FileText, empty: "Add an introduction or highlight a project." },
@@ -46,7 +54,7 @@ function describe(item: Item) {
   return { title, secondary, icon: item.type === "link" ? <LinkKindIcon kind={kind} /> : <BlockTile icon={BLOCK_META[item.type].icon} /> };
 }
 
-export function ModeEditor(props: { profileId: string; sceneId: string; blocks: Item[] }) {
+export function ModeEditor(props: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls }) => ReactNode; actions?: ModeEditorActions }) {
   return <Toast.Provider limit={1}><Editor {...props} /><Notifications /></Toast.Provider>;
 }
 function Notifications() {
@@ -56,7 +64,7 @@ function Notifications() {
   </Toast.Viewport></Toast.Portal>;
 }
 
-function Editor({ profileId, sceneId, blocks }: { profileId: string; sceneId: string; blocks: Item[] }) {
+function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls }) => ReactNode; actions?: ModeEditorActions }) {
   const router = useRouter();
   const toast = Toast.useToastManager();
   const [intent, setIntent] = useState<Intent | null>(null);
@@ -89,12 +97,33 @@ function Editor({ profileId, sceneId, blocks }: { profileId: string; sceneId: st
   function open(section: BlockSection, trigger: HTMLElement) {
     returnFocus.current = trigger; setResult(undefined); setDirty(false); setIntent({ section });
   }
+  function sectionFor(type: BlockType) {
+    const section = (Object.keys(BLOCK_SECTIONS) as BlockSection[]).find(key => (BLOCK_SECTIONS[key] as readonly BlockType[]).includes(type));
+    if (!section) throw new Error("Unsupported block type");
+    return section;
+  }
+  function choose(type: BlockType, kind: LinkKind | undefined, label: string | undefined, trigger: HTMLElement) {
+    const section = sectionFor(type);
+    open(section, trigger);
+    setIntent({ section, type, kind, content: { ...(kind ? { kind } : {}), ...(label ? { label } : {}) } });
+  }
+  function openAll(trigger: HTMLElement) {
+    returnFocus.current = trigger; setResult(undefined); setDirty(false); setIntent({ section: "links", all: true });
+  }
+  async function load(id: string) {
+    const action = actions?.load ?? (await import("./actions")).loadItemAction;
+    return action(profileId, sceneId, id);
+  }
+  async function mutate(data: FormData) {
+    const action = actions?.mutate ?? (await import("./actions")).mutateItemAction;
+    return action(data);
+  }
   async function edit(section: BlockSection, item: Item, trigger: HTMLElement) {
     open(section, trigger);
     const current = ++requestId.current;
     setIntent({ section, loading: true });
     try {
-      const loaded = await loadItemAction(profileId, sceneId, item.id);
+      const loaded = await load(item.id);
       if (current !== requestId.current) return;
       if (!loaded) throw new Error("unavailable");
       setIntent({ section, type: loaded.type, kind: loaded.type === "link" ? loaded.content.kind as LinkKind : undefined, item: loaded });
@@ -114,10 +143,10 @@ function Editor({ profileId, sceneId, blocks }: { profileId: string; sceneId: st
     if (intent.remove) data.set("confirm", "on");
     busyRef.current = true; setBusy(true); setResult(undefined);
     try {
-      const response = await mutateItemAction(data);
+      const response = await mutate(data);
       if (response.ok) {
         const title = intent.remove ? "Item removed" : intent.item ? "Changes saved" : intent.type === "link" ? "Link added" : intent.type === "form" ? "Contact form added" : intent.section === "content" ? "Content added" : "Action added";
-        if (intent.remove) returnFocus.current = document.getElementById(`add-${intent.section}`);
+        if (intent.remove) returnFocus.current = document.getElementById(`add-${intent.section}`) ?? document.querySelector<HTMLElement>("[data-add-item]");
         close(); router.refresh(); toast.add({ title });
       } else { setResult(response); }
     } catch {
@@ -131,10 +160,18 @@ function Editor({ profileId, sceneId, blocks }: { profileId: string; sceneId: st
     const first = Object.keys(result.fields)[0];
     form.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
   }, [result, busy]);
-  const title = intent?.remove ? `Remove ${describe(intent.remove).title}?` : intent?.loading ? "Edit item" : intent?.type ? intent.type === "link" ? `${intent.item ? "Edit " : ""}${PLATFORMS[intent.kind || "custom"].label}` : `${intent.item ? "Edit " : ""}${BLOCK_META[intent.type].label}` : intent ? chooserTitle[intent.section] : "";
+  const controls: ModeEditorControls = {
+    choose, openAll,
+    edit: (item, trigger) => void edit(sectionFor(item.type), item, trigger),
+    remove: (item, trigger) => { returnFocus.current = trigger; setIntent({ section: sectionFor(item.type), remove: item }); },
+  };
+  const title = intent?.remove ? `Remove ${describe(intent.remove).title}?` : intent?.loading ? "Edit item" : intent?.all ? "Add something else" : intent?.type ? intent.type === "link" ? `${intent.item ? "Edit " : ""}${PLATFORMS[intent.kind || "custom"].label}` : `${intent.item ? "Edit " : ""}${BLOCK_META[intent.type].label}` : intent ? chooserTitle[intent.section] : "";
+  // The renderer receives event handlers; none read or write refs until invoked by an event.
+  // eslint-disable-next-line react-hooks/refs
+  const customItems = renderItems?.({ items: blocks, controls });
   return <>
     <div className="flex min-w-0 flex-col gap-5">
-      {SECTIONS.map(section => <Section key={section.key} section={section} blocks={blocks.filter(block => (BLOCK_SECTIONS[section.key] as readonly string[]).includes(block.type))} profileId={profileId} sceneId={sceneId} onAdd={trigger => open(section.key, trigger)} onEdit={(item, trigger) => void edit(section.key, item, trigger)} onRemove={(item, trigger) => { returnFocus.current = trigger; setIntent({ section: section.key, remove: item }); }} />)}
+      {renderItems ? customItems : SECTIONS.map(section => <Section key={section.key} section={section} blocks={blocks.filter(block => (BLOCK_SECTIONS[section.key] as readonly string[]).includes(block.type))} profileId={profileId} sceneId={sceneId} mutateItem={mutate} onAdd={trigger => open(section.key, trigger)} onEdit={(item, trigger) => void edit(section.key, item, trigger)} onRemove={(item, trigger) => { returnFocus.current = trigger; setIntent({ section: section.key, remove: item }); }} />)}
     </div>
     <Dialog.Root open={!!intent} onOpenChange={next => { if (!next) requestLeave("close"); }}>
       <Dialog.Portal>
@@ -148,14 +185,14 @@ function Editor({ profileId, sceneId, blocks }: { profileId: string; sceneId: st
             </header>
             <Dialog.Description className="sr-only">{intent?.remove ? "Visitors will no longer see this item." : "Choose and edit what visitors see in this profile mode."}</Dialog.Description>
             <div className="min-h-0 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin] sm:p-5">
-              {intent?.loading ? <p role="status" className="flex items-center gap-2 py-6 text-body text-fg-secondary"><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Loading item…</p> : intent && !intent.type && !intent.remove ? <Chooser section={intent.section} onChoose={(type, kind) => setIntent({ section: intent.section, type, kind })} /> : intent ? <form ref={form} onSubmit={submit} onFocusCapture={event => { if (event.target.matches("input,textarea,select")) activeField.current = event.target; }} onChange={() => setDirty(signature() !== baseline.current)} className="flex flex-col gap-5">
+              {intent?.loading ? <p role="status" className="flex items-center gap-2 py-6 text-body text-fg-secondary"><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Loading item…</p> : intent?.all ? <AllChooser onChoose={(type, kind) => setIntent({ section: sectionFor(type), type, kind, content: kind ? { kind } : {} })} /> : intent && !intent.type && !intent.remove ? <Chooser section={intent.section} onChoose={(type, kind) => setIntent({ section: intent.section, type, kind, content: kind ? { kind } : {} })} /> : intent ? <form ref={form} onSubmit={submit} onFocusCapture={event => { if (event.target.matches("input,textarea,select")) activeField.current = event.target; }} onChange={() => setDirty(signature() !== baseline.current)} className="flex flex-col gap-5">
                 <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
                   {intent.remove ? <p className="text-body text-fg-secondary">Visitors will no longer see it. You can add it again later.</p> : intent.item?.type === "form" && intent.item.form ? <>
                     {(intent.item.form.useCount || 0) > 1 ? <p className="text-meta text-fg-secondary">Changes apply wherever this contact form is used.</p> : null}
                     <FormFields form={intent.item.form} errors={result?.fields} onStructureChange={() => requestAnimationFrame(() => { if (form.current) setDirty(signature() !== baseline.current); })} />
                   </> : intent.type ? <>
                     <div className="flex items-center gap-3">{intent.type === "link" ? <LinkKindIcon kind={intent.kind || "custom"} /> : <BlockTile icon={BLOCK_META[intent.type].icon} />}<p className="text-body text-fg-secondary">{intent.type === "link" ? PLATFORMS[intent.kind || "custom"].help : BLOCK_META[intent.type].description}</p></div>
-                    <ItemFields type={intent.type} content={intent.item?.content || (intent.kind ? { kind: intent.kind } : {})} editing={!!intent.item} errors={result?.fields} />
+                    <ItemFields type={intent.type} content={intent.item?.content || intent.content || (intent.kind ? { kind: intent.kind } : {})} editing={!!intent.item} errors={result?.fields} />
                   </> : null}
                 </fieldset>
                 {result?.error ? <p role="alert" className="text-body text-destructive">{result.error}</p> : null}
@@ -184,7 +221,11 @@ export function Chooser({ section, onChoose }: { section: BlockSection; onChoose
   return <ul className="flex flex-col gap-2">{OPTIONS[section].map(type => <li key={type}><Button type="button" size="touch" variant="ghost" onClick={() => onChoose(type)} className="h-auto min-h-[72px] w-full justify-start gap-3 rounded-[10px] border border-border px-3 py-3 text-left whitespace-normal hover:bg-canvas"><BlockTile icon={BLOCK_META[type].icon} /><span className="min-w-0 flex-1"><span className="block text-body font-medium">{BLOCK_META[type].label}</span><span className="mt-0.5 block text-meta font-normal text-fg-secondary">{help[type]}</span></span><ChevronRight aria-hidden className="size-4 text-fg-secondary" /></Button></li>)}</ul>;
 }
 
-function Section({ section, blocks, profileId, sceneId, onAdd, onEdit, onRemove }: { section: typeof SECTIONS[number]; blocks: Item[]; profileId: string; sceneId: string; onAdd: (trigger: HTMLElement) => void; onEdit: (item: Item, trigger: HTMLElement) => void; onRemove: (item: Item, trigger: HTMLElement) => void }) {
+function AllChooser({ onChoose }: { onChoose: (type: BlockType, kind?: LinkKind) => void }) {
+  return <div className="flex flex-col gap-8">{SECTIONS.map(section => <section key={section.key} aria-labelledby={`all-${section.key}`}><h3 id={`all-${section.key}`} className="mb-3 text-body font-medium">{section.title}</h3><Chooser section={section.key} onChoose={onChoose} /></section>)}</div>;
+}
+
+function Section({ section, blocks, profileId, sceneId, mutateItem, onAdd, onEdit, onRemove }: { section: typeof SECTIONS[number]; blocks: Item[]; profileId: string; sceneId: string; mutateItem: (data: FormData) => ReturnType<typeof mutateItemAction>; onAdd: (trigger: HTMLElement) => void; onEdit: (item: Item, trigger: HTMLElement) => void; onRemove: (item: Item, trigger: HTMLElement) => void }) {
   const router = useRouter();
   const toast = Toast.useToastManager();
   const [reordering, setReordering] = useState(false);
@@ -215,7 +256,7 @@ function Section({ section, blocks, profileId, sceneId, onAdd, onEdit, onRemove 
     const data = new FormData();
     for (const [key, value] of Object.entries({ profileId, sceneId, blockId: item.id, section: section.key, operation, visible: String(!item.visible), ...(direction ? { direction } : {}) })) data.set(key, value);
     try {
-      const result = await mutateItemAction(data);
+      const result = await mutateItem(data);
       if (result.ok) {
         if (direction) { focusAfter.current = { id: item.id, direction }; setStatus(`Moved ${describe(item).title} ${direction}.`); }
         else toast.add({ title: item.visible ? "Item hidden" : "Item shown" });

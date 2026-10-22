@@ -8,6 +8,7 @@ import { isGoal } from "@/modules/profiles/goals";
 import type { PublishGap } from "@/modules/profiles/rules";
 import { SetupForm } from "@/app/(customer)/app/setup/[cardId]/setup-form";
 import { PreviewForm } from "./preview-form";
+import { PreviewLinks } from "./preview-links";
 
 export const metadata: Metadata = { title: "Setup preview — development only", robots: { index: false, follow: false } };
 export const instant = false;
@@ -19,6 +20,7 @@ export default async function SetupPreviewPage({ searchParams }: { searchParams:
   const state = first(query.state) ?? "draft";
   const contactState = first(query.contact) ?? "empty";
   const image = first(query.image);
+  const items = first(query.items) === "existing" ? "existing" : "empty";
   const gaps: PublishGap[] = state === "name" ? ["name", "contact", "content"] : state === "ready" || state === "published" ? [] : ["contact", "content"];
   const profile = state === "new" ? null : { status: state === "published" ? "published" : "draft", gaps };
   const requested = first(query.step);
@@ -50,7 +52,7 @@ export default async function SetupPreviewPage({ searchParams }: { searchParams:
             <GoalFields goal={rawGoal !== undefined ? goal : undefined} />
           </SetupForm>
         </SetupView>
-      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : (
+      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : step === "links" ? <PreviewLinks key={`${goal ?? "none"}-${items}`} goal={goal} items={items} /> : (
         <SetupView suffix="TEST" step={step} backHref={previous ? `?state=${state}&step=${previous}` : "?state=new"}>
           <SetupPlaceholder step={step} profileId="synthetic-profile" sceneId="synthetic-scene" />
         </SetupView>
