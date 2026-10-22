@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileRenderer } from "@/components/profile/profile-renderer";
-import { profileFixture, allLinkFixtures } from "@/dev/profile-fixture";
+import { profileFixture, allLinkFixtures, coverFixture } from "@/dev/profile-fixture";
 import { ACCENTS } from "@/modules/profiles/appearance-options";
 
 export const metadata: Metadata = { title: "Profile preview — development only", robots: { index: false, follow: false } };
@@ -15,7 +15,7 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
   const layout = query.layout === "editorial" || query.layout === "showcase" ? query.layout : "classic";
   const accent = ACCENTS.find(accent => accent.name === query.accent) ?? ACCENTS[0];
   const view = structuredClone(profileFixture);
-  view.appearance = { layout, mode, accent: accent.hex, cover: null };
+  view.appearance = { layout, mode, accent: accent.hex, cover: query.cover === "sample" ? coverFixture : null };
   if (query.image === "photo") view.identity.image = { url: "/avatar-example.jpg", isLogo: false };
   if (query.image === "logo") view.identity.image = { url: "/neffi-logo-ink.svg", isLogo: true };
   if (query.sample === "all-links") view.blocks = allLinkFixtures;
@@ -37,6 +37,7 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
       <Link href={`?layout=${layout}&sample=all-links`}>All 22 links</Link><Link href={`?layout=${layout}&sample=minimal`}>Minimal</Link><Link href={`?layout=${layout}&sample=long`}>Long content</Link>
       {layout === "showcase" ? <><Link href="?layout=showcase&sample=full">Full work</Link><Link href="?layout=showcase&sample=link-featured">Featured link</Link></> : null}
       <Link href={`?layout=${layout}&image=photo`}>Photo</Link><Link href={`?layout=${layout}&image=logo`}>Logo</Link>
+      <Link href={`?layout=${layout}&cover=sample&image=photo&mode=${mode}&accent=${accent.name}`}>With cover data</Link><Link href={`?layout=${layout}&mode=${mode}&accent=${accent.name}`}>Without cover</Link>
     </nav>
     <div className="flex flex-1 bg-[var(--pf-bg)]"><ProfileRenderer view={view} /></div>
   </main>;

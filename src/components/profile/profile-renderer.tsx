@@ -12,11 +12,11 @@ export type VisitorActions = { saveContactHref: string };
 export function ProfileRenderer({ view, visitorActions }: { view: SceneView; visitorActions?: VisitorActions }) {
   const sections = profileSections(view);
   const layout = view.appearance.layout === "editorial" || view.appearance.layout === "showcase" ? view.appearance.layout : "classic";
-  const Layout = layout === "showcase" ? ShowcaseLayout : layout === "editorial" ? EditorialLayout : ClassicLayout;
+  const Layout = layout === "editorial" ? EditorialLayout : ClassicLayout;
   return (
     <article className="pf-profile" data-layout={layout} data-preview={!visitorActions || undefined}
       style={{ ...profileTheme(view.appearance.accent, view.appearance.mode), colorScheme: view.appearance.mode } as CSSProperties}>
-      <Layout sections={sections} visitorActions={visitorActions} />
+      {layout === "showcase" ? <ShowcaseLayout sections={sections} visitorActions={visitorActions} cover={view.appearance.cover} /> : <Layout sections={sections} visitorActions={visitorActions} />}
     </article>
   );
 }

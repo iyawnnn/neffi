@@ -1,16 +1,17 @@
 import { ArrowUpRight, Building2, MapPin } from "lucide-react";
 import type { ProfileSections } from "@/modules/profiles/profile-sections";
+import type { SceneView } from "@/modules/profiles/scene-view";
 import { PublicForm } from "@/components/public-form";
 import { LinkKindIcon } from "@/components/social-icons";
 import type { VisitorActions } from "./profile-renderer";
 import { PrimaryActions, Socials, LinkRow, WorkItem, ContactRows, FormPreview } from "./profile-parts";
 
-export function ShowcaseLayout({ sections, visitorActions }: { sections: ProfileSections; visitorActions?: VisitorActions }) {
+export function ShowcaseLayout({ sections, visitorActions, cover }: { sections: ProfileSections; visitorActions?: VisitorActions; cover?: SceneView["appearance"]["cover"] }) {
   const { identity, intro, primary, featured, work, links, socials, about, contact, forms } = sections;
   return (
     <div className="pf-showcase">
       <header className="pf-showcase-header">
-        <div className="pf-showcase-band" aria-hidden="true" />
+        {cover ? <div className="pf-showcase-cover" aria-hidden="true"><img src={cover.src} srcSet={cover.srcSet} sizes="(min-width: 560px) 560px, 100vw" width={1200} height={400} alt="" loading="eager" fetchPriority="high" /></div> : <div className="pf-showcase-band" aria-hidden="true" />}
         <div className="pf-showcase-identity">
           {identity.image ? <img src={identity.image.url} alt="" width={88} height={88} decoding="async" className={`pf-showcase-image ${identity.image.isLogo ? "object-contain pf-logo" : "rounded-full object-cover"}`} /> : <div className="pf-initials" aria-hidden="true">{identity.initials}</div>}
           <div className="pf-name-block">

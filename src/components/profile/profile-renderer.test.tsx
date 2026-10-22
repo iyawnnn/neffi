@@ -29,7 +29,7 @@ function render(view = full, visitor = true) {
   return host;
 }
 
-test.each(["classic", "editorial", "showcase"] as const)("%s remains visually unchanged by dormant cover data in T8a", layout => {
+test.each(["classic", "editorial"] as const)("%s remains visually unchanged by dormant cover data", layout => {
   const view = { ...full, appearance: { ...full.appearance, layout } };
   const cover = { src: "https://example.invalid/cover", srcSet: "https://example.invalid/cover 640w" };
   expect(render({ ...view, appearance: { ...view.appearance, cover } }).innerHTML).toBe(render(view).innerHTML);

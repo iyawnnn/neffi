@@ -127,6 +127,8 @@
 .pf-profile[data-layout="showcase"] { container: showcase / inline-size; }
 .pf-showcase { width: 100%; max-width: 35rem; margin-inline: auto; padding: 0 1rem 4rem; display: flex; flex-direction: column; gap: 2rem; }
 .pf-showcase-band { height: 7.5rem; margin-inline: -1rem; background: color-mix(in srgb, var(--pf-accent) 14%, var(--pf-bg)); }
+.pf-showcase-cover { aspect-ratio: 3 / 1; margin-inline: -1rem; background: color-mix(in srgb, var(--pf-accent) 14%, var(--pf-bg)); }
+.pf-showcase-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pf-showcase-identity { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1.25rem; margin-top: -2.75rem; }
 .pf-showcase-image, .pf-showcase .pf-initials { width: 5.5rem; height: 5.5rem; border: 4px solid var(--pf-bg); flex-shrink: 0; }
 .pf-showcase h1 { font-size: 1.875rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; text-wrap: balance; }
