@@ -75,6 +75,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | [0012](decisions/0012-support-controlled-account-recovery.md) | Owner verification and new-inbox proof preserve the Account; no merge or code resend |
 | [0013](decisions/0013-universal-layouts-profile-appearance.md) | Universal layouts are presentations of one Profile model; appearance is Layout + Mode + Accent (planned) |
 | [0014](decisions/0014-guided-setup-and-goal.md) | Guided setup builds the first Profile; Goal only recommends (planned) |
+| [0015](decisions/0015-showcase-cover-image.md) | Showcase may show an optional cover image; the accent band is the fallback (planned) |
 
 ## Status
 
@@ -93,7 +94,7 @@ These Notion statements disagree with the repository or are stale. Notion is not
 - Step 7 says OWNER MFA/step-up is enabled, the Locked Plan's Step 7 section proposes TOTP/step-up before commercial launch, and Step 8 lists Turnstile and migration rehearsal as M10 deliverables. MFA/step-up and Turnstile are deferred ([roadmap](roadmap.md#deliberately-deferred)).
 - Examples use `tapcard.ph` or `neffi.ph`. No source has locked the final public domain, so use `CARD_URL_ORIGIN`.
 - "Quick Demo" and "Standard vs Custom package" are not part of the implemented product.
-- Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). Update Notion manually.
+- Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). The optional Showcase cover image ([0015](decisions/0015-showcase-cover-image.md)) is not yet recorded in Notion. Update Notion manually.
 - The hub and the AI Build Handoff refer to `docs/superpowers/plans/2026-10-14-neffi-ui-design-system-overhaul.md`, which exists only on the parked `feat/ui-design-system` branch.
 
 ## Open questions

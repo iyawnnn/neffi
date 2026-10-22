@@ -1,7 +1,7 @@
 # Profile layouts, appearance and guided setup — Implementation Plan
 
-> **Canonical path:** `docs/superpowers/plans/2026-10-21-profile-customization-onboarding.md`. This is a plan, not a specification. Behavior is defined by [the spec](../../specs/profile-customization-onboarding.md), [0013](../../decisions/0013-universal-layouts-profile-appearance.md) and [0014](../../decisions/0014-guided-setup-and-goal.md). If this plan and the spec disagree, the spec wins; stop and report.
-> **Status:** T1 (architecture/spec/docs lock) approved and committed on `main` 2026-10-21. T2–T15 not started. Codex is the sole implementer.
+> **Canonical path:** `docs/superpowers/plans/2026-10-21-profile-customization-onboarding.md`. This is a plan, not a specification. Behavior is defined by [the spec](../../specs/profile-customization-onboarding.md), [0013](../../decisions/0013-universal-layouts-profile-appearance.md), [0014](../../decisions/0014-guided-setup-and-goal.md) and [0015](../../decisions/0015-showcase-cover-image.md). If this plan and the spec disagree, the spec wins; stop and report.
+> **Status:** T1 (architecture/spec/docs lock) committed on `main` 2026-10-21. T2–T6 merged to `main` (`395ee83`). T7 is implemented and visually approved but not yet committed. 2026-10-22: the optional Showcase cover was added as tasks T8a–T8c ([0015](../../decisions/0015-showcase-cover-image.md)); T7 is committed unchanged. T8 onward not started. Codex is the sole implementer.
 
 ## Context
 
@@ -36,6 +36,7 @@ The public profile, setup and appearance editor are being rebuilt to the approve
 | D5 | Resume derived from `publishGaps`: name → you, contact/content → contact, none → review | Accepted, 0014 |
 | D6 | All 22 link kinds render in all layouts with icon fallback | Accepted, 0013 |
 | D7 | Photo/logo belongs to Your details; Appearance = Layout + Mode + Accent | Accepted, spec §10 |
+| D8 | Optional, Showcase-only cover image in Appearance. Accent band is the fallback. Six `profiles.cover_*` columns (asset id, stored size, 3:1 crop rectangle). Delivered by Cloudinary crop. Existing upload pipeline reused with an asset kind. Minimum crop width 600px. No setup step. T7 committed unchanged | Accepted, [0015](../../decisions/0015-showcase-cover-image.md), spec §4, §7.4, §10 |
 
 ## 2. Canonical task sequence
 
@@ -43,9 +44,16 @@ The public profile, setup and appearance editor are being rebuilt to the approve
 T1 docs ─▶ T2 schema ─▶ T3 domain ─▶ T4 contract ─▶ T5 Classic+renderer ─┬▶ T6 Editorial ─┐
                                                                         ├▶ T7 Showcase  ─┼▶ T8 Appearance editor ─┐
                                                                         └▶ T9 setup shell ─▶ T10 you/photo/contact ─▶ T11 links ─┴▶ T12 look/style ─▶ T13 review/done ─▶ T14 cleanup ─▶ T15 verification
+
+Showcase cover (0015):  T7 ─▶ T8a cover storage ─▶ T8b cover rendering ─┐
+                        T8 ──────────────────────────────────────────────┴▶ T8c cover editor ─▶ (before T14)
 ```
 
-T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
+- T6, T7 and T9 may proceed in any order after T5.
+- T12 needs T8 and T11.
+- T8a may start once T7 is merged, in parallel with T8.
+- T8c needs both T8 and T8b.
+- The cover tasks do not block T9–T13, because setup has no cover step. T14 and T15 need T8c.
 
 ### T2 — Schema: appearance and goal columns
 
@@ -130,7 +138,7 @@ T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
 - **Files:** `src/components/profile/showcase-layout.tsx` and the renderer dispatch.
 - **Acceptance:** spec §7.4. The featured rule is honoured and the featured item is not repeated. The layout degrades cleanly with no work and no links. The cover band is a solid `color-mix`, not a gradient.
 - **Tests:** T5 fixtures + featured project, featured link, no-featured cases.
-- **Non-goals:** project images.
+- **Non-goals:** project images; the cover image (T8a–T8c; T7 is committed unchanged with the band).
 - **Commit:** `feat(profile): add the Showcase layout`
 
 ### T8 — Appearance editor and shared pickers
@@ -145,8 +153,90 @@ T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
   - Profile hub copy.
 - **Acceptance:** spec §10. The Appearance page shows no Recommended badge and no Goal. Saving updates `content_version`. Pickers are keyboard-operable, with names and selected state not conveyed by colour alone.
 - **Tests:** appearance page/form tests, action tests (validation, ownership), touch targets, identity page test covering photo/logo.
-- **Non-goals:** custom colours, fonts.
+- **Non-goals:** custom colours, fonts, the cover image (T8c).
 - **Commit:** `feat(profile): add layout and colour mode to appearance`
+
+### T8a — Showcase cover: storage, upload plumbing and view
+
+- **Purpose:** store an optional cover safely and expose it in the view. No UI.
+- **Depends on:** T7 merged. May run in parallel with T8.
+- **Files:**
+  - **Schema:** `src/db/schema/profiles.ts`, adding the six nullable `cover_*` columns and CHECKs (spec §4).
+  - **Migration:** generated `drizzle/0018_*.sql` (hand-reviewed, additive only) and `drizzle/meta/*`.
+  - **Docs:** `docs/database/erd.md` (via `pnpm db:erd`).
+  - **Cloudinary** (`src/integrations/media/cloudinary.ts`):
+    - `signImageUpload` takes `kind: "image" | "cover"`. Cover ids are `neffi/profiles/{id}/cover/{uuid}`. Photo tickets stay byte-identical.
+    - New `isProfileCoverId`.
+    - New `coverUrls(cloudName, id, crop)`, returning `{ src, srcSet }` with fixed widths 640, 1080 and 1600.
+  - **Domain** (`src/modules/profiles/profiles.ts`):
+    - `setProfileCover` (all six columns or none; returns `previousAssetId`; bumps `content_version`).
+    - `setProfileCoverCrop` (validates against the stored size; bumps).
+    - `deleteProfile` also returns `coverAssetId`.
+    - `OwnedProfile` gains the cover fields.
+  - **Actions** (`[profileId]/actions.ts`):
+    - `startImageUploadAction` accepts a validated kind (shared quota).
+    - `confirmCoverAction(profileId, publicId, crop)` checks the id, `getImage`, `checkImage` and the minimum width, validates the crop with zod, stores, then deletes the previous asset after the commit.
+    - New `updateCoverCropAction`, `removeCoverAction` and `discardCoverUploadAction`.
+    - `deleteProfileAction` also deletes the cover.
+  - **View:** `src/modules/profiles/view.ts` selects the cover columns and builds `coverUrls`. In `scene-view.ts`, `buildSceneView` takes `cover` and `SceneView.appearance.cover` is added.
+- **Acceptance:** spec §4, §6.1 and §11 (cover migration); the "Cover storage" and "Cover upload" rows of §13; 0015.
+- **Tests:**
+  - `migration-0018.db.test.ts`
+  - `cloudinary.test.ts`: cover ticket, photo ticket unchanged, id isolation, exact URLs
+  - domain `*.db.test.ts`: set, re-crop, remove, previous id, layout change keeps the cover, delete returns both ids
+  - `media-actions.test.ts` pattern: auth, ownership, foreign ids, cross-kind ids, invalid or small media deleted, out-of-bounds crop, replace order, remove, discard never deletes the current cover, quota
+  - `buildSceneView` cover passthrough
+- **Non-goals:** any UI or rendering; a sweeper for orphaned uploads; changing photo behaviour; the deferred "unsigned Cloudinary overwrite" item.
+- **Review gate:** a data and security review of the migration, CHECKs, id isolation and delete ordering before T8b starts. No shared-database migration.
+- **Commit:** `feat(profile): store an optional Showcase cover`
+
+### T8b — Showcase cover rendering
+
+- **Purpose:** Showcase renders the stored cover and keeps the band as the fallback.
+- **Depends on:** T8a.
+- **Files:**
+  - `src/components/profile/showcase-layout.tsx`: optional `cover` prop that replaces only the band element.
+  - `profile-renderer.tsx`: passes `view.appearance.cover` to Showcase only.
+  - `profile.css`: `.pf-showcase-cover` with the band's bleed, `aspect-ratio: 3 / 1`, the band colour as placeholder, `object-fit: cover`.
+  - `src/app/dev/profile-preview`: a cover fixture using a CSP-safe local or `data:` image.
+- **Acceptance:**
+  - Spec §7.4 "Cover image" and the §13 "Cover rendering" row.
+  - The T7 band markup and tests pass unchanged when there is no cover.
+  - The header overlap, identity block and later groups are unchanged.
+- **Tests:**
+  - With a cover: a decorative `img` (`alt=""` inside an `aria-hidden` wrapper), with `srcSet`, `sizes` and `fetchPriority`, and no band.
+  - Without a cover: the band.
+  - Classic and Editorial render no cover from the same view.
+  - Light and dark.
+  - Client-import-graph unchanged.
+- **Non-goals:** editor UI; any visual change to Showcase beyond the header image.
+- **Review gate:** visual review of the dev preview with and without a cover at 320px, 390px and desktop, in Light and Dark, before T8c.
+- **Commit:** `feat(profile): render the Showcase cover`
+
+### T8c — Showcase cover editor in Appearance
+
+- **Purpose:** owners add, frame, replace and remove the cover.
+- **Depends on:** T8 and T8b.
+- **Files:**
+  - Appearance form: a "Cover image · Optional" section rendered only while Showcase is selected.
+  - New cover control and crop dialog beside `image-upload.tsx`. Signing, upload and status logic is shared with the photo control only where reuse is direct. The dialog has a 3:1 frame, pointer drag, a native range input for zoom, arrow-key nudge, a centred default and a zoom limit at 600 source pixels.
+  - The preview shows the cover or the band.
+- **Acceptance:**
+  - Spec §10 "Cover image", §12 and the §13 "Cover editor" row.
+  - Cover actions save independently of Save changes.
+  - Cancel stores nothing.
+  - Remove returns the preview to the band.
+  - No new dependency.
+- **Tests:**
+  - Section visible only with Showcase.
+  - Upload, cancel, replace, reposition and remove flows with mocked actions.
+  - Error states: type or size, too small, failed save keeps the previous cover.
+  - Keyboard repositioning.
+  - Touch targets.
+  - Access sweep unchanged.
+- **Non-goals:** a cover step in setup; covers for other layouts; filters or editing beyond crop and zoom.
+- **Review gate:** UX review of the crop dialog on a phone-width viewport before merging.
+- **Commit:** `feat(profile): edit the Showcase cover in Appearance`
 
 ### T9 — Guided setup shell
 
@@ -220,7 +310,7 @@ T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
 
 ### T14 — Editor alignment and cleanup
 
-- **Depends on:** T13.
+- **Depends on:** T13, T8c.
 - **Files:**
   - Mode editor copy (remove the interleaving caveat).
   - Profile hub labels (Your details / Profile mode / Appearance).
@@ -236,12 +326,18 @@ T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
 - **Work:**
   - Accessibility pass against spec §12.
   - Fix findings in small follow-ups inside this task.
-  - Update `PRODUCT.md`, `profiles-and-public-card.md`, `cards-and-activation.md`, `domain-model.md` and `profile-mode-editor.md` from Planned to current behavior; mark the spec Implemented; update the roadmap row.
+  - Update `PRODUCT.md`, `profiles-and-public-card.md`, `cards-and-activation.md`, `domain-model.md`, `architecture/system.md` (media now covers the photo and the Showcase cover) and `profile-mode-editor.md` from Planned to current behavior; mark the spec, 0013, 0014 and 0015 Implemented; update the roadmap row.
 - **Full gate:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm db:check`, `pnpm build`, `pnpm check:bundle`.
 - **Manual acceptance (browser or human only):**
   1. Each layout in Light and Dark at 320px and 390px and at one desktop width. Visual quality and overflow cannot be proven by server rendering.
-  2. Setup on a real phone with the software keyboard: field visibility and the Continue position.
-  3. One real NFC tap of a newly published card, because tap-to-page needs physical hardware.
+  2. Showcase cover, at the same widths and modes, on one published profile:
+     - with a cover: the framing matches the crop dialog, nothing is stretched and the photo overlap is intact
+     - after Remove: the accent band returns
+     - after switching to Classic or Editorial: no cover is shown
+     - after switching back to Showcase: the same cover returns
+     - one drag and zoom of the crop dialog on a real touch screen
+  3. Setup on a real phone with the software keyboard: field visibility and the Continue position.
+  4. One real NFC tap of a newly published card, because tap-to-page needs physical hardware.
 
   Everything else is covered by automation and is not repeated by hand.
 - **Commit:** `docs: record profile layouts and guided setup as implemented`
@@ -250,7 +346,8 @@ T6, T7 and T9 may proceed in any order after T5. T12 needs T8 and T11.
 
 Stop and report instead of improvising when:
 - the spec and the code disagree on an existing rule;
-- a task needs a schema change beyond T2;
+- a task needs a schema change beyond T2 and T8a;
+- the cover crop dialog cannot be built as one focused component without a new dependency (ask before adding one);
 - a guard test would need weakening;
 - a needed product decision is in neither the spec nor Notion;
 - the photo/logo move or the dialog reuse would require restructuring unrelated editors;

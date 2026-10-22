@@ -44,7 +44,8 @@ On every request the server reads the Card by token. The page renders only if th
 - group public content by role instead of rendering one list;
 - render every link kind with an icon;
 - show the short intro;
-- replace the three purposes with four stored Goals and a step-by-step guided setup that creates no starter Blocks.
+- replace the three purposes with four stored Goals and a step-by-step guided setup that creates no starter Blocks;
+- let Showcase show an optional cover image, separate from the photo/logo, with the accent band as the fallback ([0015](../decisions/0015-showcase-cover-image.md)).
 
 This spec describes current behavior until those tasks land.
 
