@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { accounts, accountRecoveries, activationCredentials, cards } from "./schema";
 import { countRows, SEED_IDS, seed } from "./seed";
 import { createTestDb, type TestDb } from "./testing";
+import { ACCENTS } from "../modules/profiles/appearance-options";
 
 let db: TestDb;
 beforeAll(async () => {
@@ -69,6 +70,16 @@ test("seeded credentials are lookup values only; no activation code exists for t
   const credentials = await db.select({ lookupHmac: activationCredentials.lookupHmac }).from(activationCredentials);
   expect(credentials.length).toBeGreaterThan(0);
   for (const { lookupHmac } of credentials) expect(lookupHmac).toMatch(/^5eed0{56}[0-9a-f]{4}$/);
+});
+
+test("seed profiles cover all layouts and colour modes with curated accents and an optional Goal", async () => {
+  await seed(db);
+  const rows = (await db.execute(sql`SELECT layout, color_mode, goal, accent_color FROM profiles`)).rows;
+  expect(new Set(rows.map((row) => row.layout))).toEqual(new Set(["classic", "editorial", "showcase"]));
+  expect(new Set(rows.map((row) => row.color_mode))).toEqual(new Set(["light", "dark"]));
+  expect(rows.some((row) => row.goal === "freelance")).toBe(true);
+  expect(rows.some((row) => row.goal === null)).toBe(true);
+  for (const row of rows) expect(ACCENTS.map((accent) => accent.hex)).toContain(row.accent_color);
 });
 
 test("seed cleanup includes recovery history without relying on cascade", async () => {

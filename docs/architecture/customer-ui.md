@@ -83,4 +83,6 @@ The shared `interact` and `nav-interact` utilities use **220ms**, `cubic-bezier(
 
 Supported Quick Actions, Profile/Card rows and View all links use the same `ArrowRight` icon in both states. `nav-arrow` starts muted and right-facing; hovering the whole link on a hover-capable fine-pointer device changes it to Vermillion and applies `translate(2px, -1px) rotate(-45deg)` around its center. Do not swap icon shapes. Reduced motion removes the transform and transitions; touch devices retain the right-facing arrow and do not rely on hover for usability.
 
+Guided setup and the profile editors inherit these `/app` tokens and chrome. The public profile layouts (`/c/{token}`) have their own visual rules in the [profile layouts spec](../specs/profile-customization-onboarding.md#7-layouts) (planned).
+
 Authenticated customer UI is mobile-first: preserve clear tap targets of at least 44px, visible keyboard focus, meaningful labels, task-specific responsive layouts and consistent chrome. Use available desktop width intentionally. Validate mobile wrapping, overflow, safe-area clearance, keyboard/menu behavior and reduced motion when extending these patterns. Consistency means shared typography, tokens, chrome, interactions and object language, not identical page layouts.

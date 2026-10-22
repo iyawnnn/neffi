@@ -120,6 +120,13 @@
       "when": 1792290641217,
       "tag": "0016_extend_social_platforms",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792592115582,
+      "tag": "0017_profile_appearance_and_goal",
+      "breakpoints": true
     }
   ]
 }

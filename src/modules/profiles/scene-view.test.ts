@@ -3,7 +3,7 @@ import { PRESETS, visibleFields } from "../forms/config";
 import { buildSceneView, type SceneViewInput } from "./scene-view";
 
 const base = () => ({
-  profile: { fullName: "Ana Maria Cruz", headline: "Designer", company: null, bio: null, phone: null, email: null, website: null, location: null, accentColor: null, imageIsLogo: false },
+  profile: { fullName: "Ana Maria Cruz", headline: "Designer", company: null, bio: null, phone: null, email: null, website: null, location: null, accentColor: null, imageIsLogo: false, layout: "classic", colorMode: "light" },
   imageUrl: null,
   scene: { id: "s1", name: "Main" },
   blocks: [], forms: [],
@@ -66,4 +66,10 @@ test("view identity carries the accent text colour, Ink on Vermilion", () => {
   const view = buildSceneView({ ...base(), profile: { ...base().profile, accentColor: "#E64A35" } });
   expect(view.identity.onAccent).toBe("#0C0C0D");
   expect(buildSceneView(base()).identity.onAccent).toBe("#FFFFFF");
+});
+
+test.each([null, "#123456", "#0E7C86"])("appearance carries layout, mode and a curated accent for %s", accentColor => {
+  const view = buildSceneView({ ...base(), profile: { ...base().profile, layout: "showcase", colorMode: "dark", accentColor } });
+  expect(view).toHaveProperty("appearance", { layout: "showcase", mode: "dark", accent: accentColor === "#0E7C86" ? accentColor : "#0C0C0D" });
+  expect(view.identity.accent).toBe(accentColor ?? "#0C0C0D");
 });

@@ -170,7 +170,7 @@ Normal section header offers `Reorder` immediately before `+ Add` when at least 
 
 **Storage mapping:** sections are editor projections, not separate stored lists. Read the complete list in global position order, then filter by the section's type set. A move swaps the selected item with the nearest preceding/following item in that same set, skipping other types. Write dense global positions under the existing profile lock and bump `content_version`.
 
-Example: global `[link A, about X, link B, form Y]`; moving B up in Socials & links yields `[link B, about X, link A, form Y]`. About X and Form Y retain their global slots and relative order. Public rendering continues consuming this single list; it does not group sections. Thus a link can cross content/action items in the public sequence when it swaps with another link. The UI must not imply globally grouped public sections. This limitation is intentional in this scoped pass.
+Example: global `[link A, about X, link B, form Y]`; moving B up in Socials & links yields `[link B, about X, link A, form Y]`. About X and Form Y retain their global slots and relative order. Public rendering continues consuming this single list; it does not group sections. Thus a link can cross content/action items in the public sequence when it swaps with another link. The UI must not imply globally grouped public sections. This limitation is intentional in this scoped pass. **Planned change:** [0013](../decisions/0013-universal-layouts-profile-appearance.md) makes public layouts render content grouped by role, keeping stored order within each group, so section reorder will match public order. The slot-swap storage mapping above stays valid.
 
 Current working-tree `among` behavior implements the intended swap. The prior global-adjacent API alone cannot implement section ordering: if `among` is absent from the implementation baseline, adding it is an explicit, narrowly scoped domain behavior extension requiring DB tests, not a migration. Server maps validated section names to fixed `BLOCK_SECTIONS`; never trust arbitrary client-supplied type arrays. Ensure the target block belongs to the submitted section and the route's owned mode. Do not automatically normalize old records into grouped order or add section-position columns.
 
@@ -287,7 +287,7 @@ Manual acceptance after implementation: 320/375/390px phones and a representativ
 ## 21. Risks, conflicts and edge cases
 
 1. **Existing experiment differs from locked UX:** inline add and menu moves are superseded; permanent preview stays removed. No implementation changes belong in this pass.
-2. **Global order versus grouped editor:** section swapping can move items across other types in the public sequence. Preserve the slot-swap behavior and test it; grouping the public page or persisting separate section order would be a distinct product change.
+2. **Global order versus grouped editor:** section swapping can move items across other types in the public sequence. Preserve the slot-swap behavior and test it; grouping the public page or persisting separate section order would be a distinct product change. Grouped public rendering is now planned by [0013](../decisions/0013-universal-layouts-profile-appearance.md); separate persisted section order is still out of scope.
 3. **Redirecting actions:** same-dialog completion requires the narrow server adapter change in section 18. Do not catch/swallow framework redirects or falsely report a save as complete.
 4. **Shared form definitions:** updates may affect copied modes, and removing a block does not necessarily release the form-definition quota. Preserve behavior and communicate actual sharing.
 5. **Custom label optionality:** the current schema allows blank labels. This design does not make Custom link Label required without a separate explicit decision.
@@ -300,11 +300,11 @@ The existing block model supports the approved design **without a database migra
 
 ## 22. Explicitly deferred work
 
-- Discord, Reddit and Threads; each requires a separately approved enum migration and validation/public-display work.
+- Discord, Reddit and Threads: no longer deferred. Migration `0016_extend_social_platforms` added them (with Pinterest, Behance and Dribbble).
 - Drag-and-drop and drag handles.
 - Shared social library, connected social accounts and new platform tables.
 - Database migrations or changing the persisted Scene/Block naming.
-- Separate persisted section ordering, global editor reorder UX, or grouped public rendering.
+- Separate persisted section ordering or global editor reorder UX. Grouped public rendering is planned separately in [0013](../decisions/0013-universal-layouts-profile-appearance.md).
 - Public-profile/preview visual redesign and per-mode identity/appearance.
 - Automatic cloning of shared contact forms, new form types, or template/data-model redesign.
 

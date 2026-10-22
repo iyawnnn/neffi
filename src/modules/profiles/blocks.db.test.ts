@@ -4,7 +4,7 @@ import { cards, formDefinitions, profiles, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { addBlock, deleteBlock, moveBlock, setBlockVisible, updateBlock } from "./blocks";
-import { createProfileFromStarter, publishProfile } from "./profiles";
+import { createProfileFromStarter, publishProfile, upsertContactBlock } from "./profiles";
 import { createScene } from "./scenes";
 
 let db: TestDb;
@@ -107,4 +107,59 @@ test("a block of another profile is not found", () => rollback(db, async tx => {
     () => deleteBlock(tx, { ...input, blockId: block.id }),
   ]) await expect(call()).rejects.toMatchObject({ code: "not_found" });
   expect(await tx.select().from(sceneBlocks)).toEqual(before);
+}));
+
+test("upsertContactBlock uses the Default Scene once, preserves an existing block, and bumps once", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const before = (await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0];
+  const original = (await rows(tx, input.sceneId)).find(block => block.type === "contact")!;
+  await upsertContactBlock(tx, { accountId: input.accountId, profileId: input.profileId, saveContact: false });
+  const contacts = (await rows(tx, input.sceneId)).filter(block => block.type === "contact");
+  const after = (await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0];
+  expect(contacts).toEqual([expect.objectContaining({ id: original.id, visible: original.visible, content: { saveContact: false } })]);
+  expect(after.contentVersion).toBe(before.contentVersion + 1);
+}));
+
+test("upsertContactBlock inserts once when absent and repeated calls update the same item", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await tx.delete(sceneBlocks).where(eq(sceneBlocks.sceneId, input.sceneId));
+  await addBlock(tx, { ...input, type: "about", content: { text: "Keep me" } });
+  const { sceneId } = await createScene(tx, { ...input, name: "Other", copyFromSceneId: null });
+  const before = (await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0];
+  await upsertContactBlock(tx, { ...input, saveContact: true });
+  const contact = (await rows(tx, input.sceneId)).find(block => block.type === "contact")!;
+  expect(contact).toMatchObject({ position: 1, visible: true, content: { saveContact: true } });
+  await upsertContactBlock(tx, { ...input, saveContact: false });
+  expect((await rows(tx, input.sceneId)).filter(block => block.type === "contact")).toEqual([expect.objectContaining({ id: contact.id, position: 1, content: { saveContact: false } })]);
+  expect(await rows(tx, sceneId)).toEqual([]);
+  expect((await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0].contentVersion).toBe(before.contentVersion + 2);
+}));
+
+test("upsertContactBlock allows updating at the block limit and rejects another account", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  await tx.delete(sceneBlocks).where(eq(sceneBlocks.sceneId, input.sceneId));
+  for (let i = 0; i < 20; i++) await tx.insert(sceneBlocks).values({ sceneId: input.sceneId, type: "about", position: i, content: { text: `About ${i}` } });
+  const before = (await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0];
+  await expect(upsertContactBlock(tx, { ...input, saveContact: true })).rejects.toMatchObject({ code: "limit_reached" });
+  expect((await tx.select().from(profiles).where(eq(profiles.id, input.profileId)))[0]).toEqual(before);
+  await tx.update(sceneBlocks).set({ type: "contact", content: { saveContact: false } }).where(eq(sceneBlocks.position, 0));
+  await upsertContactBlock(tx, { ...input, saveContact: true });
+  expect((await rows(tx, input.sceneId)).filter(block => block.type === "contact")).toHaveLength(1);
+  await expect(upsertContactBlock(tx, { ...input, accountId: (await insertAccount(tx)).id, saveContact: true })).rejects.toMatchObject({ code: "not_found" });
+}));
+
+test("Contact upsert preserves hidden items and keeps a published profile publishable", () => rollback(db, async tx => {
+  const input = await setup(tx);
+  const original = (await rows(tx, input.sceneId)).find(block => block.type === "contact")!;
+  await setBlockVisible(tx, { ...input, blockId: original.id, visible: false });
+  await publishProfile(tx, input);
+  await upsertContactBlock(tx, { ...input, saveContact: false });
+  expect((await rows(tx, input.sceneId)).find(block => block.id === original.id)).toMatchObject({ visible: false, content: { saveContact: false } });
+  await setBlockVisible(tx, { ...input, blockId: original.id, visible: true });
+  for (const block of await rows(tx, input.sceneId)) {
+    if (block.id !== original.id) await deleteBlock(tx, { ...input, blockId: block.id });
+  }
+  await upsertContactBlock(tx, { ...input, saveContact: false });
+  await publishProfile(tx, input);
+  expect(await rows(tx, input.sceneId)).toEqual([expect.objectContaining({ id: original.id, visible: true, content: { saveContact: false } })]);
 }));

@@ -7,7 +7,7 @@ import { connectCardToProfile, setCardDisabled } from "../cards/manage";
 import { PRESETS } from "../forms/config";
 import { updateForm } from "../forms/forms";
 import { addBlock, deleteBlock, moveBlock, setBlockVisible, updateBlock } from "./blocks";
-import { createProfileFromStarter, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
+import { createProfileFromStarter, publishProfile, setProfileGoal, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
 import { createScene, deleteScene, renameScene, showScene } from "./scenes";
 
 let db: TestDb;
@@ -33,6 +33,8 @@ const identity = { fullName: "Ana B", headline: null, company: null, bio: null, 
 const changes: [string, (tx: TestTx, c: Ctx) => Promise<unknown>][] = [
   ["identity", (tx, c) => updateIdentity(tx, { ...own(c), identity })],
   ["appearance", (tx, c) => updateAppearance(tx, { ...own(c), accentColor: "#1F5FAE", imageIsLogo: true })],
+  ["layout, mode and accent together", (tx, c) => updateAppearance(tx, { ...own(c), layout: "showcase", colorMode: "dark", accentColor: "#0E7C86" })],
+  ["Goal", (tx, c) => setProfileGoal(tx, { ...own(c), goal: "freelance" })],
   ["a new image", (tx, c) => setProfileImage(tx, { ...own(c), assetId: `neffi/profiles/${c.profileId}/00000000-0000-4000-8000-000000000000` })],
   ["renaming a scene", (tx, c) => renameScene(tx, { ...own(c), sceneId: c.defaultSceneId, name: "Work" })],
   ["showing another scene", (tx, c) => showScene(tx, { ...own(c), sceneId: c.extraSceneId })],

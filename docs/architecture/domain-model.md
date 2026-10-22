@@ -59,7 +59,7 @@ Eligible means: at least one item; every DBC item has its full quantity Released
 
 **Shipment:** `in_transit ⇄ delivered | failed | returned | lost` (status only; never reopens the Order).
 
-**Profile:** `draft → published ⇄ unpublished`. Publish needs a name, one contact method (phone, email or website) and a visible Block in the Default Scene.
+**Profile:** `draft → published ⇄ unpublished`. Publish needs a name, one contact method (phone, email or website) and a visible Block in the Default Scene. **Planned:** Profile appearance gains a layout (Classic, Editorial, Showcase) and a colour mode (Light, Dark), and a nullable recommendation-only Goal is added ([0013](../decisions/0013-universal-layouts-profile-appearance.md), [0014](../decisions/0014-guided-setup-and-goal.md)).
 
 ## Derived values (never stored)
 
