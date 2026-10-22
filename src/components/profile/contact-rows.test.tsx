@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { profileFixture } from "@/dev/profile-fixture";
 import { ProfileRenderer } from "./profile-renderer";
 
-test.each(["classic", "editorial"] as const)("%s Contact places each icon before its type label and keeps the value separate", layout => {
+test.each(["classic", "editorial", "showcase"] as const)("%s Contact places each icon before its type label and keeps the value separate", layout => {
   const host = document.createElement("div");
   host.innerHTML = renderToStaticMarkup(<ProfileRenderer view={{ ...profileFixture, appearance: { ...profileFixture.appearance, layout } }} />);
   for (const [label, icon, value] of [["Mobile", "phone", "+63 917 000 0000"], ["Email", "mail", "ana@example.invalid"], ["Website", "globe", "example.invalid"]]) {
@@ -22,7 +22,7 @@ test.each(["classic", "editorial"] as const)("%s Contact places each icon before
   expect(host.querySelector('.pf-contact a[href="https://example.invalid"]')?.textContent).toBe("example.invalid");
 });
 
-test.each(["classic", "editorial"] as const)("%s Contact omits absent methods and retains long values without changing destinations", layout => {
+test.each(["classic", "editorial", "showcase"] as const)("%s Contact omits absent methods and retains long values without changing destinations", layout => {
   const email = `${"ana".repeat(40)}@example.invalid`;
   const website = `https://example.invalid/${"long-path".repeat(35)}`;
   const host = document.createElement("div");
@@ -32,7 +32,7 @@ test.each(["classic", "editorial"] as const)("%s Contact omits absent methods an
   expect(host.querySelector(`a[href="${website}"] span`)?.textContent).toBe(website.replace(/^https:\/\//, ""));
 });
 
-test.each(["classic", "editorial"] as const)("%s never invents a missing contact row or an empty Contact section", layout => {
+test.each(["classic", "editorial", "showcase"] as const)("%s never invents a missing contact row or an empty Contact section", layout => {
   for (const missing of ["phone", "email", "website"] as const) {
     const host = document.createElement("div");
     host.innerHTML = renderToStaticMarkup(<ProfileRenderer view={{ ...profileFixture, appearance: { ...profileFixture.appearance, layout }, identity: { ...profileFixture.identity, [missing]: null } }} />);

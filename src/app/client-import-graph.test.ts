@@ -63,6 +63,11 @@ const roots = readdirSync(sourceRoot, { recursive: true, encoding: "utf8" }).fil
 
 test("discovers use-client roots", () => expect(roots.length).toBeGreaterThan(0));
 
+test("the reusable profile renderer and all layouts stay safe for client previews", () => {
+  const paths = bareImportChains(resolve("src/components/profile/profile-renderer.tsx"));
+  expect(paths.filter(chain => chain.some(part => /^(server-only|zod(?:\/|$)|pg$|config\/env\.|db\/)/.test(part)))).toEqual([]);
+});
+
 test("follows runtime edges while excluding type-only imports and server action bodies", () => {
   const fixture = ts.createSourceFile("fixture.ts", `
     import type { Schema } from "type-clause";

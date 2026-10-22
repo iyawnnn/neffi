@@ -17,7 +17,7 @@ beforeEach(() => {
   m.profile.mockResolvedValue({ id: "p1", status: "draft", defaultSceneId: "s1", gaps: [] });
   m.view.mockResolvedValue(profileFixture);
 });
-test.each(["classic", "editorial"] as const)("Draft %s shows preview and Publish", async layout => {
+test.each(["classic", "editorial", "showcase"] as const)("Draft %s shows preview and Publish", async layout => {
   m.view.mockResolvedValue({ ...profileFixture, appearance: { ...profileFixture.appearance, layout } });
   const html = await render();
   expect(html).toContain(`data-layout="${layout}"`);
