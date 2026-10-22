@@ -4,7 +4,7 @@ import { beforeAll, expect, test } from "vitest";
 import { activityEvents, cards, formDefinitions, formSubmissions, profiles, sceneBlocks, scenes } from "@/db/schema";
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromSetup, createProfileFromStarter, getOwnedProfile, ownedProfiles, setProfileGoal, updateAppearance } from "./profiles";
+import { createProfileFromSetup, createProfileFromStarter, getOwnedProfile, ownedProfiles, setProfileGoal, updateAppearance, updateIdentity } from "./profiles";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -72,6 +72,19 @@ test("appearance accepts optional layout and mode without changing omitted field
   await updateAppearance(tx, { accountId: owner.id, profileId, accentColor: "#1F5FAE", layout: "showcase", colorMode: "dark" });
   await updateAppearance(tx, { accountId: owner.id, profileId, accentColor: "#0E7C86" });
   expect((await tx.select().from(profiles).where(eq(profiles.id, profileId)))[0]).toMatchObject({ accentColor: "#0E7C86", layout: "showcase", colorMode: "dark", imageIsLogo: false });
+}));
+
+test("identity presentation updates atomically without changing appearance or cover", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const { profile } = await insertProfileWithScene(tx, owner.id);
+  await updateAppearance(tx, { accountId: owner.id, profileId: profile.id, accentColor: "#1F5FAE", layout: "showcase", colorMode: "dark" });
+  await tx.update(profiles).set({ coverAssetId: `neffi/profiles/${profile.id}/cover/00000000-0000-4000-8000-000000000000`, coverWidth: 1200, coverHeight: 800, coverCropX: 0, coverCropY: 0, coverCropWidth: 900 }).where(eq(profiles.id, profile.id));
+  const before = (await tx.select().from(profiles).where(eq(profiles.id, profile.id)))[0];
+  await updateIdentity(tx, { accountId: owner.id, profileId: profile.id, imageIsLogo: true, identity: { fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null } });
+  const after = (await tx.select().from(profiles).where(eq(profiles.id, profile.id)))[0];
+  expect(after).toMatchObject({ imageIsLogo: true, layout: before.layout, colorMode: before.colorMode, accentColor: before.accentColor, coverAssetId: before.coverAssetId, coverWidth: before.coverWidth, coverHeight: before.coverHeight, coverCropX: before.coverCropX, coverCropY: before.coverCropY, coverCropWidth: before.coverCropWidth, contentVersion: before.contentVersion + 1 });
+  await updateIdentity(tx, { accountId: owner.id, profileId: profile.id, identity: { fullName: "Ana B", headline: null, company: null, bio: null, phone: null, email: "ana@e.test", website: null, location: null } });
+  expect((await tx.select().from(profiles).where(eq(profiles.id, profile.id)))[0].imageIsLogo).toBe(true);
 }));
 
 test.each([

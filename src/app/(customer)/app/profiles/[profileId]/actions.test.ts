@@ -55,6 +55,19 @@ test("identity saves normalized details", async () => {
   expect(await updateIdentityAction(undefined, identityData())).toEqual({ ok: "Saved.", identity });
   expect(m.updateIdentity).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, identity });
 });
+test("identity accepts an optional image presentation without changing the identity contract", async () => {
+  const data = identityData(); data.set("imageIsLogo", "true");
+  await updateIdentityAction(undefined, data);
+  expect(m.updateIdentity).toHaveBeenCalledWith({}, expect.objectContaining({ accountId: "a1", profileId: PROFILE, imageIsLogo: true }));
+  m.updateIdentity.mockClear();
+  await updateIdentityAction(undefined, identityData());
+  expect(m.updateIdentity).toHaveBeenCalledWith({}, expect.not.objectContaining({ imageIsLogo: expect.anything() }));
+});
+test.each(["yes", "", "TRUE"])('identity rejects invalid image presentation %j', async imageIsLogo => {
+  const data = identityData(); data.set("imageIsLogo", imageIsLogo);
+  expect(await updateIdentityAction(undefined, data)).toEqual({ error: "Check the highlighted fields and try again." });
+  expect(m.updateIdentity).not.toHaveBeenCalled();
+});
 test("identity returns server-normalized email/URL values and rejects invalid fields without mutation", async () => {
   const result = await updateIdentityAction(undefined, dataWith({ fullName: " Ana ", email: "ANA@EXAMPLE.COM", website: "example.com", phone: "+639171234567" }));
   expect(result.identity).toMatchObject({ fullName: "Ana", email: "ana@example.com", website: "https://example.com/", phone: "+639171234567" });

@@ -85,9 +85,28 @@ test("profile deletion never destroys a returned cover outside its namespace", a
   await expect(deleteProfileAction(undefined, data)).rejects.toThrow("REDIRECT:/app/profiles");
   expect(m.destroy).not.toHaveBeenCalled();
 });
-test.each(["#123456", "#1F5FAE"])("appearance validates and saves %s", async accentColor => {
-  const data = new FormData(); data.set("profileId", PROFILE); data.set("accentColor", accentColor); data.set("imageIsLogo", "true");
-  expect(await updateAppearanceAction(undefined, data)).toEqual(accentColor === "#123456" ? { error: "Check the highlighted fields and try again." } : { ok: "Saved." });
-  if (accentColor === "#123456") expect(m.appearance).not.toHaveBeenCalled();
-  else expect(m.appearance).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, accentColor, imageIsLogo: true });
+
+const appearanceData = () => {
+  const data = new FormData();
+  for (const [key, value] of Object.entries({ profileId: PROFILE, layout: "showcase", colorMode: "dark", accentColor: "#1F5FAE" })) data.set(key, value);
+  return data;
+};
+test("appearance saves approved fields together without image or cover fields", async () => {
+  const data = appearanceData(); data.set("imageIsLogo", "true"); data.set("coverAssetId", "foreign");
+  expect(await updateAppearanceAction(undefined, data)).toEqual({ ok: "Saved." });
+  expect(m.appearance).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, layout: "showcase", colorMode: "dark", accentColor: "#1F5FAE" });
+});
+test.each([["layout", "unknown"], ["colorMode", "system"], ["accentColor", "#123456"], ["layout", ""], ["colorMode", ""]])("invalid %s rejected before mutation", async (key, value) => {
+  const data = appearanceData(); data.set(key, value);
+  expect(await updateAppearanceAction(undefined, data)).toHaveProperty("error");
+  expect(m.appearance).not.toHaveBeenCalled();
+});
+test("appearance requires sign-in and propagates ownership failure", async () => {
+  m.authorize.mockResolvedValue({ ok: false });
+  await expect(updateAppearanceAction(undefined, appearanceData())).rejects.toThrow("REDIRECT:/sign-in?next=/app");
+  expect(m.appearance).not.toHaveBeenCalled();
+  m.authorize.mockResolvedValue({ ok: true, viewer: { accountId: "a1" } });
+  const { ProfileError } = await import("@/modules/profiles/errors");
+  m.appearance.mockRejectedValue(new ProfileError("not_found"));
+  await expect(updateAppearanceAction(undefined, appearanceData())).rejects.toThrow("NOT_FOUND");
 });

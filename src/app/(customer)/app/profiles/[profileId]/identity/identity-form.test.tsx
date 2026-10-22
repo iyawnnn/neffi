@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: m.refresh, push
 import { IdentityForm } from "./identity-form";
 
 const profile: DetailsProfile = { id: "p1", fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: null, website: null, location: null };
+const image = { hasImage: true, photoUrl: "https://example.invalid/photo", logoUrl: "https://example.invalid/logo", imageIsLogo: false };
 let root: Root;
 let host: HTMLDivElement;
 
@@ -90,4 +91,15 @@ test("network failures keep the form dirty and preserve entered values", async (
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
   expect(document.body.textContent).toContain("Couldn’t save changes");
   expect(document.body.textContent).toContain("Your changes are still here. Try again.");
+});
+
+test("image presentation belongs to details and saves with the identity", async () => {
+  await act(async () => root.render(<IdentityForm profile={profile} image={image} />));
+  const logo = host.querySelector<HTMLInputElement>('input[aria-label="Logo"]')!;
+  await act(async () => logo.click());
+  expect(host.textContent).toContain("Unsaved changes");
+  m.save.mockResolvedValue({ ok: "Saved.", identity: profile });
+  await submit();
+  expect((m.save.mock.calls[0][1] as FormData).get("imageIsLogo")).toBe("true");
+  expect(host.textContent).toContain("All changes saved");
 });

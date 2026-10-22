@@ -10,6 +10,7 @@ import { checkImage, destroyImage, getImage, isProfileCoverId, isProfileImageId,
 import { ProfileError } from "@/modules/profiles/errors";
 import { deleteProfile, getOwnedProfile, lockOwnedProfile, publishProfile, setProfileCover, setProfileCoverCrop, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "@/modules/profiles/profiles";
 import { coverCropSchema, profileCoverSchema } from "@/modules/profiles/cover";
+import { COLOR_MODES, LAYOUTS } from "@/modules/profiles/appearance-options";
 import { ACCENTS, identitySchema, PUBLISH_GAP_COPY, type Identity } from "@/modules/profiles/rules";
 import { createScene, showScene } from "@/modules/profiles/scenes";
 
@@ -64,7 +65,9 @@ export async function updateIdentityAction(_previous: ProfileActionState | undef
   const profileId = id(data.get("profileId"));
   const parsed = identitySchema.safeParse(Object.fromEntries(["fullName", "headline", "company", "bio", "phone", "email", "website", "location"].map(key => [key, text(data, key)])));
   if (!parsed.success) return { error: PROFILE_MESSAGES.invalid, fields: [...new Set(parsed.error.issues.map(issue => String(issue.path[0])))] };
-  try { await updateIdentity(db, { accountId, profileId, identity: parsed.data }); } catch (error) { return failure(error); }
+  const imageIsLogo = data.get("imageIsLogo");
+  if (imageIsLogo !== null && imageIsLogo !== "true" && imageIsLogo !== "false") return { error: PROFILE_MESSAGES.invalid };
+  try { await updateIdentity(db, { accountId, profileId, identity: parsed.data, ...(imageIsLogo === null ? {} : { imageIsLogo: imageIsLogo === "true" }) }); } catch (error) { return failure(error); }
   return { ok: "Saved.", identity: parsed.data };
 }
 
@@ -101,9 +104,9 @@ export async function deleteProfileAction(_previous: ProfileActionState | undefi
 export async function updateAppearanceAction(_previous: ProfileActionState | undefined, data: FormData): Promise<ProfileActionState> {
   const accountId = await ownerId();
   const profileId = id(data.get("profileId"));
-  const accentColor = text(data, "accentColor");
-  if (!ACCENTS.some(accent => accent.hex === accentColor)) return { error: PROFILE_MESSAGES.invalid };
-  try { await updateAppearance(db, { accountId, profileId, accentColor, imageIsLogo: data.get("imageIsLogo") === "true" }); } catch (error) { return failure(error); }
+  const parsed = z.object({ layout: z.enum(LAYOUTS), colorMode: z.enum(COLOR_MODES), accentColor: z.string().refine(value => ACCENTS.some(accent => accent.hex === value)) }).safeParse({ layout: text(data, "layout"), colorMode: text(data, "colorMode"), accentColor: text(data, "accentColor") });
+  if (!parsed.success) return { error: PROFILE_MESSAGES.invalid };
+  try { await updateAppearance(db, { accountId, profileId, ...parsed.data }); } catch (error) { return failure(error); }
   return { ok: "Saved." };
 }
 

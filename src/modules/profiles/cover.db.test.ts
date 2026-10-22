@@ -101,3 +101,20 @@ test("deletion returns photo and cover independently after removing the profile"
   expect(await deleteProfile(tx, { accountId: owner.id, profileId: profile.id })).toMatchObject({ imageAssetId: expect.any(String), coverAssetId: asset.assetId });
   expect(await tx.select().from(profiles).where(eq(profiles.id, profile.id))).toEqual([]);
 }));
+
+
+test("appearance round-trip preserves every stored cover field and public versioned delivery", () => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const { profile } = await insertProfileWithScene(tx, owner.id);
+  const input = { accountId: owner.id, profileId: profile.id };
+  const savedCover = cover(profile.id);
+  await setProfileCover(tx, { ...input, cover: savedCover });
+  let version = 1;
+  for (const layout of ["showcase", "classic", "editorial", "showcase"] as const) {
+    await updateAppearance(tx, { ...input, layout, colorMode: "dark", accentColor: "#1F5FAE" });
+    const [row] = await tx.select().from(profiles).where(eq(profiles.id, profile.id));
+    expect(row).toMatchObject({ coverAssetId: savedCover.assetId, coverWidth: savedCover.width, coverHeight: savedCover.height, coverCropX: crop.x, coverCropY: crop.y, coverCropWidth: crop.width, imageIsLogo: false, contentVersion: ++version });
+    const view = await loadOwnerSceneView(tx, input);
+    expect(view?.appearance).toMatchObject({ layout, mode: "dark", accent: "#1F5FAE", cover: { src: expect.stringContaining(savedCover.assetId), srcSet: expect.any(String) } });
+  }
+}));

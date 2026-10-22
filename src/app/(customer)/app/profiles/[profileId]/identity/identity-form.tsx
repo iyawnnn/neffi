@@ -8,6 +8,8 @@ import { useEffect, useReducer, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { updateIdentityAction } from "../actions";
+import { ImageUpload } from "../image-upload";
+import { ImagePresentationPicker } from "../appearance/appearance-controls";
 import { detailKeys, detailsDirty, fieldMessages, identityPhone, mobileNumber, phoneInput, type DetailKey, type DetailsProfile } from "./identity-values";
 import { LocationCombobox } from "./location-combobox";
 import { guardHistoryNavigation, type BrowserNavigation, type HistoryNavigation } from "./unsaved-navigation";
@@ -29,11 +31,13 @@ function DetailsToasts() {
   </Toast.Viewport></Toast.Portal>;
 }
 
-export function IdentityForm({ profile }: { profile: DetailsProfile }) {
-  return <Toast.Provider limit={1}><IdentityEditor profile={profile} /><DetailsToasts /></Toast.Provider>;
+type IdentityImage = { hasImage: boolean; photoUrl: string | null; logoUrl: string | null; imageIsLogo: boolean };
+
+export function IdentityForm({ profile, image }: { profile: DetailsProfile; image?: IdentityImage }) {
+  return <Toast.Provider limit={1}><IdentityEditor profile={profile} image={image} /><DetailsToasts /></Toast.Provider>;
 }
 
-function IdentityEditor({ profile }: { profile: DetailsProfile }) {
+function IdentityEditor({ profile, image }: { profile: DetailsProfile; image?: IdentityImage }) {
   const router = useRouter();
   const toast = Toast.useToastManager();
   const [{ values, saved, savedPhone, errors, saving }, dispatch] = useReducer(detailsReducer, profile, initialDetailsState);
@@ -43,7 +47,10 @@ function IdentityEditor({ profile }: { profile: DetailsProfile }) {
   const discarding = useRef(false);
   const leaveHistoryKey = useRef<string | null>(null);
   const [leaveFor, setLeaveFor] = useState<string | null>(null);
-  const dirty = detailsDirty(values, saved);
+  const [imageIsLogo, setImageIsLogo] = useState(image?.imageIsLogo ?? false);
+  const [savedImageIsLogo, setSavedImageIsLogo] = useState(image?.imageIsLogo ?? false);
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const dirty = detailsDirty(values, saved) || imageIsLogo !== savedImageIsLogo;
   const base = `/app/profiles/${profile.id}`;
   const legacyPhone = !!values.phone && mobileNumber(values.phone) === null && values.phone === phoneInput(savedPhone);
 
@@ -89,7 +96,7 @@ function IdentityEditor({ profile }: { profile: DetailsProfile }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current || !dirty) return;
+    if (submitting.current || mediaBusy || !dirty) return;
     focusErrors.current = true;
     const phone = identityPhone(values.phone, savedPhone);
     dispatch({ type: "errors", errors: {} });
@@ -101,10 +108,12 @@ function IdentityEditor({ profile }: { profile: DetailsProfile }) {
     const data = new FormData();
     data.set("profileId", profile.id);
     for (const key of detailKeys) data.set(key, key === "phone" ? phone : values[key]);
+    if (image) data.set("imageIsLogo", String(imageIsLogo));
     try {
       const result = await updateIdentityAction(undefined, data);
       if (result.ok && result.identity) {
         dispatch({ type: "saved", identity: result.identity });
+        setSavedImageIsLogo(imageIsLogo);
         toast.add(DETAILS_TOASTS.success);
         router.refresh();
       } else if (result.fields?.length) {
@@ -123,8 +132,16 @@ function IdentityEditor({ profile }: { profile: DetailsProfile }) {
 
   return <>
     <form ref={formRef} onSubmit={submit} noValidate className="rounded-panel border bg-background">
-      <fieldset disabled={saving} className="min-w-0 [&_input]:scroll-mb-56 [&_textarea]:scroll-mb-56 sm:[&_input]:scroll-mb-6 sm:[&_textarea]:scroll-mb-6">
-        <section aria-labelledby="basic-information" className="p-5 sm:p-6">
+      <fieldset disabled={saving || mediaBusy} className="min-w-0 [&_input]:scroll-mb-56 [&_textarea]:scroll-mb-56 sm:[&_input]:scroll-mb-6 sm:[&_textarea]:scroll-mb-6">
+        {image ? <section aria-labelledby="profile-image" className="p-5 sm:p-6">
+          <h2 id="profile-image" className="text-lg leading-6 font-semibold">Profile image</h2>
+          <p className="mt-1 text-body text-fg-secondary">Use a photo or logo visitors will recognize.</p>
+          <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
+            <ImageUpload profileId={profile.id} fullName={profile.fullName} hasImage={image.hasImage} image={imageIsLogo ? image.logoUrl : image.photoUrl} logo={imageIsLogo} disabled={saving || mediaBusy} onBusyChange={setMediaBusy} />
+            <ImagePresentationPicker logo={imageIsLogo} hasImage={image.hasImage} disabled={saving || mediaBusy} onChange={setImageIsLogo} />
+          </div>
+        </section> : null}
+        <section aria-labelledby="basic-information" className={image ? "border-t p-5 sm:p-6" : "p-5 sm:p-6"}>
           <h2 id="basic-information" className="text-lg leading-6 font-semibold">Basic information</h2>
           <p className="mt-1 text-body text-fg-secondary">Tell visitors who you are and what you do. Full name is required.</p>
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -170,6 +187,7 @@ function IdentityEditor({ profile }: { profile: DetailsProfile }) {
           if (!leaveFor) return;
           discarding.current = true;
           dispatch({ type: "discard" });
+          setImageIsLogo(savedImageIsLogo);
           const navigation = (window as Window & { navigation?: BrowserNavigation }).navigation;
           if (leaveHistoryKey.current && navigation) navigation.traverseTo(leaveHistoryKey.current);
           else navigate(leaveFor);
