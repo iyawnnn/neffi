@@ -1,9 +1,29 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { checkImage, destroyImage, getImage, imageUrl, isProfileImageId, sign, signImageUpload } from "./cloudinary";
+import { checkImage, coverUrls, destroyImage, getImage, imageUrl, isProfileCoverId, isProfileImageId, sign, signImageUpload } from "./cloudinary";
 
 const CONFIG = { cloudName: "demo", apiKey: "123", apiSecret: "abcd" };
 const PROFILE = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 afterEach(() => vi.unstubAllGlobals());
+
+test("cover uploads reuse the signed image limits with disjoint namespaces", () => {
+  const ticket = signImageUpload(CONFIG, { profileId: PROFILE, kind: "cover" });
+  expect(ticket.fields).toMatchObject({ asset_folder: `neffi/profiles/${PROFILE}/cover`, allowed_formats: "jpg,png,webp,heic", transformation: "c_limit,h_2048,w_2048" });
+  const { signature, api_key, ...params } = ticket.fields;
+  expect(api_key).toBe(CONFIG.apiKey);
+  expect(signature).toBe(sign(params, CONFIG.apiSecret));
+  expect(isProfileCoverId(PROFILE, params.public_id)).toBe(true);
+  expect(isProfileImageId(PROFILE, params.public_id)).toBe(false);
+  const photo = signImageUpload(CONFIG, { profileId: PROFILE, kind: "image" });
+  expect(isProfileImageId(PROFILE, photo.fields.public_id)).toBe(true);
+  expect(isProfileCoverId(PROFILE, photo.fields.public_id)).toBe(false);
+  for (const id of [params.public_id.replace(PROFILE, "other"), `${params.public_id}/extra`, `neffi/profiles/${PROFILE}/cover/../x`, `neffi/profiles/${PROFILE}/cover/${"-".repeat(36)}`]) expect(isProfileCoverId(PROFILE, id)).toBe(false);
+});
+
+test("cover delivery crops source pixels before fixed limit widths and optimization", () => {
+  const root = "https://res.cloudinary.com/demo/image/upload/c_crop,x_12,y_34,w_601,h_200";
+  const url = (width: number) => `${root}/c_limit,w_${width}/f_auto,q_auto/a/b`;
+  expect(coverUrls("demo", "a/b", { x: 12, y: 34, width: 601 })).toEqual({ src: url(1080), srcSet: [640, 1080, 1600].map(width => `${url(width)} ${width}w`).join(", ") });
+});
 
 test("signature matches Cloudinary's published example", () => {
   expect(sign({ eager: "w_400,h_300,c_pad|w_260,h_200,c_crop", public_id: "sample_image", timestamp: 1315060510 }, "abcd")).toBe(

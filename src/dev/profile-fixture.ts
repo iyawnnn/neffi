@@ -3,7 +3,7 @@ import { LINK_KINDS, LINK_KIND_LABELS } from "@/modules/profiles/block-options";
 
 // Synthetic data for local visual review; never reads or seeds a database.
 export const profileFixture: SceneView = {
-  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D" },
+  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D", cover: null },
   identity: {
     fullName: "Ana Reyes", initials: "AR", headline: "Independent designer & developer",
     company: "Reyes Studio", location: "Cebu City", bio: "Thoughtful websites for people building something of their own.",

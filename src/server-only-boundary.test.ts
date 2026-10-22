@@ -45,6 +45,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/activation/claim.ts",
   "src/modules/cards/owned.ts",
   "src/modules/profiles/profiles.ts",
+  "src/modules/profiles/cover.ts",
   "src/modules/profiles/view.ts",
   "src/modules/profiles/scenes.ts",
   "src/modules/profiles/blocks.ts",

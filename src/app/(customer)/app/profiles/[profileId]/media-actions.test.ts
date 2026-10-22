@@ -1,11 +1,11 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { hmacHex } from "@/auth/otp-quota";
-const m = vi.hoisted(() => ({ authorize: vi.fn(), owned: vi.fn(), quota: vi.fn(), sign: vi.fn(), prefix: vi.fn(), get: vi.fn(), check: vi.fn(), destroy: vi.fn(), set: vi.fn(), appearance: vi.fn(), delete: vi.fn() }));
+const m = vi.hoisted(() => ({ authorize: vi.fn(), owned: vi.fn(), quota: vi.fn(), sign: vi.fn(), prefix: vi.fn(), coverPrefix: vi.fn(), get: vi.fn(), check: vi.fn(), destroy: vi.fn(), set: vi.fn(), appearance: vi.fn(), delete: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/config/env", () => ({ env: { betterAuthSecret: "synthetic-media-secret", cloudinaryCloudName: "demo", cloudinaryApiKey: "key", cloudinaryApiSecret: "secret" } }));
 vi.mock("@/auth/otp-quota", async importOriginal => ({ ...await importOriginal<typeof import("@/auth/otp-quota")>(), consumeQuota: m.quota }));
-vi.mock("@/integrations/media/cloudinary", () => ({ signImageUpload: m.sign, isProfileImageId: m.prefix, getImage: m.get, checkImage: m.check, destroyImage: m.destroy }));
+vi.mock("@/integrations/media/cloudinary", () => ({ signImageUpload: m.sign, isProfileImageId: m.prefix, isProfileCoverId: m.coverPrefix, getImage: m.get, checkImage: m.check, destroyImage: m.destroy }));
 vi.mock("@/modules/profiles/profiles", () => ({ getOwnedProfile: m.owned, setProfileImage: m.set, updateAppearance: m.appearance, deleteProfile: m.delete }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 import { confirmImageAction, deleteProfileAction, removeImageAction, startImageUploadAction, updateAppearanceAction } from "./actions";
@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   m.authorize.mockResolvedValue({ ok: true, viewer: { accountId: "a1" } });
   m.owned.mockResolvedValue({ id: PROFILE }); m.quota.mockResolvedValue(true);
-  m.prefix.mockReturnValue(true); m.get.mockResolvedValue({ bytes: 1, width: 1, height: 1, format: "png" }); m.check.mockReturnValue(true);
+  m.prefix.mockReturnValue(true); m.coverPrefix.mockReturnValue(true); m.get.mockResolvedValue({ bytes: 1, width: 1, height: 1, format: "png" }); m.check.mockReturnValue(true);
   m.set.mockResolvedValue({ previousAssetId: "previous" }); m.destroy.mockResolvedValue(undefined);
 });
 test("upload signing requires an owned valid profile", async () => {
@@ -73,11 +73,17 @@ test("remove clears the image before cleanup", async () => {
   expect(m.set).toHaveBeenCalledWith({}, { accountId: "a1", profileId: PROFILE, assetId: null });
   expect(m.destroy).toHaveBeenCalledWith(CONFIG, "previous");
 });
-test("profile deletion cleans up its image best effort", async () => {
-  m.delete.mockResolvedValue({ imageAssetId: "image" }); m.destroy.mockRejectedValue(new Error("offline"));
+test("profile deletion cleans up its image and valid cover independently", async () => {
+  m.delete.mockResolvedValue({ imageAssetId: "image", coverAssetId: "cover" }); m.destroy.mockRejectedValue(new Error("offline"));
   const data = new FormData(); data.set("profileId", PROFILE); data.set("confirm", "on");
   await expect(deleteProfileAction(undefined, data)).rejects.toThrow("REDIRECT:/app/profiles");
-  expect(m.destroy).toHaveBeenCalledWith(CONFIG, "image");
+  expect(m.destroy).toHaveBeenCalledWith(CONFIG, "image"); expect(m.destroy).toHaveBeenCalledWith(CONFIG, "cover");
+});
+test("profile deletion never destroys a returned cover outside its namespace", async () => {
+  m.delete.mockResolvedValue({ imageAssetId: null, coverAssetId: "foreign" }); m.coverPrefix.mockReturnValue(false);
+  const data = new FormData(); data.set("profileId", PROFILE); data.set("confirm", "on");
+  await expect(deleteProfileAction(undefined, data)).rejects.toThrow("REDIRECT:/app/profiles");
+  expect(m.destroy).not.toHaveBeenCalled();
 });
 test.each(["#123456", "#1F5FAE"])("appearance validates and saves %s", async accentColor => {
   const data = new FormData(); data.set("profileId", PROFILE); data.set("accentColor", accentColor); data.set("imageIsLogo", "true");

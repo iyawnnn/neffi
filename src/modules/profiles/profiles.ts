@@ -10,6 +10,8 @@ import { ACCENTS, COLOR_MODES, LAYOUTS, type ColorMode, type Layout } from "./ap
 import { GOALS, isGoal, NO_GOAL, type Goal } from "./goals";
 import { LIMITS, publishGaps, type Identity, type PublishGap } from "./rules";
 import { PURPOSES, starterBlocks, type Essentials, type Purpose } from "./starters";
+import { isProfileCoverId } from "@/integrations/media/cloudinary";
+import { profileCoverSchema, type CoverCrop, type ProfileCover } from "./cover";
 
 // Every profile mutation starts here: the WHERE on account_id is the ownership check, FOR UPDATE serializes edits.
 export async function lockOwnedProfile(tx: Db, accountId: string, profileId: string) {
@@ -142,6 +144,12 @@ export type OwnedProfile = {
   colorMode: ColorMode;
   goal: Goal | null;
   imageAssetId: string | null;
+  coverAssetId: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
+  coverCropX: number | null;
+  coverCropY: number | null;
+  coverCropWidth: number | null;
   imageIsLogo: boolean;
   defaultSceneId: string;
   scenes: { id: string; name: string; isDefault: boolean; isShown: boolean }[];
@@ -158,6 +166,8 @@ export async function getOwnedProfile(db: Db, accountId: string, profileId: stri
       website: schema.profiles.website, location: schema.profiles.location, accentColor: schema.profiles.accentColor,
       layout: schema.profiles.layout, colorMode: schema.profiles.colorMode, goal: schema.profiles.goal,
       imageAssetId: schema.profiles.imageAssetId, imageIsLogo: schema.profiles.imageIsLogo,
+      coverAssetId: schema.profiles.coverAssetId, coverWidth: schema.profiles.coverWidth, coverHeight: schema.profiles.coverHeight,
+      coverCropX: schema.profiles.coverCropX, coverCropY: schema.profiles.coverCropY, coverCropWidth: schema.profiles.coverCropWidth,
       defaultSceneId: schema.profiles.defaultSceneId, activeSceneId: schema.profiles.activeSceneId,
     })
     .from(schema.profiles)
@@ -277,6 +287,29 @@ export async function deleteProfile(db: Db, input: { accountId: string; profileI
     const [{ n }] = await tx.select({ n: count() }).from(schema.cards).where(eq(schema.cards.profileId, p.id));
     if (n > 0) throw new ProfileError("has_cards");
     await tx.delete(schema.profiles).where(eq(schema.profiles.id, p.id));
-    return { imageAssetId: p.imageAssetId };
+    return { imageAssetId: p.imageAssetId, coverAssetId: p.coverAssetId };
+  });
+}
+
+export async function setProfileCover(db: Db, input: { accountId: string; profileId: string; cover: ProfileCover | null }) {
+  return db.transaction(async tx => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    const cover = input.cover;
+    if (cover !== null && (!profileCoverSchema.safeParse(cover).success || !isProfileCoverId(p.id, cover.assetId))) throw new ProfileError("invalid");
+    await tx.update(schema.profiles).set({
+      coverAssetId: cover?.assetId ?? null, coverWidth: cover?.width ?? null, coverHeight: cover?.height ?? null,
+      coverCropX: cover?.crop.x ?? null, coverCropY: cover?.crop.y ?? null, coverCropWidth: cover?.crop.width ?? null,
+    }).where(eq(schema.profiles.id, p.id));
+    await bumpProfileContentVersion(tx, p.id);
+    return { previousAssetId: p.coverAssetId === cover?.assetId ? null : p.coverAssetId };
+  });
+}
+
+export async function setProfileCoverCrop(db: Db, input: { accountId: string; profileId: string; crop: CoverCrop }): Promise<void> {
+  await db.transaction(async tx => {
+    const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    if (!p.coverAssetId || !isProfileCoverId(p.id, p.coverAssetId) || !profileCoverSchema.safeParse({ assetId: p.coverAssetId, width: p.coverWidth, height: p.coverHeight, crop: input.crop }).success) throw new ProfileError("invalid");
+    await tx.update(schema.profiles).set({ coverCropX: input.crop.x, coverCropY: input.crop.y, coverCropWidth: input.crop.width }).where(eq(schema.profiles.id, p.id));
+    await bumpProfileContentVersion(tx, p.id);
   });
 }

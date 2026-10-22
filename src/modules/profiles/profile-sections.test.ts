@@ -5,7 +5,7 @@ import { profileSections } from "./profile-sections";
 
 const base = (blocks: ViewBlock[] = []): SceneView => ({
   identity: { fullName: "Ana", initials: "A", headline: null, company: null, bio: "My intro", phone: "+639171234567", email: "ana@example.test", website: "https://ana.example/", location: "Manila", accent: "#0C0C0D", onAccent: "#FFFFFF", image: null },
-  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D" },
+  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D", cover: null },
   scene: { id: "main", name: "Main" }, blocks,
 });
 const link = (id: string, kind: "github" | "custom" = "custom"): Extract<ViewBlock, { type: "link" }> => ({ id, type: "link", kind, label: id, url: `https://example.test/${id}` });

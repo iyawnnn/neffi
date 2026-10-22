@@ -6,9 +6,10 @@ import { authorize } from "@/auth/access";
 import { consumeQuota, hmacHex } from "@/auth/otp-quota";
 import { env } from "@/config/env";
 import { db } from "@/db";
-import { checkImage, destroyImage, getImage, isProfileImageId, signImageUpload } from "@/integrations/media/cloudinary";
+import { checkImage, destroyImage, getImage, isProfileCoverId, isProfileImageId, signImageUpload } from "@/integrations/media/cloudinary";
 import { ProfileError } from "@/modules/profiles/errors";
-import { deleteProfile, getOwnedProfile, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "@/modules/profiles/profiles";
+import { deleteProfile, getOwnedProfile, lockOwnedProfile, publishProfile, setProfileCover, setProfileCoverCrop, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "@/modules/profiles/profiles";
+import { coverCropSchema, profileCoverSchema } from "@/modules/profiles/cover";
 import { ACCENTS, identitySchema, PUBLISH_GAP_COPY, type Identity } from "@/modules/profiles/rules";
 import { createScene, showScene } from "@/modules/profiles/scenes";
 
@@ -22,6 +23,8 @@ const PROFILE_MESSAGES = {
 };
 const mediaConfig = { cloudName: env.cloudinaryCloudName, apiKey: env.cloudinaryApiKey, apiSecret: env.cloudinaryApiSecret };
 const IMAGE_ERROR = "Use a JPG, PNG, WebP or HEIC image up to 5 MB.";
+const COVER_ERROR = "Use a JPG, PNG, WebP or HEIC image up to 5 MB and at least 600 pixels wide.";
+const CROP_ERROR = "Adjust the crop to fit the image.";
 
 async function ownerId() {
   const authorization = await authorize("account");
@@ -88,8 +91,9 @@ export async function deleteProfileAction(_previous: ProfileActionState | undefi
   const profileId = id(data.get("profileId"));
   if (data.get("confirm") !== "on") return { error: "Tick the box to confirm." };
   try {
-    const { imageAssetId } = await deleteProfile(db, { accountId, profileId });
+    const { imageAssetId, coverAssetId } = await deleteProfile(db, { accountId, profileId });
     if (imageAssetId) await destroyImage(mediaConfig, imageAssetId).catch(() => undefined);
+    if (coverAssetId && isProfileCoverId(profileId, coverAssetId)) await destroyImage(mediaConfig, coverAssetId).catch(() => undefined);
   } catch (error) { return failure(error); }
   redirect("/app/profiles");
 }
@@ -104,12 +108,13 @@ export async function updateAppearanceAction(_previous: ProfileActionState | und
 }
 
 // ponytail: orphaned Cloudinary assets from abandoned uploads are not swept; add a periodic sweep in M10 if storage matters.
-export async function startImageUploadAction(profileId: string) {
+export async function startImageUploadAction(profileId: string, kind: unknown = "image") {
   const accountId = await ownerId();
   id(profileId);
+  if (kind !== "image" && kind !== "cover") return { error: IMAGE_ERROR };
   if (!await getOwnedProfile(db, accountId, profileId)) notFound();
   if (!await consumeQuota(db, hmacHex(env.betterAuthSecret, "media-sign", accountId), 20)) return { error: "Too many uploads. Please wait a few minutes and try again." };
-  return { ticket: signImageUpload(mediaConfig, { profileId }) };
+  return { ticket: signImageUpload(mediaConfig, kind === "image" ? { profileId } : { profileId, kind }) };
 }
 
 export async function confirmImageAction(profileId: string, publicId: string): Promise<{ ok?: true; error?: string }> {
@@ -133,4 +138,68 @@ export async function removeImageAction(profileId: string): Promise<void> {
   id(profileId);
   const { previousAssetId } = await setProfileImage(db, { accountId, profileId, assetId: null });
   if (previousAssetId) await destroyImage(mediaConfig, previousAssetId).catch(() => undefined);
+}
+
+export async function confirmCoverAction(profileId: string, publicId: string, crop: unknown): Promise<{ ok?: true; error?: string }> {
+  const accountId = await ownerId();
+  id(profileId);
+  if (typeof publicId !== "string" || !isProfileCoverId(profileId, publicId)) return { error: COVER_ERROR };
+  let result: { error: string } | { previousAssetId: string | null };
+  try { result = await db.transaction(async tx => {
+    // The shared row lock keeps verification and rejection cleanup from racing another cover confirmation.
+    const profile = await lockOwnedProfile(tx, accountId, profileId);
+    if (publicId === profile.coverAssetId) return { error: COVER_ERROR };
+    const image = await getImage(mediaConfig, publicId);
+    if (!image) return { error: COVER_ERROR };
+    if (!checkImage(image) || image.width < 600) {
+      await destroyImage(mediaConfig, publicId).catch(() => undefined);
+      return { error: COVER_ERROR };
+    }
+    const parsed = profileCoverSchema.safeParse({ assetId: publicId, width: image.width, height: image.height, crop });
+    if (!parsed.success) {
+      await destroyImage(mediaConfig, publicId).catch(() => undefined);
+      return { error: CROP_ERROR };
+    }
+    return { previousAssetId: (await setProfileCover(tx, { accountId, profileId, cover: parsed.data })).previousAssetId };
+  }); } catch (error) {
+    if (error instanceof ProfileError && error.code === "not_found") notFound();
+    throw error;
+  }
+  if ("error" in result) return { error: result.error };
+  if (result.previousAssetId) await discardInactiveCover(accountId, profileId, result.previousAssetId).catch(() => undefined);
+  return { ok: true };
+}
+
+export async function updateCoverCropAction(profileId: string, crop: unknown): Promise<{ error?: string }> {
+  const accountId = await ownerId();
+  id(profileId);
+  const parsed = coverCropSchema.safeParse(crop);
+  if (!parsed.success) return { error: CROP_ERROR };
+  try { await setProfileCoverCrop(db, { accountId, profileId, crop: parsed.data }); } catch (error) { return failure(error); }
+  return {};
+}
+
+export async function removeCoverAction(profileId: string): Promise<void> {
+  const accountId = await ownerId();
+  id(profileId);
+  const { previousAssetId } = await setProfileCover(db, { accountId, profileId, cover: null });
+  if (previousAssetId) await discardInactiveCover(accountId, profileId, previousAssetId).catch(() => undefined);
+}
+
+export async function discardCoverUploadAction(profileId: string, publicId: string): Promise<void> {
+  const accountId = await ownerId();
+  id(profileId);
+  try { await discardInactiveCover(accountId, profileId, publicId); } catch (error) {
+    if (error instanceof ProfileError && error.code === "not_found") notFound();
+    throw error;
+  }
+}
+
+async function discardInactiveCover(accountId: string, profileId: string, publicId: unknown): Promise<void> {
+  if (typeof publicId !== "string" || !isProfileCoverId(profileId, publicId)) return;
+  await db.transaction(async tx => {
+    // Recheck while locked so a stale cleanup cannot delete a cover another request has made current.
+    const profile = await lockOwnedProfile(tx, accountId, profileId);
+    if (profile.coverAssetId !== publicId) await destroyImage(mediaConfig, publicId).catch(() => undefined);
+  });
 }

@@ -75,7 +75,7 @@ test("deleteProfile refuses while a card shows it, then deletes everything and r
   await tx.insert(formSubmissions).values({ profileId: input.profileId, formId: form.id, clientKey: randomUUID(), answers: [] });
   await tx.update(cards).set({ profileId: null }).where(eq(cards.id, card.id));
   await tx.update(profiles).set({ imageAssetId: "img" }).where(eq(profiles.id, input.profileId));
-  expect(await deleteProfile(tx, input)).toEqual({ imageAssetId: "img" });
+  expect(await deleteProfile(tx, input)).toEqual({ imageAssetId: "img", coverAssetId: null });
   expect(await row(tx, input.profileId)).toBeUndefined();
   expect(await tx.select().from(scenes).where(eq(scenes.profileId, input.profileId))).toHaveLength(0);
   expect(await tx.select().from(sceneBlocks)).toHaveLength(0);
