@@ -6,11 +6,15 @@ import { db } from "@/db";
 import { ownedCards } from "@/modules/cards/owned";
 import { getOwnedProfile, ownedProfiles } from "@/modules/profiles/profiles";
 import { isGoal } from "@/modules/profiles/goals";
-import { PURPOSES, type Purpose } from "@/modules/profiles/purpose-options";
-import { chooseProfileAction, continueGoalAction } from "./actions";
+import { and, eq } from "drizzle-orm";
+import { sceneBlocks } from "@/db/schema";
+import { env } from "@/config/env";
+import { imageUrl } from "@/integrations/media/cloudinary";
+import { loadOwnerSceneView } from "@/modules/profiles/view";
+import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction } from "./actions";
 import { SETUP_STEPS } from "./setup-steps";
 import { SetupForm } from "./setup-form";
-import { EssentialsForm } from "./setup-forms";
+import { SetupEditor } from "./setup-forms";
 import { GoalFields, SetupPlaceholder, SetupView } from "./setup-view";
 import { previousStep, resolveStep } from "./setup-steps";
 
@@ -48,8 +52,13 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
   const goal = isGoal(rawGoal) ? rawGoal : profile?.goal ?? null;
   const previous = previousStep(step);
   const backHref = previous ? `?step=${previous}${!profile && previous === "goal" && rawGoal !== undefined ? `&goal=${goal ?? ""}` : ""}` : "/app";
-  // Keep the existing essentials presentation until the dedicated You step lands in T10.
-  const purpose: Purpose = goal === "business" ? "get_clients" : goal === "freelance" ? "show_my_work" : "network";
+  if (step === "you" || step === "photo" || step === "contact") {
+    const view = profile ? await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }) : null;
+    const [contactBlock] = profile ? await db.select({ content: sceneBlocks.content }).from(sceneBlocks).where(and(eq(sceneBlocks.sceneId, profile.defaultSceneId), eq(sceneBlocks.type, "contact"))).limit(1) : [];
+    const contact = contactBlock ? { saveContact: !(contactBlock.content && typeof contactBlock.content === "object" && "saveContact" in contactBlock.content && contactBlock.content.saveContact === false) } : null;
+    const imageUrls = profile?.imageAssetId ? { photo: imageUrl(env.cloudinaryCloudName, profile.imageAssetId, false), logo: imageUrl(env.cloudinaryCloudName, profile.imageAssetId, true) } : null;
+    return <SetupEditor key={`${step}-${profile?.id ?? "new"}`} step={step} cardId={card.id} suffix={card.publicToken.slice(-4)} goal={goal} profile={profile} view={view} imageUrls={imageUrls} signInEmail={viewer.email} contact={contact} action={step === "you" ? saveYouAction : step === "photo" ? savePhotoAction : saveContactAction} />;
+  }
   return (
     <SetupView suffix={card.publicToken.slice(-4)} step={step} backHref={backHref}>
       {step === "goal" ? (
@@ -57,8 +66,6 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
           <input type="hidden" name="cardId" value={card.id} />
           <GoalFields goal={rawGoal !== undefined ? goal : profile ? profile.goal : undefined} />
         </SetupForm>
-      ) : step === "you" && !profile ? (
-        <EssentialsForm cardId={card.id} goal={goal} purpose={purpose} linkLabel={PURPOSES[purpose].linkLabel} defaultEmail={viewer.email} />
       ) : profile ? <SetupPlaceholder step={step} profileId={profile.id} sceneId={profile.defaultSceneId} /> : null}
     </SetupView>
   );

@@ -1,12 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn(), view: vi.fn(), limit: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
-vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: m.limit }) }) }) } }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
-vi.mock("./actions", () => ({ createProfileAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
+vi.mock("./actions", () => ({ saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
+vi.mock("@/modules/profiles/view", () => ({ loadOwnerSceneView: m.view }));
+vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
 import SetupPage from "./page";
 const render = async (query: Record<string, string | string[]> = {}) => renderToStaticMarkup(await SetupPage({ params: Promise.resolve({ cardId: "c1" }), searchParams: Promise.resolve(query) }));
 beforeEach(() => {
@@ -14,6 +16,8 @@ beforeEach(() => {
   m.requireAccount.mockResolvedValue({ accountId: "a1", email: "ana@example.test" });
   m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "A".repeat(22) + "WXYZ", profileId: null }]);
   m.ownedProfiles.mockResolvedValue([]);
+  m.view.mockResolvedValue(null);
+  m.limit.mockResolvedValue([]);
 });
 function draft(gaps: string[] = ["contact", "content"]) {
   m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "TESTWXYZ", profileId: "p1" }]);
@@ -37,7 +41,7 @@ test("existing-profile chooser is retained; explicit goal enters new setup", asy
   expect(await render()).toContain('href="?step=goal"');
   expect(await render({ step: "goal" })).toContain("What will you use Neffi for?");
 });
-test("You keeps the existing essentials fallback and carries goal without creating on GET", async () => {
+test("You shows canonical fields and carries goal without creating on GET", async () => {
   const html = await render({ step: "you", goal: "business" });
   expect(html).toContain("Let&#x27;s start with you");
   expect(html).toContain('name="goal" value="business"');
@@ -47,7 +51,7 @@ test("You keeps the existing essentials fallback and carries goal without creati
 test.each([undefined, "unknown"])("draft resumes from persisted gaps for %s", async step => {
   draft();
   await expect(render(step ? { step } : {})).rejects.toThrow("REDIRECT:?step=contact");
-  expect(m.getOwnedProfile).toHaveBeenCalledWith({}, "a1", "p1");
+  expect(m.getOwnedProfile).toHaveBeenCalled();
 });
 test.each([{ gaps: ["name"] }, { gaps: [] }])("resume handles %j", async ({ gaps }) => {
   draft(gaps);

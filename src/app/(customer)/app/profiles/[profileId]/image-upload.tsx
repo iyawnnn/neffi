@@ -9,9 +9,10 @@ import { AppearanceImage } from "./appearance/appearance-controls";
 
 const FAILED = "We couldn't upload that image. Use a JPG, PNG, WebP or HEIC image up to 5 MB.";
 const motion = "rounded-[10px] interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none";
+export type ImageUploadActions = { start: typeof startImageUploadAction; confirm: typeof confirmImageAction; remove: typeof removeImageAction };
 
 // Files go directly to Cloudinary; the server verifies each upload before storing its id.
-export function ImageUpload({ profileId, hasImage, image, logo, fullName, disabled = false, onBusyChange }: { profileId: string; hasImage: boolean; image: string | null; logo: boolean; fullName?: string | null; disabled?: boolean; onBusyChange?: (busy: boolean) => void }) {
+export function ImageUpload({ profileId, hasImage, image, logo, fullName, disabled = false, onBusyChange, actions }: { profileId: string; hasImage: boolean; image: string | null; logo: boolean; fullName?: string | null; disabled?: boolean; onBusyChange?: (busy: boolean) => void; actions?: ImageUploadActions }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const locked = useRef(false);
@@ -29,14 +30,14 @@ export function ImageUpload({ profileId, hasImage, image, logo, fullName, disabl
     if (file.size > 5_000_000 || !(/^image\/(jpeg|png|webp|heic)$/i.test(file.type) || /\.(jpe?g|png|webp|heic)$/i.test(file.name))) { setMessage(FAILED); return; }
     pending("upload"); setMessage(undefined);
     try {
-      const { ticket, error } = await startImageUploadAction(profileId);
+      const { ticket, error } = await (actions?.start ?? startImageUploadAction)(profileId);
       if (!ticket) { setMessage(error ?? FAILED); return; }
       const body = new FormData();
       for (const [key, value] of Object.entries(ticket.fields)) body.set(key, value);
       body.set("file", file);
       const response = await fetch(ticket.url, { method: "POST", body });
       const uploaded = response.ok ? ((await response.json()) as { public_id?: string }) : {};
-      const result = uploaded.public_id ? await confirmImageAction(profileId, uploaded.public_id) : { error: FAILED };
+      const result = uploaded.public_id ? await (actions?.confirm ?? confirmImageAction)(profileId, uploaded.public_id) : { error: FAILED };
       if (result.error) { setMessage(result.error); return; }
       setSaved("Image updated."); router.refresh();
     } catch { setMessage(FAILED); }
@@ -45,7 +46,7 @@ export function ImageUpload({ profileId, hasImage, image, logo, fullName, disabl
   async function remove() {
     if (disabled || locked.current) return;
     pending("remove"); setMessage(undefined); setSaved(undefined);
-    try { await removeImageAction(profileId); setSaved("Image removed."); router.refresh(); }
+    try { await (actions?.remove ?? removeImageAction)(profileId); setSaved("Image removed."); router.refresh(); }
     catch { setMessage("Couldn’t remove your image. Try again."); }
     finally { pending(null); }
   }

@@ -29,7 +29,7 @@ export function LocationResult({ location, selected }: { location: PhilippineLoc
 
 const clearClass = "absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-[10px] text-fg-secondary transition-colors interact duration-[220ms] hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:outline-brand motion-reduce:transition-none";
 
-export function LocationCombobox({ value, onChange, error, disabled }: { value: string; onChange: (value: string) => void; error?: string; disabled: boolean }) {
+export function LocationCombobox({ value, onChange, error, disabled, label: labelText }: { label?: string; value: string; onChange: (value: string) => void; error?: string; disabled: boolean }) {
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const labelId = `${inputId}-label`;
@@ -65,7 +65,7 @@ export function LocationCombobox({ value, onChange, error, disabled }: { value: 
   const options = locationOptions(locations, query);
   if (!query.trim() && value && locations.some(location => localityLabel(location) === value) && !options.includes(value)) options.unshift(value);
   const byLabel = new Map(locations.map(location => [localityLabel(location), location]));
-  const label = <label id={labelId} htmlFor={inputId} className="flex items-baseline justify-between gap-3 text-body font-medium">City / municipality<span className="text-meta font-normal text-fg-secondary">Optional</span></label>;
+  const label = <label id={labelId} htmlFor={inputId} className="flex items-baseline justify-between gap-3 text-body font-medium">{labelText ?? <>City / municipality<span className="text-meta font-normal text-fg-secondary">Optional</span></>}</label>;
   const fieldError = error ? <p id={errorId} role="alert" className="text-meta text-destructive">{error}</p> : null;
   const [viewportTop, viewportHeight] = viewport.split(":");
   return <div className="flex flex-col gap-1.5">

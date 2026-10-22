@@ -10,19 +10,14 @@ import { Input, Textarea } from "@/components/ui/input";
 import { updateIdentityAction } from "../actions";
 import { ImageUpload } from "../image-upload";
 import { ImagePresentationPicker } from "../appearance/appearance-controls";
-import { detailKeys, detailsDirty, fieldMessages, identityPhone, mobileNumber, phoneInput, type DetailKey, type DetailsProfile } from "./identity-values";
+import { basicFields, detailKeys, detailsDirty, fieldMessages, identityPhone, mobileNumber, phoneInput, type DetailKey, type DetailsProfile } from "./identity-values";
 import { LocationCombobox } from "./location-combobox";
 import { guardHistoryNavigation, type BrowserNavigation, type HistoryNavigation } from "./unsaved-navigation";
 import { DETAILS_TOASTS, detailsReducer, initialDetailsState } from "./details-state";
 import { EditorFooter } from "./editor-footer";
 
 const motion = "rounded-[10px] interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none";
-const basicFields = [
-  { key: "fullName", label: "Full name", placeholder: "e.g. Alex Reyes", max: 80, autoComplete: "name" },
-  { key: "company", label: "Company", placeholder: "e.g. Northstar Studio", max: 80, autoComplete: "organization" },
-  { key: "headline", label: "Headline", placeholder: "e.g. Web developer", max: 80, autoComplete: "organization-title" },
-  { key: "bio", label: "Short intro", placeholder: "Tell visitors what you do and how you can help.", max: 300, autoComplete: "off" },
-] as const;
+
 
 function DetailsToasts() {
   const { toasts } = Toast.useToastManager();

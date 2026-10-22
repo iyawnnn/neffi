@@ -5,6 +5,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), notFou
 vi.mock("@/db", () => { throw new Error("Preview must not import the database"); });
 vi.mock("@/auth/access", () => { throw new Error("Preview must not import authentication"); });
 vi.mock("@/app/(customer)/app/setup/[cardId]/actions", () => { throw new Error("Preview must not import setup actions"); });
+vi.mock("@/app/(customer)/app/profiles/[profileId]/image-upload", () => ({ ImageUpload: () => <div>Development image uploader</div> }));
 import PreviewPage from "./page";
 const page = (query: Record<string, string | string[]> = {}) => PreviewPage({ searchParams: Promise.resolve(query) });
 beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("VERCEL_ENV", ""); });
@@ -35,9 +36,24 @@ test("real Goal shell has five choices, quiet progress, accessible Continue and 
   expect(html).toContain("synthetic data");
   expect(host.querySelector('nav[aria-label="Setup navigation"] a')?.getAttribute("href")).toBe("?state=new");
 });
-test("You preview retains existing essentials fallback with disabled submit", async () => {
+test("You preview uses the real setup editor with editable synthetic fields", async () => {
   const html = renderToStaticMarkup(await page({ state: "new", step: "you", goal: "business" }));
   expect(html).toContain("Full name");
-  expect(html).toMatch(/<button[^>]*disabled=""/);
+  expect(html).toContain("Only your full name is required.");
+  expect(html).toContain("Continue");
   expect(html).not.toContain("$ACTION");
+});
+test("Photo and Contact fixtures cover empty, existing photo/logo, filled and validation flows", async () => {
+  const emptyPhoto = renderToStaticMarkup(await page({ state: "draft", step: "photo" }));
+  const photo = renderToStaticMarkup(await page({ state: "draft", step: "photo", image: "photo" }));
+  const logo = renderToStaticMarkup(await page({ state: "draft", step: "photo", image: "logo" }));
+  const emptyContact = renderToStaticMarkup(await page({ state: "draft", step: "contact" }));
+  const filledContact = renderToStaticMarkup(await page({ state: "draft", step: "contact", contact: "filled" }));
+  const errorContact = renderToStaticMarkup(await page({ state: "draft", step: "contact", contact: "error" }));
+  expect(emptyPhoto).toContain("Development image uploader");
+  expect(photo).toContain("Development image uploader");
+  expect(logo).toContain("This is a logo");
+  expect(emptyContact).toContain("customer@example.invalid");
+  expect(filledContact).toContain("ana@example.test");
+  expect(errorContact).toContain("Public email");
 });
