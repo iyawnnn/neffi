@@ -43,6 +43,11 @@ test("renders persistent labels, required fields, autocomplete and a hidden hone
   expect(tag("name").toLowerCase()).toContain('autocomplete="name"');
   expect(tag("email")).toContain('type="email"');
   expect(tag("email")).toContain("required");
+  expect(tag("name")).toContain('placeholder="Full name"');
+  expect(tag("email")).toContain('placeholder="you@example.com"');
+  expect(tag("message")).toContain('placeholder="Tell me what you&#x27;d like to discuss..."');
+  expect(tag("phone")).not.toContain("placeholder");
+  for (const name of ["name", "email", "message"]) expect(tag(name)).not.toContain("value=");
   expect(tag("phone")).toContain('type="tel"');
   expect(tag("website").toLowerCase()).toContain('tabindex="-1"');
   expect(html).toMatch(/aria-hidden="true"[^>]*>\s*<label[^>]*>[^<]*<input[^>]*name="website"/);

@@ -18,8 +18,10 @@ const published = { status: "published" as const, profileId: "p1", sceneId: "s1"
 const render = async () => renderToStaticMarkup(await CardPage({ params: Promise.resolve({ token: "TOKEN" }), searchParams: Promise.resolve({}) }));
 beforeEach(() => { vi.resetAllMocks(); m.header.mockReturnValue(signCardRequest("TOKEN", published)); m.load.mockResolvedValue(view); });
 
-test("a Published card uses the authoritative request snapshot before the version-keyed loader", async () => {
+test.each(["classic", "editorial"] as const)("a Published %s card uses the authoritative request snapshot before the version-keyed loader", async layout => {
+  m.load.mockResolvedValue({ ...view, appearance: { ...view.appearance, layout } });
   const html = await render();
+  expect(html).toContain(`data-layout="${layout}"`);
   expect(m.load).toHaveBeenCalledWith({}, published, "cached");
   expect(html).toContain('href="/c/TOKEN/contact"');
   expect(html).not.toContain("/app/");

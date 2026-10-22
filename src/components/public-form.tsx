@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Input, Textarea } from "@/components/ui/input";
+import { PUBLIC_FORM_PLACEHOLDERS } from "./public-form-placeholders";
 import type { visibleFields } from "@/modules/forms/config";
 
 type Field = ReturnType<typeof visibleFields>[number];
@@ -51,7 +52,7 @@ export function PublicForm({ formId, title, fields }: { formId: string; title: s
       <h2 className="pf-section-title">{title}</h2>
       {fields.map(field => {
         const invalid = state.fields.includes(field.key) || undefined;
-        const props = { name: field.key, required: field.required, "aria-invalid": invalid, autoComplete: AUTOCOMPLETE[field.key] };
+        const props = { name: field.key, required: field.required, "aria-invalid": invalid, autoComplete: AUTOCOMPLETE[field.key], placeholder: PUBLIC_FORM_PLACEHOLDERS[field.key] };
         return (
           <label key={field.key} className="pf-field-label">
             {field.label}{field.required ? " (required)" : ""}

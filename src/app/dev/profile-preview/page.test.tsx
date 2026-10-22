@@ -25,3 +25,11 @@ test.each(["light", "dark"])("%s fixture uses the real renderer without live sub
   expect(html).not.toContain("<form");
   expect(html).not.toContain("/c/");
 });
+
+test("Editorial fixture uses the real layout and keeps fixture links on that layout", async () => {
+  const html = renderToStaticMarkup(await page({ layout: "editorial", sample: "long" }));
+  expect(html).toContain('data-layout="editorial"');
+  expect(html).toContain("?layout=editorial&amp;mode=dark");
+  expect(html).toContain("averylongpublicemailaddress");
+  expect(html).not.toContain("<form");
+});
