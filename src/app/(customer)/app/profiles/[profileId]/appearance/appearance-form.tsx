@@ -13,8 +13,10 @@ import { ACCENTS } from "@/modules/profiles/appearance-options";
 import type { SceneView } from "@/modules/profiles/scene-view";
 import { updateAppearanceAction } from "../actions";
 import { EditorFooter } from "../identity/editor-footer";
+import { CoverEditor, type CoverEditorImage, type CoverEditorActions } from "../cover-editor";
+import "./appearance-form.css";
 
-type AppearanceProps = { profileId: string; view: SceneView; accentColor: string | null; reviewOnly?: boolean };
+type AppearanceProps = { profileId: string; view: SceneView; accentColor: string | null; reviewOnly?: boolean; cover?: CoverEditorImage | null; coverActions?: CoverEditorActions };
 
 export function AppearanceForm(props: AppearanceProps) {
   return <Toast.Provider limit={1}><AppearanceEditor {...props} /><AppearanceToasts /></Toast.Provider>;
@@ -28,7 +30,7 @@ function AppearanceToasts() {
 }
 
 
-function AppearanceEditor({ profileId, view, accentColor, reviewOnly = false }: AppearanceProps) {
+function AppearanceEditor({ profileId, view, accentColor, reviewOnly = false, cover = null, coverActions }: AppearanceProps) {
   const router = useRouter();
   const toast = Toast.useToastManager();
   const [values, setValues] = useState({ layout: view.appearance.layout, mode: view.appearance.mode, accent: accentColor ?? ACCENTS[0].hex });
@@ -36,6 +38,7 @@ function AppearanceEditor({ profileId, view, accentColor, reviewOnly = false }: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
   const lock = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const dirty = values.layout !== saved.layout || values.mode !== saved.mode || values.accent !== saved.accent;
@@ -56,7 +59,7 @@ function AppearanceEditor({ profileId, view, accentColor, reviewOnly = false }: 
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!dirty || !validAccent || lock.current || reviewOnly) return;
+    if (!dirty || !validAccent || coverBusy || lock.current || reviewOnly) return;
     const data = new FormData(event.currentTarget);
     lock.current = true; setSaving(true); setError(undefined);
     try {
@@ -74,17 +77,17 @@ function AppearanceEditor({ profileId, view, accentColor, reviewOnly = false }: 
     <div className="grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-10">
       <form onSubmit={submit} className="min-w-0 rounded-panel border bg-background">
         <input type="hidden" name="profileId" value={profileId} />
-        <LayoutPicker view={preview} value={values.layout} disabled={saving} onChange={layout => setValues({ ...values, layout })} />
-        <ModeToggle value={values.mode} disabled={saving} onChange={mode => setValues({ ...values, mode })} />
-        <AccentPicker value={values.accent} disabled={saving} onChange={accent => setValues({ ...values, accent })} />
+        <LayoutPicker view={preview} value={values.layout} disabled={saving || coverBusy} onChange={layout => setValues({ ...values, layout })} />
+        <ModeToggle value={values.mode} disabled={saving || coverBusy} onChange={mode => setValues({ ...values, mode })} />
+        <AccentPicker value={values.accent} disabled={saving || coverBusy} onChange={accent => setValues({ ...values, accent })} />
+        {values.layout === "showcase" ? <CoverEditor profileId={profileId} cover={cover} actions={coverActions} disabled={saving || (reviewOnly && !coverActions)} onBusyChange={setCoverBusy} /> : null}
         {!validAccent ? <p className="px-4 pb-4 text-meta text-fg-secondary sm:px-6">Choose an accent to save your changes.</p> : null}
         {reviewOnly ? <p role="status" className="px-4 pb-4 text-meta text-fg-secondary sm:px-6">Development preview. Changes are not saved.</p> : null}
         {error ? <p ref={errorRef} role="alert" tabIndex={-1} className="px-4 pb-4 text-body text-destructive outline-none sm:px-6">{error}</p> : null}
-        <EditorFooter dirty={dirty && validAccent} saving={saving} disabled={reviewOnly} sticky={false} showStatus={false} onCancel={() => { setValues(saved); router.push("/app/profiles/" + profileId); }} />
+        <EditorFooter dirty={dirty && validAccent} saving={saving} disabled={reviewOnly || coverBusy} sticky={false} showStatus={false} onCancel={() => { setValues(saved); router.push("/app/profiles/" + profileId); }} />
       </form>
       <aside data-appearance-preview aria-label="Live profile preview" className="sticky top-28 hidden min-w-0 lg:block">
-        <div className="mb-3 flex items-center gap-2 text-meta font-medium text-fg-secondary"><Eye aria-hidden className="size-4" />Live preview</div>
-        <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-3xl border border-border"><div inert><ProfileRenderer view={preview} /></div></div>
+        <div className="neffi-appearance-preview-scroll max-h-[calc(100dvh-10rem)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-3xl border border-border"><div inert><ProfileRenderer view={preview} /></div></div>
         <p className="mt-3 text-meta text-fg-secondary">Your changes appear here before you save.</p>
       </aside>
     </div>

@@ -1,0 +1,38 @@
+.neffi-cover-zoom {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.neffi-cover-zoom::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+
+.neffi-cover-zoom::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+
+.neffi-cover-zoom::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border: 2px solid var(--brand);
+  border-radius: 50%;
+  background: var(--background);
+}
+
+.neffi-cover-zoom::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--brand);
+  border-radius: 50%;
+  background: var(--background);
+}
+
+.neffi-cover-zoom:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
