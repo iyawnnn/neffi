@@ -211,14 +211,14 @@ export async function unpublishProfile(db: Db, input: { accountId: string; profi
 }
 
 // A Published profile must stay publishable (D6): edits that would empty it are refused, not silently applied.
-export async function updateIdentity(db: Db, input: { accountId: string; profileId: string; identity: Identity }): Promise<void> {
+export async function updateIdentity(db: Db, input: { accountId: string; profileId: string; identity: Identity; imageIsLogo?: boolean }): Promise<void> {
   await db.transaction(async (tx) => {
     const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
     if (p.status === "published") {
       const gaps = publishGaps({ ...input.identity, visibleDefaultBlocks: await visibleBlockCount(tx, p.defaultSceneId) });
       if (gaps.length) throw new ProfileError("not_ready", gaps);
     }
-    await tx.update(schema.profiles).set(input.identity).where(eq(schema.profiles.id, p.id));
+    await tx.update(schema.profiles).set({ ...input.identity, ...(input.imageIsLogo === undefined ? {} : { imageIsLogo: input.imageIsLogo }) }).where(eq(schema.profiles.id, p.id));
     await bumpProfileContentVersion(tx, p.id);
   });
 }

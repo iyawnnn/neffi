@@ -30,7 +30,8 @@ export default async function ProfilePage({ params, searchParams }: PageProps<"/
   const shown = profile.scenes.find((s) => s.isShown) ?? profile.scenes.find((s) => s.isDefault) ?? profile.scenes[0];
   const activeModeName = shown?.name ?? "Default mode";
 
-  const appearanceSummary = `${accent ? `${accent} accent · ` : ""}${profile.imageAssetId ? (profile.imageIsLogo ? "Logo image" : "Profile image") : "No profile image"}`;
+  const layoutName = { classic: "Classic", editorial: "Editorial", showcase: "Showcase" }[profile.layout ?? "classic"];
+  const appearanceSummary = `${layoutName} \u00b7 ${profile.colorMode === "dark" ? "Dark" : "Light"}${accent ? ` \u00b7 ${accent} accent` : ""}`;
   const cardsSummary = profile.cards.length
     ? `${profile.cards.length} ${profile.cards.length === 1 ? "connected card" : "connected cards"}`
     : "No connected cards";

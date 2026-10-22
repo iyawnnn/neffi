@@ -105,7 +105,7 @@ test("uses real details, appearance and card destinations with safe identifiers"
     imageIsLogo: true,
   });
   const html = await render();
-  for (const text of ["Designer", "+639171234567", "https://example.com", "Ink accent", "Logo image", 'href="/app/cards"', "Danger zone"]) {
+  for (const text of ["Designer", "+639171234567", "https://example.com", "Ink accent", "Classic", "Light", 'href="/app/cards"', "Danger zone"]) {
     expect(html).toContain(text);
   }
   for (const [, content] of html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)) {
