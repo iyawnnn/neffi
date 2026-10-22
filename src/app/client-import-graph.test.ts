@@ -95,3 +95,8 @@ for (const root of roots) test(display(root) + " cannot reach runtime Zod", () =
   }).map(chain => chain.join(" -> "));
   expect(paths, "Runtime Zod import chains from " + display(root) + ":\n" + paths.join("\n")).toEqual([]);
 });
+
+test("setup draft overlay stays free of server and validation dependencies", () => {
+  const paths = bareImportChains(resolve("src/app/(customer)/app/setup/[cardId]/setup-draft.ts"));
+  expect(paths.filter(chain => chain.some(part => /^(server-only|zod(?:\/|$)|pg$|config\/env\.|db\/)/.test(part)))).toEqual([]);
+});

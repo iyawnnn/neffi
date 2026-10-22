@@ -4,14 +4,16 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
 import { db } from "@/db";
+import type { Db } from "@/modules/db";
 import { connectCardToProfile } from "@/modules/cards/manage";
 import { ProfileError } from "@/modules/profiles/errors";
-import { createProfileFromSetup, getOwnedProfile, setProfileGoal } from "@/modules/profiles/profiles";
-import { essentialsSchema } from "@/modules/profiles/starters";
+import { createProfileFromSetup, getOwnedProfile, lockOwnedProfile, setProfileGoal, updateIdentity, upsertContactBlock } from "@/modules/profiles/profiles";
+import { emailSchema, identitySchema, linkSchema, type Identity } from "@/modules/profiles/rules";
 import { isGoal } from "@/modules/profiles/goals";
 import { ownedCards } from "@/modules/cards/owned";
+import { fieldMessages, identityPhone, type DetailKey } from "../../profiles/[profileId]/identity/identity-values";
 
-export type SetupState = { error?: string; fields?: string[] };
+export type SetupState = { error?: string; fields?: string[]; messages?: Partial<Record<DetailKey, string>> };
 const MESSAGES = {
   invalid: "Check the highlighted fields and try again.",
   limit_reached: "You've reached the limit for this. Remove one first.",
@@ -21,6 +23,17 @@ const text = (data: FormData, name: string) => {
   return typeof value === "string" ? value : "";
 };
 const uuid = (value: string) => (z.uuid().safeParse(value).success ? value : notFound());
+const identity = (profile: { fullName: string | null; headline: string | null; company: string | null; location: string | null; bio: string | null; phone: string | null; email: string | null; website: string | null }): Identity => {
+  return {
+    fullName: profile.fullName ?? "", headline: profile.headline, company: profile.company, location: profile.location,
+    bio: profile.bio, phone: profile.phone, email: profile.email, website: profile.website,
+  };
+};
+const invalid = (fields: string[]): SetupState => ({
+  error: MESSAGES.invalid,
+  fields: [...new Set(fields)],
+  messages: Object.fromEntries(fields.filter((field): field is DetailKey => field in fieldMessages).map(field => [field, fieldMessages[field]])),
+});
 
 async function viewerId() {
   const authorization = await authorize("account");
@@ -28,25 +41,80 @@ async function viewerId() {
   return authorization.viewer.accountId;
 }
 
-export async function createProfileAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
+async function withRoutedDraft<T>(accountId: string, cardId: string, mutate: (tx: Db, profile: Awaited<ReturnType<typeof lockOwnedProfile>>) => Promise<T>) {
+  const card = (await ownedCards(db, accountId)).find(card => card.id === cardId);
+  if (!card?.profileId) notFound();
+  return db.transaction(async tx => {
+    const profile = await lockOwnedProfile(tx, accountId, card.profileId!);
+    if (profile.status !== "draft") notFound();
+    return mutate(tx, profile);
+  });
+}
+
+export async function saveYouAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
   const accountId = await viewerId();
   const cardId = uuid(text(data, "cardId"));
   const goal = data.get("goal");
   if (typeof goal !== "string" || (goal !== "" && !isGoal(goal))) notFound();
-  const parsed = essentialsSchema.safeParse({
-    fullName: text(data, "fullName"), headline: text(data, "headline"), bio: text(data, "bio"),
-    email: text(data, "email"), phone: text(data, "phone"), link: text(data, "link"),
+  const parsed = identitySchema.safeParse({
+    fullName: text(data, "fullName"), headline: text(data, "headline"), company: text(data, "company"),
+    location: text(data, "location"), bio: text(data, "bio"), phone: "", email: "", website: "",
   });
-  if (!parsed.success) return { error: MESSAGES.invalid, fields: [...new Set(parsed.error.issues.map((issue) => String(issue.path[0])))] };
+  if (!parsed.success) return invalid(parsed.error.issues.map(issue => String(issue.path[0])));
   try {
-    const { link, ...identity } = parsed.data;
-    await createProfileFromSetup(db, { accountId, cardId, goal: isGoal(goal) ? goal : null, identity: { ...identity, website: link, company: null, location: null } });
+    const card = (await ownedCards(db, accountId)).find(card => card.id === cardId);
+    if (!card) notFound();
+    if (card.profileId) {
+      const { phone: _phone, email: _email, website: _website, ...you } = parsed.data;
+      await withRoutedDraft(accountId, cardId, async (tx, profile) => updateIdentity(tx, { accountId, profileId: profile.id, identity: { ...identity(profile), ...you } }));
+    } else {
+      await createProfileFromSetup(db, { accountId, cardId, goal: isGoal(goal) ? goal : null, identity: parsed.data });
+    }
   } catch (error) {
     if (error instanceof ProfileError && error.code === "limit_reached") return { error: MESSAGES.limit_reached };
     if (error instanceof ProfileError) notFound();
     throw error;
   }
   redirect(`/app/setup/${cardId}?step=photo`);
+}
+
+export async function savePhotoAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
+  const accountId = await viewerId();
+  const cardId = uuid(text(data, "cardId"));
+  const imageIsLogo = data.get("imageIsLogo");
+  if (imageIsLogo !== "true" && imageIsLogo !== "false") return invalid([]);
+  try {
+    await withRoutedDraft(accountId, cardId, async (tx, profile) => updateIdentity(tx, { accountId, profileId: profile.id, imageIsLogo: imageIsLogo === "true", identity: identity(profile) }));
+  } catch (error) {
+    if (error instanceof ProfileError) notFound();
+    throw error;
+  }
+  redirect(`/app/setup/${cardId}?step=contact`);
+}
+
+export async function saveContactAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
+  const accountId = await viewerId();
+  const cardId = uuid(text(data, "cardId"));
+  const contact = z.object({ email: emailSchema, website: linkSchema(), saveContact: z.enum(["true", "false"]) }).safeParse({
+    email: text(data, "email"), website: text(data, "website"), saveContact: data.get("saveContact"),
+  });
+  if (!contact.success) return invalid(contact.error.issues.map(issue => String(issue.path[0])));
+  let failure: SetupState | undefined;
+  try {
+    await withRoutedDraft(accountId, cardId, async (tx, profile) => {
+      const phone = identityPhone(text(data, "phone"), profile.phone);
+      if (phone === null) { failure = invalid(["phone"]); return; }
+      if (!phone && !contact.data.email && !contact.data.website) { failure = { error: "Add a phone number, email or website so people can reach you." }; return; }
+      const next = { ...identity(profile), phone: phone || null, email: contact.data.email, website: contact.data.website };
+      await updateIdentity(tx, { accountId, profileId: profile.id, identity: next });
+      await upsertContactBlock(tx, { accountId, profileId: profile.id, saveContact: contact.data.saveContact === "true" });
+    });
+  } catch (error) {
+    if (error instanceof ProfileError) notFound();
+    throw error;
+  }
+  if (failure) return failure;
+  redirect(`/app/setup/${cardId}?step=links`);
 }
 
 export async function chooseProfileAction(data: FormData): Promise<void> {

@@ -41,3 +41,10 @@ export const fieldMessages: Record<DetailKey, string> = {
   website: "Enter a valid website, such as example.com.",
   location: "Keep your general location to 80 characters or fewer.",
 };
+
+export const basicFields = [
+  { key: "fullName", label: "Full name", placeholder: "e.g. Alex Reyes", max: 80, autoComplete: "name" },
+  { key: "company", label: "Company", placeholder: "e.g. Northstar Studio", max: 80, autoComplete: "organization" },
+  { key: "headline", label: "Headline", placeholder: "e.g. Web developer", max: 80, autoComplete: "organization-title" },
+  { key: "bio", label: "Short intro", placeholder: "Tell visitors what you do and how you can help.", max: 300, autoComplete: "off" },
+] as const;

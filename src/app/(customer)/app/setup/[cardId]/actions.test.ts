@@ -1,17 +1,17 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { ProfileError } from "@/modules/profiles/errors";
 
-const m = vi.hoisted(() => ({ authorize: vi.fn(), create: vi.fn(), connect: vi.fn(), cards: vi.fn(), setGoal: vi.fn(), getProfile: vi.fn() }));
+const m = vi.hoisted(() => ({ authorize: vi.fn(), create: vi.fn(), connect: vi.fn(), cards: vi.fn(), setGoal: vi.fn(), getProfile: vi.fn(), lockProfile: vi.fn(), update: vi.fn(), upsertContact: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
-vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/modules/profiles/profiles", () => ({ createProfileFromSetup: m.create, setProfileGoal: m.setGoal, getOwnedProfile: m.getProfile }));
+vi.mock("@/db", () => ({ db: { transaction: async (callback: (tx: object) => unknown) => callback({}) } }));
+vi.mock("@/modules/profiles/profiles", () => ({ createProfileFromSetup: m.create, setProfileGoal: m.setGoal, getOwnedProfile: m.getProfile, lockOwnedProfile: m.lockProfile, updateIdentity: m.update, upsertContactBlock: m.upsertContact }));
 vi.mock("@/modules/cards/manage", () => ({ connectCardToProfile: m.connect }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
   notFound: () => { throw new Error("NOT_FOUND"); },
 }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.cards }));
-import { chooseProfileAction, createProfileAction, continueGoalAction } from "./actions";
+import { chooseProfileAction, continueGoalAction, saveContactAction, savePhotoAction, saveYouAction } from "./actions";
 
 const CARD = "11111111-1111-4111-8111-111111111111";
 const PROFILE = "22222222-2222-4222-8222-222222222222";
@@ -20,45 +20,93 @@ const form = (overrides: Record<string, string> = {}) => {
   for (const [key, value] of Object.entries({ cardId: CARD, goal: "business", fullName: " Ana ", email: "ANA@E.TEST", link: "cal.com/ana", ...overrides })) data.set(key, value);
   return data;
 };
+const draft = (overrides: Record<string, unknown> = {}) => ({
+  id: PROFILE, status: "draft", fullName: "Ana", headline: "Designer", company: "Studio", location: "Cebu", bio: "Hello", phone: "+639171234567", email: "ana@e.test", website: "https://ana.test/", imageIsLogo: false, ...overrides,
+});
 beforeEach(() => {
   vi.resetAllMocks();
   m.authorize.mockResolvedValue({ ok: true, viewer: { accountId: "owner" } });
   m.create.mockResolvedValue({ profileId: PROFILE, created: true });
-  m.getProfile.mockResolvedValue({ id: PROFILE, status: "draft" });
+  m.cards.mockResolvedValue([{ id: CARD, profileId: PROFILE }]);
+  m.getProfile.mockResolvedValue(draft());
+  m.lockProfile.mockResolvedValue(draft());
+  m.update.mockResolvedValue(undefined);
+  m.upsertContact.mockResolvedValue(undefined);
 });
 
-test("signed out cannot create or choose a profile", async () => {
+test("signed out cannot save setup or choose a profile", async () => {
   m.authorize.mockResolvedValue({ ok: false });
-  await expect(createProfileAction(undefined, form())).rejects.toThrow("REDIRECT:/sign-in?next=/app");
+  await expect(saveYouAction(undefined, form())).rejects.toThrow("REDIRECT:/sign-in?next=/app");
   await expect(chooseProfileAction(form({ profileId: PROFILE }))).rejects.toThrow("REDIRECT:/sign-in?next=/app");
   expect(m.create).not.toHaveBeenCalled();
   expect(m.connect).not.toHaveBeenCalled();
 });
-test("invalid essentials return field errors without creating", async () => {
-  expect(await createProfileAction(undefined, form({ fullName: "" }))).toEqual({ error: "Check the highlighted fields and try again.", fields: ["fullName"] });
+test("invalid You fields return field errors without creating", async () => {
+  expect(await saveYouAction(undefined, form({ fullName: "" }))).toMatchObject({ error: "Check the highlighted fields and try again.", fields: ["fullName"], messages: { fullName: expect.any(String) } });
   expect(m.create).not.toHaveBeenCalled();
 });
 test.each([["goal", "unknown"], ["cardId", "bad"]])("bad %s is not found", async (key, value) => {
-  await expect(createProfileAction(undefined, form({ [key]: value }))).rejects.toThrow("NOT_FOUND");
+  await expect(saveYouAction(undefined, form({ [key]: value }))).rejects.toThrow("NOT_FOUND");
   expect(m.create).not.toHaveBeenCalled();
 });
 test.each([true, false])("successful setup redirects to photo (created %s)", async created => {
   m.create.mockResolvedValue({ profileId: PROFILE, created });
-  await expect(createProfileAction(undefined, form())).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=photo`);
+  m.cards.mockResolvedValue([{ id: CARD, profileId: null }]);
+  await expect(saveYouAction(undefined, form())).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=photo`);
   expect(m.authorize).toHaveBeenCalledWith("account");
-  expect(m.create).toHaveBeenCalledWith({}, { accountId: "owner", cardId: CARD, goal: "business", identity: { fullName: "Ana", headline: null, bio: null, email: "ana@e.test", phone: null, website: "https://cal.com/ana", company: null, location: null } });
+  expect(m.create).toHaveBeenCalledWith(expect.any(Object), { accountId: "owner", cardId: CARD, goal: "business", identity: { fullName: "Ana", headline: null, company: null, location: null, bio: null, phone: null, email: null, website: null } });
 });
 test("profile limit returns customer copy", async () => {
   m.create.mockRejectedValue(new ProfileError("limit_reached"));
-  expect(await createProfileAction(undefined, form())).toEqual({ error: "You've reached the limit for this. Remove one first." });
+  m.cards.mockResolvedValue([{ id: CARD, profileId: null }]);
+  expect(await saveYouAction(undefined, form())).toEqual({ error: "You've reached the limit for this. Remove one first." });
 });
 test("unowned setup is not found", async () => {
   m.create.mockRejectedValue(new ProfileError("not_found"));
-  await expect(createProfileAction(undefined, form())).rejects.toThrow("NOT_FOUND");
+  m.cards.mockResolvedValue([{ id: CARD, profileId: null }]);
+  await expect(saveYouAction(undefined, form())).rejects.toThrow("NOT_FOUND");
+});
+test("revisiting You preserves contact, media, and appearance while updating only identity fields", async () => {
+  await expect(saveYouAction(undefined, form({ headline: " Founder ", company: " Co ", location: " Manila ", bio: " Hi " }))).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=photo`);
+  expect(m.create).not.toHaveBeenCalled();
+  expect(m.update).toHaveBeenCalledWith(expect.any(Object), { accountId: "owner", profileId: PROFILE, identity: { fullName: "Ana", headline: "Founder", company: "Co", location: "Manila", bio: "Hi", phone: "+639171234567", email: "ana@e.test", website: "https://ana.test/" } });
+});
+test.each(["published", "unpublished"])("You direct POST refuses %s routed Profiles", async status => {
+  m.lockProfile.mockResolvedValue(draft({ status }));
+  await expect(saveYouAction(undefined, form())).rejects.toThrow("NOT_FOUND");
+  expect(m.update).not.toHaveBeenCalled();
+});
+test("Contact normalizes phone, defaults Save Contact, updates identity, then upserts once", async () => {
+  await expect(saveContactAction(undefined, form({ phone: "0917 123 4567", email: "ANA@EXAMPLE.COM", website: "ana.test", saveContact: "true" }))).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=links`);
+  expect(m.update).toHaveBeenCalledWith({}, { accountId: "owner", profileId: PROFILE, identity: { fullName: "Ana", headline: "Designer", company: "Studio", location: "Cebu", bio: "Hello", phone: "+639171234567", email: "ana@example.com", website: "https://ana.test/" } });
+  expect(m.upsertContact).toHaveBeenCalledWith({}, { accountId: "owner", profileId: PROFILE, saveContact: true });
+  expect(m.update.mock.calls[0][0]).toBe(m.upsertContact.mock.calls[0][0]);
+});
+test("Contact requires at least one valid contact method and leaves data untouched", async () => {
+  expect(await saveContactAction(undefined, form({ phone: "bad", email: "", website: "", saveContact: "true" }))).toMatchObject({ error: "Check the highlighted fields and try again.", fields: ["phone"] });
+  expect(m.update).not.toHaveBeenCalled();
+  expect(m.upsertContact).not.toHaveBeenCalled();
+});
+test("Contact rejects untrusted Save Contact values", async () => {
+  expect(await saveContactAction(undefined, form({ email: "ana@example.test", saveContact: "on" }))).toMatchObject({ error: "Check the highlighted fields and try again." });
+  expect(m.update).not.toHaveBeenCalled();
+});
+test("Contact direct POST requires a routed Draft", async () => {
+  m.cards.mockResolvedValue([{ id: CARD, profileId: null }]);
+  await expect(saveContactAction(undefined, form({ email: "ana@example.test", saveContact: "true" }))).rejects.toThrow("NOT_FOUND");
+});
+test("Photo mode update preserves identity and sends the user to Contact", async () => {
+  await expect(savePhotoAction(undefined, form({ imageIsLogo: "true" }))).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=contact`);
+  expect(m.update).toHaveBeenCalledWith(expect.any(Object), { accountId: "owner", profileId: PROFILE, imageIsLogo: true, identity: { fullName: "Ana", headline: "Designer", company: "Studio", location: "Cebu", bio: "Hello", phone: "+639171234567", email: "ana@e.test", website: "https://ana.test/" } });
+});
+test("Photo mode rejects invalid values and non-Drafts", async () => {
+  expect(await savePhotoAction(undefined, form({ imageIsLogo: "on" }))).toMatchObject({ error: "Check the highlighted fields and try again." });
+  m.lockProfile.mockResolvedValue(draft({ status: "published" }));
+  await expect(savePhotoAction(undefined, form({ imageIsLogo: "false" }))).rejects.toThrow("NOT_FOUND");
 });
 test("chooseProfile connects then redirects", async () => {
   await expect(chooseProfileAction(form({ profileId: PROFILE }))).rejects.toThrow(`REDIRECT:/app/profiles/${PROFILE}`);
-  expect(m.connect).toHaveBeenCalledWith({}, { accountId: "owner", cardId: CARD, profileId: PROFILE });
+  expect(m.connect).toHaveBeenCalledWith(expect.any(Object), { accountId: "owner", cardId: CARD, profileId: PROFILE });
 });
 test("chooseProfile rejects invalid or unowned profiles", async () => {
   await expect(chooseProfileAction(form({ profileId: "bad" }))).rejects.toThrow("NOT_FOUND");
@@ -76,7 +124,7 @@ test.each(["business", ""])("Goal Continue carries %s without creating a Draft",
 test("revisiting Goal updates only the existing Profile goal", async () => {
   m.cards.mockResolvedValue([{ id: CARD, profileId: PROFILE }]);
   await expect(continueGoalAction(form())).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=you&goal=business`);
-  expect(m.setGoal).toHaveBeenCalledWith({}, { accountId: "owner", profileId: PROFILE, goal: "business" });
+  expect(m.setGoal).toHaveBeenCalledWith(expect.any(Object), { accountId: "owner", profileId: PROFILE, goal: "business" });
   expect(m.create).not.toHaveBeenCalled();
 });
 test("Goal Continue rejects unowned card and invalid/missing decisions", async () => {

@@ -13,7 +13,7 @@ function SubmissionStatus({ submittingRef }: { submittingRef: RefObject<boolean>
   return null;
 }
 
-export function SetupForm({ children, ...props }: ComponentProps<"form">) {
+export function SetupForm({ children, changed, ...props }: ComponentProps<"form"> & { changed?: boolean }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const baseline = useRef<string | null>(null);
@@ -23,7 +23,7 @@ export function SetupForm({ children, ...props }: ComponentProps<"form">) {
   const [leave, setLeave] = useState<{ url: string; key?: string } | null>(null);
   useEffect(() => { baseline.current = JSON.stringify([...new FormData(form.current!).entries()]); }, []);
   useEffect(() => {
-    if (!dirty) return;
+    if (!(changed ?? dirty)) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (!submitting.current && !discarding.current) { event.preventDefault(); event.returnValue = ""; }
     };
@@ -42,7 +42,7 @@ export function SetupForm({ children, ...props }: ComponentProps<"form">) {
     document.addEventListener("click", click, true);
     navigation?.addEventListener("navigate", traverse);
     return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", click, true); navigation?.removeEventListener("navigate", traverse); };
-  }, [dirty]);
+  }, [changed, dirty]);
   return (
     <>
       <form {...props} ref={form} onInput={() => { submitting.current = false; discarding.current = false; setDirty(JSON.stringify([...new FormData(form.current!).entries()]) !== baseline.current); }} onSubmit={() => { submitting.current = true; }}>{children}<SubmissionStatus submittingRef={submitting} /></form>
