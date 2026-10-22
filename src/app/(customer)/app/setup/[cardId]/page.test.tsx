@@ -5,7 +5,7 @@ vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: m.limit }) }) }) } }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
-vi.mock("./actions", () => ({ saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
+vi.mock("./actions", () => ({ saveLookAction: vi.fn(), saveStyleAction: vi.fn(), saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 vi.mock("@/modules/profiles/view", () => ({ loadOwnerSceneView: m.view }));
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
@@ -79,7 +79,7 @@ test("published route redirects hub except explicit done shell", async () => {
   expect(await render({ step: "done" })).toContain("Your Neffi is live");
 });
 test("Draft cannot enter done, and reload keeps explicit allowed step", async () => {
-  draft();
+  draft(); m.view.mockResolvedValue(setupDraft(null, { fullName: "Ana" }));
   await expect(render({ step: "done" })).rejects.toThrow("REDIRECT:?step=contact");
   expect(await render({ step: "style" })).toContain("Make it yours");
   expect(await render({ step: "style" })).toContain("Make it yours");
@@ -93,4 +93,10 @@ test("Links loads the owned Default mode and real view without creating content"
   expect(html).toContain('href="?step=look"');
   expect(m.scene).toHaveBeenCalledWith(expect.anything(), "a1", "p1", "s1");
   expect(m.view).toHaveBeenCalledWith(expect.anything(), { accountId: "a1", profileId: "p1", sceneId: "s1" });
+});
+
+test.each(["look", "style"])("%s loads the real owner view instead of a placeholder", async step => {
+ draft([]); m.view.mockResolvedValue(setupDraft(null, {fullName: "Ana"}));
+ const html = await render({step}); expect(html).toContain('data-setup-appearance-preview');
+ expect(html).not.toContain("editor is coming"); expect(m.view).toHaveBeenCalledWith(expect.anything(),{accountId:"a1",profileId:"p1",sceneId:"s1"});
 });

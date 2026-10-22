@@ -22,7 +22,7 @@ export function LayoutPicker({ view, value, disabled = false, onChange, recommen
           <div data-layout-mini inert aria-hidden="true" className="pointer-events-none h-28 overflow-hidden border-b">
             <div className="w-[400%] origin-top-left scale-25"><ProfileRenderer view={{ ...view, appearance: { ...view.appearance, layout } }} /></div>
           </div>
-          <div className="h-12" />
+          <div className={recommended === layout ? "h-[72px]" : "h-12"} />
           <label className={`${choice} absolute inset-0 flex min-h-11 flex-col justify-end border-0 hover:bg-foreground/5 ${disabled ? "cursor-default" : ""}`}>
             <input type="radio" name="layout" aria-label={layoutNames[layout]} value={layout} checked={value === layout} onChange={() => onChange(layout)} className="sr-only" />
             <span className="flex min-h-12 items-center justify-center px-1 text-meta font-medium">{layoutNames[layout]}</span>

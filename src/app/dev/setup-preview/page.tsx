@@ -7,6 +7,10 @@ import { previousStep, resolveStep } from "@/app/(customer)/app/setup/[cardId]/s
 import { isGoal } from "@/modules/profiles/goals";
 import type { PublishGap } from "@/modules/profiles/rules";
 import { SetupForm } from "@/app/(customer)/app/setup/[cardId]/setup-form";
+import { profileFixture, coverFixture } from "@/dev/profile-fixture";
+import { ACCENTS } from "@/modules/profiles/appearance-options";
+import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
+import { PreviewAppearance } from "./preview-appearance";
 import { PreviewForm } from "./preview-form";
 import { PreviewLinks } from "./preview-links";
 
@@ -37,6 +41,8 @@ export default async function SetupPreviewPage({ searchParams }: { searchParams:
   } : null;
   const contact = contactState === "filled" ? { saveContact: true } : null;
   const editorStep = step === "you" || step === "photo" || step === "contact" ? step : null;
+  const appearanceView = structuredClone(profileFixture);
+  appearanceView.appearance = { layout: query.layout === "classic" || query.layout === "editorial" || query.layout === "showcase" ? query.layout : (goal ? GOALS[goal] : NO_GOAL).layout, mode: query.mode === "dark" ? "dark" : "light", accent: (ACCENTS.find(accent => accent.name === query.accent) ?? ACCENTS[0]).hex, cover: query.cover === "sample" ? coverFixture : null };
   return (
     <div className="app-type flex flex-1 flex-col bg-canvas">
       <SetupHeader preview />
@@ -52,7 +58,7 @@ export default async function SetupPreviewPage({ searchParams }: { searchParams:
             <GoalFields goal={rawGoal !== undefined ? goal : undefined} />
           </SetupForm>
         </SetupView>
-      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : step === "links" ? <PreviewLinks key={`${goal ?? "none"}-${items}`} goal={goal} items={items} /> : (
+      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : step === "look" || step === "style" ? <PreviewAppearance step={step} goal={goal} view={appearanceView} /> : step === "links" ? <PreviewLinks key={`${goal ?? "none"}-${items}`} goal={goal} items={items} /> : (
         <SetupView suffix="TEST" step={step} backHref={previous ? `?state=${state}&step=${previous}` : "?state=new"}>
           <SetupPlaceholder step={step} profileId="synthetic-profile" sceneId="synthetic-scene" />
         </SetupView>

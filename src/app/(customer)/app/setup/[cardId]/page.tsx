@@ -11,9 +11,10 @@ import { sceneBlocks } from "@/db/schema";
 import { env } from "@/config/env";
 import { imageUrl } from "@/integrations/media/cloudinary";
 import { sceneForEditing } from "@/modules/profiles/editor";
+import { SetupAppearance } from "./setup-appearance";
 import { SetupLinks } from "./setup-links";
 import { loadOwnerSceneView } from "@/modules/profiles/view";
-import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction } from "./actions";
+import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction, saveLookAction, saveStyleAction } from "./actions";
 import { SETUP_STEPS } from "./setup-steps";
 import { SetupForm } from "./setup-form";
 import { SetupEditor } from "./setup-forms";
@@ -54,6 +55,11 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
   const goal = isGoal(rawGoal) ? rawGoal : profile?.goal ?? null;
   const previous = previousStep(step);
   const backHref = previous ? `?step=${previous}${!profile && previous === "goal" && rawGoal !== undefined ? `&goal=${goal ?? ""}` : ""}` : "/app";
+  if ((step === "look" || step === "style") && profile) {
+    const view = await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId });
+    if (!view) notFound();
+    return <SetupAppearance key={step} step={step} cardId={card.id} suffix={card.publicToken.slice(-4)} goal={profile.goal} view={view} action={step === "look" ? saveLookAction : saveStyleAction} />;
+  }
   if (step === "links" && profile) {
     const [view, scene] = await Promise.all([
       loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }),

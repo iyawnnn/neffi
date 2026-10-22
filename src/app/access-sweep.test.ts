@@ -110,6 +110,8 @@ const classifiedExports: Record<string, readonly string[]> = {
     "saveYouAction",
     "savePhotoAction",
     "saveContactAction",
+    "saveLookAction",
+    "saveStyleAction",
     "chooseProfileAction",
     "continueGoalAction"
   ],
