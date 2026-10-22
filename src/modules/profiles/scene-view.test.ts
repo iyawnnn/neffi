@@ -70,6 +70,13 @@ test("view identity carries the accent text colour, Ink on Vermilion", () => {
 
 test.each([null, "#123456", "#0E7C86"])("appearance carries layout, mode and a curated accent for %s", accentColor => {
   const view = buildSceneView({ ...base(), profile: { ...base().profile, layout: "showcase", colorMode: "dark", accentColor } });
-  expect(view).toHaveProperty("appearance", { layout: "showcase", mode: "dark", accent: accentColor === "#0E7C86" ? accentColor : "#0C0C0D" });
+  expect(view).toHaveProperty("appearance", { layout: "showcase", mode: "dark", accent: accentColor === "#0E7C86" ? accentColor : "#0C0C0D", cover: null });
   expect(view.identity.accent).toBe(accentColor ?? "#0C0C0D");
+});
+
+test.each(["classic", "editorial", "showcase"] as const)("%s carries cover URLs only on appearance, with no identity/content changes", layout => {
+  const input = { ...base(), profile: { ...base().profile, layout } };
+  const cover = { src: "https://example.invalid/cover", srcSet: "https://example.invalid/cover 640w" };
+  const before = buildSceneView(input);
+  expect(buildSceneView({ ...input, cover })).toEqual({ ...before, appearance: { ...before.appearance, cover } });
 });

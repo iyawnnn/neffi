@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import { env } from "@/config/env";
-import { imageUrl } from "@/integrations/media/cloudinary";
+import { coverUrls, imageUrl } from "@/integrations/media/cloudinary";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { buildSceneView } from "./scene-view";
@@ -12,6 +12,8 @@ const selectProfile = (db: Db, where: SQL | undefined) => db.select({
   bio: schema.profiles.bio, phone: schema.profiles.phone, email: schema.profiles.email,
   website: schema.profiles.website, location: schema.profiles.location, accentColor: schema.profiles.accentColor,
   layout: schema.profiles.layout, colorMode: schema.profiles.colorMode,
+  coverAssetId: schema.profiles.coverAssetId, coverWidth: schema.profiles.coverWidth, coverHeight: schema.profiles.coverHeight,
+  coverCropX: schema.profiles.coverCropX, coverCropY: schema.profiles.coverCropY, coverCropWidth: schema.profiles.coverCropWidth,
   imageAssetId: schema.profiles.imageAssetId, imageIsLogo: schema.profiles.imageIsLogo, defaultSceneId: schema.profiles.defaultSceneId, activeSceneId: schema.profiles.activeSceneId,
 }).from(schema.profiles).where(where);
 type ViewProfile = Awaited<ReturnType<typeof selectProfile>>[number];
@@ -24,7 +26,8 @@ async function sceneView(db: Db, profileId: string, profile: ViewProfile, sceneI
     db.select({ id: schema.sceneBlocks.id, type: schema.sceneBlocks.type, position: schema.sceneBlocks.position, visible: schema.sceneBlocks.visible, content: schema.sceneBlocks.content, formId: schema.sceneBlocks.formId }).from(schema.sceneBlocks).where(eq(schema.sceneBlocks.sceneId, scene.id)),
     db.select({ id: schema.formDefinitions.id, title: schema.formDefinitions.title, config: schema.formDefinitions.config }).from(schema.formDefinitions).where(eq(schema.formDefinitions.profileId, profileId)),
   ]);
-  return buildSceneView({ profile, imageUrl: profile.imageAssetId ? imageUrl(env.cloudinaryCloudName, profile.imageAssetId, profile.imageIsLogo) : null, scene, blocks, forms });
+  const cover = profile.coverAssetId ? coverUrls(env.cloudinaryCloudName, profile.coverAssetId, { x: profile.coverCropX!, y: profile.coverCropY!, width: profile.coverCropWidth! }) : null;
+  return buildSceneView({ profile, imageUrl: profile.imageAssetId ? imageUrl(env.cloudinaryCloudName, profile.imageAssetId, profile.imageIsLogo) : null, cover, scene, blocks, forms });
 }
 
 export async function loadOwnerSceneView(db: Db, input: { accountId: string; profileId: string; sceneId?: string }) {

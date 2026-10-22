@@ -9,7 +9,7 @@ import { buildSceneView, type SceneView } from "@/modules/profiles/scene-view";
 import { ProfileRenderer } from "./profile-renderer";
 
 const base: SceneView = {
-  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D" },
+  appearance: { layout: "classic", mode: "light", accent: "#0C0C0D", cover: null },
   identity: { fullName: "Ana Cruz", initials: "AC", headline: "Designer", company: "Studio", location: "Cebu", bio: "Independent designer.", phone: "+63 917 123 4567", email: "ana@example.test", website: "https://ana.example.test", accent: "#0C0C0D", onAccent: "#FFFFFF", image: null },
   scene: { id: "main", name: "Main" }, blocks: [],
 };
@@ -28,6 +28,12 @@ function render(view = full, visitor = true) {
   host.innerHTML = renderToStaticMarkup(<ProfileRenderer view={view} visitorActions={visitor ? visitorActions : undefined} />);
   return host;
 }
+
+test.each(["classic", "editorial", "showcase"] as const)("%s remains visually unchanged by dormant cover data in T8a", layout => {
+  const view = { ...full, appearance: { ...full.appearance, layout } };
+  const cover = { src: "https://example.invalid/cover", srcSet: "https://example.invalid/cover 640w" };
+  expect(render({ ...view, appearance: { ...view.appearance, cover } }).innerHTML).toBe(render(view).innerHTML);
+});
 
 test.each(["classic", "unknown"])("%s renders Classic without dropping featured content", layout => {
   const host = render({ ...full, appearance: { ...full.appearance, layout: layout as SceneView["appearance"]["layout"] } });

@@ -15,7 +15,7 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
   const layout = query.layout === "editorial" || query.layout === "showcase" ? query.layout : "classic";
   const accent = ACCENTS.find(accent => accent.name === query.accent) ?? ACCENTS[0];
   const view = structuredClone(profileFixture);
-  view.appearance = { layout, mode, accent: accent.hex };
+  view.appearance = { layout, mode, accent: accent.hex, cover: null };
   if (query.image === "photo") view.identity.image = { url: "/avatar-example.jpg", isLogo: false };
   if (query.image === "logo") view.identity.image = { url: "/neffi-logo-ink.svg", isLogo: true };
   if (query.sample === "all-links") view.blocks = allLinkFixtures;

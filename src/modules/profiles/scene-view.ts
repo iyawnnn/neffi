@@ -19,12 +19,13 @@ export type ViewBlock =
   | { id: string; type: "form"; formId: string; title: string; fields: ReturnType<typeof visibleFields> };
 export type SceneView = {
   identity: ViewIdentity;
-  appearance: { layout: "classic" | "editorial" | "showcase"; mode: "light" | "dark"; accent: string };
+  appearance: { layout: "classic" | "editorial" | "showcase"; mode: "light" | "dark"; accent: string; cover: { src: string; srcSet: string } | null };
   scene: { id: string; name: string }; blocks: ViewBlock[];
 };
 export type SceneViewInput = {
   profile: { fullName: string | null; headline: string | null; company: string | null; bio: string | null; phone: string | null; email: string | null; website: string | null; location: string | null; accentColor: string | null; imageIsLogo: boolean; layout: SceneView["appearance"]["layout"]; colorMode: SceneView["appearance"]["mode"] };
   imageUrl: string | null;
+  cover?: SceneView["appearance"]["cover"];
   scene: { id: string; name: string };
   blocks: { id: string; type: string; position: number; visible: boolean; content: unknown; formId: string | null }[];
   forms: { id: string; title: string; config: unknown }[];
@@ -41,7 +42,7 @@ const https = (value: unknown) => {
   try { return new URL(value).protocol === "https:" ? value : null; } catch { return null; }
 };
 // The one mapping from stored rows to what a viewer sees. Owner preview uses it now; M7's public page reuses it.
-export function buildSceneView({ profile, imageUrl, scene, blocks, forms }: SceneViewInput): SceneView {
+export function buildSceneView({ profile, imageUrl, cover = null, scene, blocks, forms }: SceneViewInput): SceneView {
   const accent = profile.accentColor ?? "#0C0C0D";
   const identity: ViewIdentity = {
     fullName: profile.fullName ?? "", initials: initials(profile.fullName ?? ""), headline: profile.headline, company: profile.company,
@@ -73,6 +74,6 @@ export function buildSceneView({ profile, imageUrl, scene, blocks, forms }: Scen
   }
   return {
     identity, scene, blocks: view,
-    appearance: { layout: profile.layout, mode: profile.colorMode, accent: ACCENTS.find(a => a.hex === profile.accentColor)?.hex ?? "#0C0C0D" },
+    appearance: { layout: profile.layout, mode: profile.colorMode, accent: ACCENTS.find(a => a.hex === profile.accentColor)?.hex ?? "#0C0C0D", cover },
   };
 }

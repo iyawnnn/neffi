@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
+import type { CoverCrop } from "@/modules/profiles/cover";
 
 // Browser → Cloudinary signed uploads, verified server-side before Neffi stores the id. No SDK: one signing rule
 // and two HTTP calls. The API secret never leaves this module.
@@ -17,11 +18,12 @@ export function sign(params: Record<string, string | number>, apiSecret: string)
 
 export type ImageUploadTicket = { url: string; fields: Record<string, string> };
 
-export function signImageUpload(config: CloudinaryConfig, { profileId, now = new Date() }: { profileId: string; now?: Date }): ImageUploadTicket {
+export function signImageUpload(config: CloudinaryConfig, { profileId, kind = "image", now = new Date() }: { profileId: string; kind?: "image" | "cover"; now?: Date }): ImageUploadTicket {
+  const folder = `neffi/profiles/${profileId}${kind === "cover" ? "/cover" : ""}`;
   const params = {
     allowed_formats: IMAGE_FORMATS.join(","),
-    asset_folder: `neffi/profiles/${profileId}`,
-    public_id: `neffi/profiles/${profileId}/${randomUUID()}`,
+    asset_folder: folder,
+    public_id: `${folder}/${randomUUID()}`,
     timestamp: String(Math.floor(now.getTime() / 1000)),
     transformation: INCOMING,
   };
@@ -30,6 +32,9 @@ export function signImageUpload(config: CloudinaryConfig, { profileId, now = new
 
 export const isProfileImageId = (profileId: string, publicId: string) =>
   publicId.startsWith(`neffi/profiles/${profileId}/`) && /^[0-9a-f-]{36}$/.test(publicId.slice(`neffi/profiles/${profileId}/`.length));
+
+export const isProfileCoverId = (profileId: string, publicId: string) =>
+  publicId.startsWith(`neffi/profiles/${profileId}/cover/`) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(publicId.slice(`neffi/profiles/${profileId}/cover/`.length));
 
 export const checkImage = (image: { bytes: number; width: number; height: number; format: string }) =>
   image.bytes <= MAX_IMAGE_BYTES && image.width <= MAX_SIDE && image.height <= MAX_SIDE && (IMAGE_FORMATS as readonly string[]).includes(image.format);
@@ -55,4 +60,10 @@ export async function destroyImage(config: CloudinaryConfig, publicId: string): 
 export function imageUrl(cloudName: string, publicId: string, isLogo: boolean): string {
   const transformation = isLogo ? "c_fit,w_256,h_256,f_auto,q_auto" : "c_fill,g_face,w_256,h_256,f_auto,q_auto";
   return `https://res.cloudinary.com/${cloudName}/image/upload/${transformation}/${publicId}`;
+}
+
+export function coverUrls(cloudName: string, publicId: string, crop: CoverCrop) {
+  const cropTransform = `c_crop,x_${crop.x},y_${crop.y},w_${crop.width},h_${Math.round(crop.width / 3)}`;
+  const url = (width: number) => `https://res.cloudinary.com/${cloudName}/image/upload/${cropTransform}/c_limit,w_${width}/f_auto,q_auto/${publicId}`;
+  return { src: url(1080), srcSet: [640, 1080, 1600].map(width => `${url(width)} ${width}w`).join(", ") };
 }

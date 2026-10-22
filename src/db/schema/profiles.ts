@@ -28,6 +28,12 @@ export const profiles = pgTable(
     accentColor: text(),
     // Cloudinary asset id only; image binaries never live in Postgres.
     imageAssetId: text(),
+    coverAssetId: text(),
+    coverWidth: integer(),
+    coverHeight: integer(),
+    coverCropX: integer(),
+    coverCropY: integer(),
+    coverCropWidth: integer(),
     // Every profile has a Default Scene; a NULL active scene means the Default Scene is showing.
     defaultSceneId: uuid(),
     activeSceneId: uuid(),
@@ -40,6 +46,8 @@ export const profiles = pgTable(
   (t) => [
     check("profiles_published_needs_name", sql`${t.status} <> 'published' OR ${t.fullName} IS NOT NULL`),
     check("profiles_accent_color_hex", sql`${t.accentColor} IS NULL OR ${t.accentColor} ~ '^#[0-9a-fA-F]{6}$'`),
+    check("profiles_cover_complete", sql`num_nonnulls(${t.coverAssetId}, ${t.coverWidth}, ${t.coverHeight}, ${t.coverCropX}, ${t.coverCropY}, ${t.coverCropWidth}) IN (0, 6)`),
+    check("profiles_cover_bounds", sql`${t.coverAssetId} IS NULL OR (${t.coverWidth} > 0 AND ${t.coverHeight} > 0 AND ${t.coverCropX} >= 0 AND ${t.coverCropY} >= 0 AND ${t.coverCropWidth} >= 600 AND ${t.coverCropX}::bigint + ${t.coverCropWidth} <= ${t.coverWidth} AND ${t.coverCropY}::bigint + round(${t.coverCropWidth}::numeric / 3) <= ${t.coverHeight})`),
     // Target for cards: a card may only route to a profile of the card's own owner.
     unique("profiles_id_account_unique").on(t.id, t.accountId),
     index("profiles_account_id_idx").on(t.accountId),

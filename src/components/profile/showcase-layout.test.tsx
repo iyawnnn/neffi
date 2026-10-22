@@ -70,7 +70,7 @@ test.each([false, true])("88px image preserves photo/logo treatment: %s", isLogo
 
 test.each(["light", "dark"] as const)("Showcase %s uses curated accents and legacy fallbacks", mode => {
   for (const accent of [...ACCENTS.map(a => a.hex), "#bad", null]) {
-    const host = render({ ...full, appearance: { layout: "showcase", mode, accent: accent as string } });
+    const host = render({ ...full, appearance: { layout: "showcase", mode, accent: accent as string, cover: null } });
     const root = host.querySelector<HTMLElement>('[data-layout="showcase"]')!;
     expect(root).toBeTruthy();
     for (const [key, value] of Object.entries(profileTheme(accent, mode))) expect(root.style.getPropertyValue(key), key).toBe(value);

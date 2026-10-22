@@ -102,7 +102,7 @@ test("0017 migrates default themes without changing existing profiles, accents, 
     expect((await db.execute(sql`SELECT layout, color_mode, goal FROM profiles ORDER BY id`)).rows).toEqual(
       before.map(() => ({ layout: "classic", color_mode: "light", goal: null })),
     );
-    expect((await db.execute(sql`SELECT to_jsonb(p) - 'layout' - 'color_mode' - 'goal' AS data FROM profiles p ORDER BY id`)).rows).toEqual(before);
+    expect((await db.execute(sql`SELECT to_jsonb(p) - 'layout' - 'color_mode' - 'goal' - 'cover_asset_id' - 'cover_width' - 'cover_height' - 'cover_crop_x' - 'cover_crop_y' - 'cover_crop_width' AS data FROM profiles p ORDER BY id`)).rows).toEqual(before);
     for (const [index, table] of tables.entries()) {
       expect((await db.execute(sql`SELECT * FROM ${sql.identifier(table)} ORDER BY id`)).rows, table).toEqual(related[index]);
     }

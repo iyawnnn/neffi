@@ -88,7 +88,11 @@ const classifiedExports: Record<string, readonly string[]> = {
     "updateAppearanceAction",
     "startImageUploadAction",
     "confirmImageAction",
-    "removeImageAction"
+    "removeImageAction",
+    "confirmCoverAction",
+    "updateCoverCropAction",
+    "removeCoverAction",
+    "discardCoverUploadAction"
   ],
   "./(customer)/app/profiles/[profileId]/scenes/[sceneId]/actions.ts": [
     "loadItemAction",

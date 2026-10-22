@@ -79,7 +79,7 @@ test.each([false, true])("Editorial image is inline, intrinsic 64px, logo=%s", i
 
 test.each(["light", "dark"] as const)("Editorial %s uses every curated T4 accent and safe legacy fallbacks", mode => {
   for (const accent of [...ACCENTS.map(a => a.hex), "#bad", null]) {
-    const host = render({ ...full, appearance: { layout: "editorial", mode, accent: accent as string } });
+    const host = render({ ...full, appearance: { layout: "editorial", mode, accent: accent as string, cover: null } });
     const root = host.querySelector<HTMLElement>('[data-layout="editorial"]')!;
     expect(root).toBeTruthy();
     for (const [key, value] of Object.entries(profileTheme(accent, mode))) expect(root.style.getPropertyValue(key), key).toBe(value);
