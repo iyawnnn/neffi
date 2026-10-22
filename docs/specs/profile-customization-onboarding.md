@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-21. **State:** Planned. Architecture locked by the maintainer. Nothing in this spec is implemented yet. Current behavior stays as described in [profiles and the public card](profiles-and-public-card.md) and [cards and activation](cards-and-activation.md) until each implementation task lands and updates those specs. The task sequence is in [the implementation plan](../superpowers/plans/2026-10-21-profile-customization-onboarding.md). That plan is not a specification.
 
-Decisions: [0013 universal layouts and Profile appearance](../decisions/0013-universal-layouts-profile-appearance.md), [0014 guided setup and Goal](../decisions/0014-guided-setup-and-goal.md). Related: [0003](../decisions/0003-profile-scene-model.md), [0011](../decisions/0011-fresh-card-state-cached-scene-content.md), [profile mode editor](profile-mode-editor.md), [customer UI](../architecture/customer-ui.md), [marketing UI](../architecture/marketing-ui.md).
+Decisions: [0013 universal layouts and Profile appearance](../decisions/0013-universal-layouts-profile-appearance.md), [0014 guided setup and Goal](../decisions/0014-guided-setup-and-goal.md), [0015 optional Showcase cover image](../decisions/0015-showcase-cover-image.md). Related: [0003](../decisions/0003-profile-scene-model.md), [0011](../decisions/0011-fresh-card-state-cached-scene-content.md), [profile mode editor](profile-mode-editor.md), [customer UI](../architecture/customer-ui.md), [marketing UI](../architecture/marketing-ui.md).
 
 ## 1. Purpose and principles
 
@@ -24,7 +24,8 @@ Let a non-technical customer build a polished, personal Neffi by making one unde
 | **Layout** | How the Profile is arranged: Classic, Editorial or Showcase | Yes |
 | **Mode** | Light or Dark colour treatment. Internally `color_mode`, so it is never confused with Profile mode | Yes, labelled "Light" / "Dark" under "Colours" |
 | **Accent** | One curated colour | Yes |
-| **Appearance** | Layout + Mode + Accent. Photo/logo is **not** Appearance; it is identity | Yes |
+| **Appearance** | Layout + Mode + Accent, plus an optional Showcase cover image ([0015](../decisions/0015-showcase-cover-image.md)). Photo/logo is **not** Appearance; it is identity | Yes |
+| **Cover image** | An optional wide image shown only by Showcase, in place of the accent band | Yes ("Cover image", in Appearance) |
 | **Guided setup** | The first-run flow that builds the first Profile for a claimed card | Yes ("Set up your Neffi") |
 
 Goal ≠ Layout ≠ Mode. A Goal never restricts a Layout, a Layout never restricts content, and Mode never changes hierarchy.
@@ -41,7 +42,7 @@ Goal ≠ Layout ≠ Mode. A Goal never restricts a Layout, a Layout never restri
 
 ## 4. Canonical profile model
 
-No new tables. The model is the existing Profile + Scenes + Blocks, plus three Profile columns.
+No new tables. The model is the existing Profile + Scenes + Blocks, plus three appearance and goal Profile columns (T2) and one optional cover column group (T8a).
 
 | Concept | Source | Notes |
 |---|---|---|
@@ -59,6 +60,19 @@ No new tables. The model is the existing Profile + Scenes + Blocks, plus three P
 | **Mode** | **new** `profiles.color_mode` enum `light` \| `dark`, NOT NULL, default `light` | Profile-level |
 | Accent | `profiles.accent_color` (existing hex, curated values only) | NULL renders as Ink |
 | **Goal** | **new** `profiles.goal` enum `networking` \| `freelance` \| `business` \| `student`, NULL | Recommendation input only |
+| **Showcase cover** | **new** `profiles.cover_asset_id` (text), `cover_width`, `cover_height`, `cover_crop_x`, `cover_crop_y`, `cover_crop_width` (integers); all NULL or all set | Optional Appearance asset that only Showcase renders ([0015](../decisions/0015-showcase-cover-image.md)). Separate from the photo/logo |
+
+**Cover rules:**
+- `cover_width` and `cover_height` are the size of the stored asset after the existing 2048px incoming limit, read from Cloudinary when the upload is confirmed.
+- The crop is a 3:1 rectangle in source pixels. Its height is `round(cover_crop_width / 3)` and is never stored.
+- Database CHECKs enforce:
+  - all six columns NULL, or all six set
+  - positive size
+  - `x, y ≥ 0`
+  - `cover_crop_width ≥ 600`
+  - `x + cover_crop_width ≤ cover_width`
+  - `y + round(cover_crop_width / 3) ≤ cover_height`
+- No URL, version, format or focal point is stored; delivery URLs are derived at render time, as for the photo.
 
 `profiles.theme` (unused, always `default`) is dropped ([0013](../decisions/0013-universal-layouts-profile-appearance.md)).
 
@@ -91,8 +105,15 @@ The Goal table lives in one pure, client-safe module (replacing `purpose-options
 `buildSceneView` stays the single mapping from stored rows to what a visitor sees. It gains:
 
 ```ts
-appearance: { layout: "classic" | "editorial" | "showcase"; mode: "light" | "dark"; accent: string /* resolved curated hex */ }
+appearance: { layout: "classic" | "editorial" | "showcase"; mode: "light" | "dark"; accent: string /* resolved curated hex */;
+              cover: { src: string; srcSet: string } | null /* T8a, 0015 */ }
 ```
+
+**`appearance.cover`:**
+- Built server-side in `view.ts` from the cover columns by a Cloudinary URL helper next to `imageUrl`, then passed into the pure `buildSceneView`, as the photo URL is today.
+- Present whatever the saved layout is. Setup mini-renders and the Appearance preview can therefore show Showcase with the real cover before the layout is saved.
+- It is not content. `profileSections` and `identity` do not carry it.
+- `ProfileRenderer` passes it to `ShowcaseLayout` only.
 
 A pure, zod-free and client-importable function `profileSections(view)` returns the grouped content every layout consumes:
 
@@ -208,7 +229,7 @@ Content- and work-forward, still clean and professional.
 
 | Order | Group | Treatment |
 |---|---|---|
-| 1 | Identity | A solid cover band (~120px; `color-mix` of accent and `--pf-bg`, about 14% accent, no gradient) with the 88px image overlapping its lower edge; name 28–30px/600 and headline left-aligned below |
+| 1 | Identity | The header is the customer's **cover image** when one is stored. Otherwise it is a solid cover band (~120px; `color-mix` of accent and `--pf-bg`, about 14% accent, no gradient). Either way the 88px image overlaps its lower edge, with name 28–30px/600 and headline left-aligned below |
 | 2 | Intro | Body text |
 | 3 | Primary | Filled primary + outline secondaries |
 | 4 | Featured | One emphasized item on `--pf-surface` with hairline border: project (title 20px, description, "View project") or the featured link (icon, label, URL host) |
@@ -222,6 +243,14 @@ Content- and work-forward, still clean and professional.
 With no work and no `link`-category links, Showcase is a clean left-aligned profile with the cover band. The layout picker describes it as "Best when you have projects or links to feature" without blocking it.
 
 Desktop: centred column max ~560px. Work grid as above.
+
+**Cover image ([0015](../decisions/0015-showcase-cover-image.md)):**
+- **Markup.** The cover replaces only the band element. The overlap, identity block and every later group are unchanged. It is a plain `<img>` inside a decorative wrapper (`aria-hidden="true"`, `alt=""`), because no information depends on it and no text sits on it.
+- **Frame.** The wrapper keeps the band's bleed and uses `aspect-ratio: 3 / 1`, so it is about 125px tall at 375px width and grows to about 197px at the desktop column. The image fills it with `object-fit: cover`; since the stored crop is already 3:1, nothing stretches.
+- **Loading.** The wrapper's background is the band colour, so a slow load looks like the fallback.
+- **Delivery.** A `srcSet` of three fixed widths (640, 1080, 1600) built from `c_crop`, then `c_limit`, `f_auto` and `q_auto`. `c_limit` never upscales. The image is above the fold, so it loads eagerly with `fetchPriority="high"`. `width` and `height` attributes prevent layout shift.
+- **Colour modes.** Light and Dark render the same cover. The photo keeps its `--pf-bg` ring over the cover in both modes.
+- **Fallback.** With no cover the band renders exactly as approved in T7.
 
 ## 8. Guided setup
 
@@ -263,6 +292,7 @@ Step rules:
 - Mobile keyboard: correct `inputmode`/`autocomplete` (existing Details editor values); Continue stays in normal flow, not pinned over the keyboard; the active field is scrolled into view.
 - Back always returns to the previous step id, re-rendered from the server, so saved data is preserved. Unsaved edits on the current step trigger the existing "Discard changes?" confirmation (unsaved-navigation pattern, also on `beforeunload`).
 - Skip for now = go to the next step without writing.
+- **No cover step.** Setup never asks for a Showcase cover. A new Profile has no cover, so Showcase previews and publishes with the accent band. The cover is added later in Appearance (§10), reached from Done → Customize more.
 
 ### 8.3 Profile creation
 
@@ -321,12 +351,22 @@ The same mental model, the same components.
 |---|---|---|
 | **Your details** | `/app/profiles/[id]/identity` | Name, headline, company, location, short intro, mobile, public email, website, **photo/logo** |
 | **Profile mode** | `/app/profiles/[id]/scenes/[sceneId]` | Socials & links, Content, Actions (existing [mode editor](profile-mode-editor.md)) |
-| **Appearance** | `/app/profiles/[id]/appearance` | Layout, Colours (Light/Dark), Accent, preview-first |
+| **Appearance** | `/app/profiles/[id]/appearance` | Layout, Colours (Light/Dark), Accent and, while Showcase is selected, Cover image (optional); preview-first |
 | Preview | `/app/profiles/[id]/preview` | `ProfileRenderer`, per Profile mode (existing tabs) |
 
 - Photo/logo is identity. The upload and logo control move from Appearance into Your details, reusing `image-upload.tsx`. If that split proves disproportionate in its task, the current location is recorded as transitional debt and this canonical IA stays unchanged.
 - Appearance reuses the setup `LayoutPicker`, `ModeToggle` and `AccentPicker` (one implementation). It presents Classic / Editorial / Showcase plainly, with **no Recommended badge** and no Goal reference.
 - Saving Appearance is explicit (Save changes + toast), like Your details. Selections preview instantly before saving.
+- **Cover image** ([0015](../decisions/0015-showcase-cover-image.md); task T8c):
+  - **Visibility.** The section shows only while Showcase is selected in the form. A stored cover stays dormant under Classic or Editorial and reappears when Showcase is selected again.
+  - **Copy direction** (not locked): "Cover image · Optional. Shown at the top of the Showcase layout. If you leave it empty, your accent colour is used." Show "JPG, PNG, WebP or HEIC · Max 5 MB · At least 600 pixels wide" before the file is chosen.
+  - **Upload.** Add cover → file picker → signed upload to Cloudinary → crop dialog → **Save cover**. The dialog has a 3:1 frame, drag to reposition, a labelled zoom slider and arrow-key nudging. It opens on the centred largest 3:1 crop. Zoom stops when the crop reaches 600 source pixels. Save cover verifies the upload, validates the crop and stores everything in one transaction.
+  - **Cancel.** Cancelling the dialog stores nothing and deletes that upload.
+  - **Replace.** The same flow as Upload. The previous cover stays live until the new one is saved, then its asset is deleted.
+  - **Reposition.** Reopens the dialog on the stored crop and saves only the crop. No re-upload.
+  - **Remove.** Clears the cover. Showcase immediately returns to the accent band in the preview and on the live page.
+  - **Save semantics.** Cover actions save from the cover dialog, independently of Save changes, exactly as the photo upload does today. The copy makes this clear.
+  - **Errors.** Type or size ("Use a JPG, PNG, WebP or HEIC image up to 5 MB."), too small ("Use an image at least 600 pixels wide."), and a failed upload or save. On failure the previous cover is kept. Errors are announced and focused as in the photo control.
 - The mode editor is unchanged except copy: its sections now match public grouping, so the caveat that public order can interleave types is removed.
 - Not added: drag-and-drop, per-mode appearance, fonts, custom colours, design-builder controls.
 
@@ -340,7 +380,9 @@ One forward migration (task T2):
 
 Existing Profiles after migration: Classic, Light, accent unchanged (NULL → Ink, off-palette → Ink at render), Goal NULL, status, URLs, Cards, Scenes, Blocks, Forms and submissions untouched. No customer redoes setup. The first deploy of the new renderer changes how every existing Profile looks (Classic) without changing content; the bio dedupe rule (§6.3) prevents duplicated intro text from earlier starters. Seed data moves to curated accents and covers all three layouts and both modes; the ERD is regenerated with `pnpm db:erd`.
 
-Applying the migration to the shared `neffi-dev` database is a separate, explicit maintainer decision ([operations](../operations.md)). Production does not exist yet.
+**Cover migration (task T8a, [0015](../decisions/0015-showcase-cover-image.md)).** A second forward, additive migration adds the six nullable `cover_*` columns and their CHECKs (§4). It has no defaults, no backfill and no drops. Every existing Profile has no cover and renders the accent band, which is valid by construction.
+
+Applying either migration to the shared `neffi-dev` database is a separate, explicit maintainer decision ([operations](../operations.md)). Production does not exist yet.
 
 ## 12. Accessibility
 
@@ -351,6 +393,7 @@ Applying the migration to the shared `neffi-dev` database is a separate, explici
 - Step changes move focus to the new step heading; errors are linked by `aria-describedby` and announced; a polite live region announces saves.
 - Reduced motion honoured; nothing depends on animation or hover.
 - Image upload: accepted types and size stated before choosing; failures explained ("This file is larger than 5 MB").
+- Showcase cover: decorative on the public page (`alt=""`, wrapper `aria-hidden`), with no text over it. The crop dialog is a named dialog. Repositioning works by keyboard (arrow keys) as well as by pointer, and zoom is a labelled native range input.
 - Public pages: one `h1` (name), group headings as `h2` where shown, link names include the platform, `lang` from the root layout.
 
 ## 13. Acceptance gates (for the implementation tasks)
@@ -365,12 +408,16 @@ Applying the migration to the shared `neffi-dev` database is a separate, explici
 | Public compatibility | `/c/{token}` availability, caching key, vCard, form submission and owner links unchanged; appearance changes bump `content_version` |
 | Setup | Step routing; profile creation idempotent; resume derivation table (§9) tested exhaustively; existing-profile branch; claim redirect; Back preserves data; Skip writes nothing; contact upsert creates exactly one Contact Block |
 | Editor | Appearance saves layout/mode/accent with no recommendation badge; photo/logo in Your details |
+| Cover storage | Cover migration applies; existing rows have no cover; each CHECK rejects a partial group, an out-of-bounds crop and a crop narrower than 600px; changing layout never touches the cover |
+| Cover upload | Cover ids are profile-scoped and disjoint from photo ids, and each is rejected where the other is expected. Signed-out, unowned and foreign ids are refused. Invalid media is deleted. Replace deletes the old asset only after the commit. Remove clears all six columns. Cancel never deletes the current cover. Profile deletion cleans up both images. Confirm, re-crop and remove each bump `content_version` |
+| Cover rendering | Showcase with a cover renders a decorative `img` with `srcSet` and no band; without a cover it renders the band; Classic and Editorial render no cover from the same view |
+| Cover editor | Section visible only with Showcase selected; upload, cancel, replace, reposition and remove flows; error states; keyboard crop; touch targets |
 | Boundaries | `client-import-graph`, `server-only-boundary`, `access-sweep` and touch-target tests pass unchanged |
-| Manual (browser-only) | 320/390px phones and one desktop per layout in both modes; software keyboard on setup forms; one real tap of a published card |
+| Manual (browser-only) | 320/390px phones and one desktop per layout in both modes; Showcase with and without a cover at the same widths, plus cover crop dragging on a real touch screen; software keyboard on setup forms; one real tap of a published card |
 
 ## 14. Non-goals (V1)
 
-Multi-profile per Card, per-Card or per-mode appearance, custom HEX, font choice, project images, drag-and-drop, Goal editing after setup, analytics, lead-capture beyond existing Forms/Inbox, new block types or link kinds, unpublished-changes drafts, visitor-controlled dark mode, changing Home/Product marketing pages.
+Multi-profile per Card, per-Card or per-mode appearance, custom HEX, font choice, project images, drag-and-drop, Goal editing after setup, analytics, lead-capture beyond existing Forms/Inbox, new block types or link kinds, unpublished-changes drafts, visitor-controlled dark mode, changing Home/Product marketing pages, a cover step in setup, covers in Classic or Editorial, per-mode covers, background images or any other custom backgrounds ([0015](../decisions/0015-showcase-cover-image.md)).
 
 ## 15. Extension points (not built)
 
