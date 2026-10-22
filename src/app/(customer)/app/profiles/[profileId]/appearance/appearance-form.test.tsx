@@ -59,6 +59,24 @@ test("real renderer responds to every layout, mode and accent while preserving c
   expect(m.save).not.toHaveBeenCalled();
 });
 
+test("cover controls follow the draft layout; refreshed cover updates the real preview without saving appearance", async () => {
+  await render();
+  expect(host.textContent).not.toContain("Cover image");
+  await choose("showcase");
+  expect(host.textContent).toContain("Cover image");
+  expect(host.textContent).not.toContain("Cover changes save immediately.");
+  await choose("classic");
+  expect(host.textContent).not.toContain("Cover image");
+  await choose("showcase");
+  expect(preview().querySelector('.pf-showcase-cover')).not.toBeNull();
+  const view = structuredClone(profileFixture);
+  view.appearance = { layout: "editorial", mode: "dark", accent: "#0C0C0D", cover: null };
+  await act(async () => root.render(<AppearanceForm profileId="p1" view={view} accentColor="#0C0C0D" />));
+  expect(preview().dataset.layout).toBe("showcase");
+  expect(preview().querySelector('.pf-showcase-cover')).toBeNull();
+  expect(m.save).not.toHaveBeenCalled();
+});
+
 test("layout thumbnails use the real renderer, are inert and hidden from accessibility; live preview has no active visitor targets", async () => {
   await render();
   const mini = [...host.querySelectorAll('[data-layout-mini]')];
@@ -67,6 +85,17 @@ test("layout thumbnails use the real renderer, are inert and hidden from accessi
   for (const node of mini) { expect(node.hasAttribute('inert')).toBe(true); expect(node.getAttribute('aria-hidden')).toBe('true'); }
   expect(host.querySelector('[data-appearance-preview] [inert]')).not.toBeNull();
   expect(host.querySelectorAll("form")).toHaveLength(1);
+});
+
+test("desktop preview has an accessible name without a visible title and a scoped scroll container", async () => {
+  await render();
+  const aside = host.querySelector('[data-appearance-preview]')!;
+  expect(aside.getAttribute('aria-label')).toBe('Live profile preview');
+  expect(aside.textContent).not.toContain('Live preview');
+  const scroll = aside.querySelector('.neffi-appearance-preview-scroll')!;
+  expect(scroll.className).toContain('overflow-y-auto');
+  expect(scroll.className).toContain('overflow-x-hidden');
+  expect(host.querySelectorAll('.neffi-appearance-preview-scroll')).toHaveLength(1);
 });
 
 test("save sends layout, mode and accent only, then clears dirty state and toasts", async () => {

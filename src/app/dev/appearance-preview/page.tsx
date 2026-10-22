@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AppearanceForm } from "@/app/(customer)/app/profiles/[profileId]/appearance/appearance-form";
+import { AppearanceReview } from "./appearance-review";
 import { profileFixture, coverFixture } from "@/dev/profile-fixture";
 import { ACCENTS } from "@/modules/profiles/appearance-options";
 
@@ -19,7 +19,7 @@ export default async function AppearancePreviewPage({ searchParams }: { searchPa
   };
   view.identity.image = { url: "/avatar-example.jpg", isLogo: false };
   return <main data-canvas className="app-type mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-10 md:px-6 md:pt-8 md:pb-12">
-    <p className="mb-4 text-meta text-fg-secondary">Synthetic profile. Local review only; saving is disabled.</p>
-    <AppearanceForm profileId="11111111-1111-4111-8111-111111111111" view={view} accentColor={view.appearance.accent} reviewOnly />
+    <p className="mb-4 text-meta text-fg-secondary">Synthetic profile. Cover changes last until reload. Appearance saving is disabled.</p>
+    <AppearanceReview initialView={view} />
   </main>;
 }
