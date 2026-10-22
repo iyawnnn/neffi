@@ -165,6 +165,8 @@ const PROGRESS_WIDTH = ["w-0", "w-1/3", "w-2/3", "w-full"];
 function DraftCard({ profile, cards }: { profile: OwnedProfile; cards: CardSummary[] }) {
   const done = GAP_ORDER.length - profile.gaps.length;
   const next = profile.gaps[0];
+  const setupCard = cards.find((card) => card.profileId === profile.id);
+  const publishHref = setupCard ? `/app/setup/${setupCard.id}` : `/app/profiles/${profile.id}/publish`;
   const fixHref = (gap: PublishGap) => (gap === "content" ? `/app/profiles/${profile.id}/scenes/${profile.defaultSceneId}` : `/app/profiles/${profile.id}/identity`);
   const shownOn = cards.filter((card) => card.profileId === profile.id).length;
   return (
@@ -174,13 +176,13 @@ function DraftCard({ profile, cards }: { profile: OwnedProfile; cards: CardSumma
       summary={next ? PUBLISH_GAP_COPY[next] : `Ready to go live${shownOn ? ` on ${plural(shownOn, "card")}` : ""}.`}
       actions={next ? (
         <>
-          <ButtonLink href={`/app/profiles/${profile.id}/publish`} variant="outline">Preview and publish</ButtonLink>
+          <ButtonLink href={publishHref} variant="outline">Preview and publish</ButtonLink>
           <ButtonLink href={fixHref(next)} variant="action">Continue setup</ButtonLink>
         </>
       ) : (
         <div className="flex flex-col gap-2 md:contents">
           <ButtonLink href={`/app/profiles/${profile.id}`} variant="outline">Edit profile</ButtonLink>
-          <ButtonLink href={`/app/profiles/${profile.id}/publish`} variant="action">Preview and publish</ButtonLink>
+          <ButtonLink href={publishHref} variant="action">Preview and publish</ButtonLink>
         </div>
       )}
     >

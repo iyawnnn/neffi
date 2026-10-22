@@ -63,6 +63,15 @@ test("a draft missing content continues in its main scene; a complete draft goes
   expect(html).toContain('href="/app/profiles/p1/publish"');
 });
 
+test("a draft's publish action resumes guided setup when a card already routes to it", async () => {
+  m.ownedProfiles.mockResolvedValue([{ id: "p1", fullName: "Ana", status: "draft", unread: 0 }]);
+  m.getOwnedProfile.mockResolvedValue(draft(["contact"]));
+  m.cardSummaries.mockResolvedValue([card("c1", TOKEN, "p1")]);
+  const html = await render();
+  expect(html).toContain('href="/app/setup/c1"');
+  expect(html).not.toContain('href="/app/profiles/p1/publish"');
+});
+
 test("published summary has one unified action row with Preview, QR, and Manage profile", async () => {
   m.ownedProfiles.mockResolvedValue([{ id: "p2", fullName: "Lee", status: "published", unread: 0 }]);
   m.cardSummaries.mockResolvedValue([card("c2", OTHER, "p2", { profileName: "Lee" })]);

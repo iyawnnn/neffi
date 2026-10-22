@@ -134,9 +134,16 @@ describe("claimAction", () => {
     expect(m.clearChallenge).not.toHaveBeenCalled();
   });
 
-  test.each(["claimed", "already_yours"])("%s clears the challenge and hands off to /app", async (status) => {
-    m.claimCard.mockResolvedValue({ status, cardId: CARD });
-    await expectRedirect(actions.claimAction(undefined, form()), "/app?added=1");
+  test("a new claim clears the challenge and starts guided setup", async () => {
+    m.claimCard.mockResolvedValue({ status: "claimed", cardId: CARD });
+    await expectRedirect(actions.claimAction(undefined, form()), `/app/setup/${CARD}`);
+    expect(m.claimCard).toHaveBeenCalledWith(DB, { credentialId: CREDENTIAL, accountId: ACCOUNT });
+    expect(m.clearChallenge).toHaveBeenCalledOnce();
+  });
+
+  test("an existing owner clears the challenge and returns to the dashboard", async () => {
+    m.claimCard.mockResolvedValue({ status: "already_yours", cardId: CARD });
+    await expectRedirect(actions.claimAction(undefined, form()), "/app");
     expect(m.claimCard).toHaveBeenCalledWith(DB, { credentialId: CREDENTIAL, accountId: ACCOUNT });
     expect(m.clearChallenge).toHaveBeenCalledOnce();
   });

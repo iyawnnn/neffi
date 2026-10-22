@@ -217,3 +217,11 @@ test("getOwnedProfile returns scenes (Default first), connected card suffixes, p
     ]);
     expect(await getOwnedProfile(tx, (await insertAccount(tx)).id, profileId)).toBeNull();
   }));
+
+test.each(["published", "unpublished"] as const)("Goal cannot change after setup (%s)", status => rollback(db, async tx => {
+  const owner = await insertAccount(tx);
+  const { profile } = await insertProfileWithScene(tx, owner.id);
+  await tx.update(profiles).set({ status, fullName: "Ana", email: "ana@example.test" }).where(eq(profiles.id, profile.id));
+  await expect(setProfileGoal(tx, { accountId: owner.id, profileId: profile.id, goal: "business" })).rejects.toMatchObject({ code: "invalid" });
+  expect((await tx.select().from(profiles).where(eq(profiles.id, profile.id)))[0].goal).toBeNull();
+}));

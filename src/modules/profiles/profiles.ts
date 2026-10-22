@@ -243,6 +243,7 @@ export async function setProfileGoal(db: Db, input: { accountId: string; profile
   if (input.goal !== null && !isGoal(input.goal)) throw new ProfileError("invalid");
   await db.transaction(async (tx) => {
     const p = await lockOwnedProfile(tx, input.accountId, input.profileId);
+    if (p.status !== "draft") throw new ProfileError("invalid");
     await tx.update(schema.profiles).set({ goal: input.goal }).where(eq(schema.profiles.id, p.id));
     await bumpProfileContentVersion(tx, p.id);
   });
