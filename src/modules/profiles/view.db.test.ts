@@ -3,8 +3,9 @@ import { beforeAll, expect, test, vi } from "vitest";
 import { cards, profiles } from "@/db/schema";
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "demo" } }));
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter, publishProfile, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
+import { publishProfile, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
 import { loadOwnerSceneView } from "./view";
 
 let db: TestDb;
@@ -13,16 +14,16 @@ async function setup(tx: TestTx) {
   const owner = await insertAccount(tx);
   const { card } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
-  const { profileId } = await createProfileFromStarter(tx, { accountId: owner.id, cardId: card.id, purpose: "get_clients", essentials: { fullName: "Ana", headline: "Designer", bio: null, email: "ana@e.test", phone: null, link: "https://cal.com/ana" } });
+  const { profileId } = await createSetupTestProfile(tx, { accountId: owner.id, cardId: card.id, goal: "business", identity: { fullName: "Ana", headline: "Designer", company: null, bio: null, email: "ana@e.test", phone: null, website: null, location: null }, content: [{ type: "booking", content: { label: "", url: "https://cal.com/ana" } }, { type: "form", content: {}, preset: "project_inquiry" }, { type: "contact", content: { saveContact: true } }] });
   return { accountId: owner.id, profileId };
 }
-test("loads the shown Default Scene for an owned starter profile", () => rollback(db, async tx => {
+test("loads the shown Default Scene for an owned setup profile", () => rollback(db, async tx => {
   const input = await setup(tx);
   const view = await loadOwnerSceneView(tx, input);
-  expect(view?.scene.name).toBe("Clients");
+  expect(view?.scene.name).toBe("Business");
   expect(view?.blocks.map(b => b.type)).toEqual(["booking", "form", "contact"]);
   expect(view?.identity.image).toBeNull();
-  expect(view?.appearance).toEqual({ layout: "classic", mode: "light", accent: "#0C0C0D", cover: null });
+  expect(view?.appearance).toEqual({ layout: "editorial", mode: "light", accent: "#0C0C0D", cover: null });
 }));
 
 test("scene views expose curated appearance metadata but never Goal", () => rollback(db, async tx => {
@@ -114,7 +115,7 @@ test("public view shows the requested scene and falls back to the Default Scene"
   const input = await setup(tx);
   const { sceneId } = await createScene(tx, { ...input, name: "Events", copyFromSceneId: null });
   expect((await loadPublicSceneView(tx, { profileId: input.profileId, sceneId }))?.scene.name).toBe("Events");
-  expect((await loadPublicSceneView(tx, { profileId: input.profileId, sceneId: randomUUID() }))?.scene.name).toBe("Clients");
+  expect((await loadPublicSceneView(tx, { profileId: input.profileId, sceneId: randomUUID() }))?.scene.name).toBe("Business");
 }));
 test("public view of a missing profile is null", () => rollback(db, async tx => {
   expect(await loadPublicSceneView(tx, { profileId: randomUUID(), sceneId: randomUUID() })).toBeNull();

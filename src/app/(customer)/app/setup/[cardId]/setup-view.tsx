@@ -1,12 +1,10 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
-import { ButtonLink } from "@/components/app-ui";
 import { Button } from "@/components/ui/button";
 
 import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
 import { SetupProgress } from "@/components/setup-header";
-import { nextStep, SKIPPABLE_STEPS, STEP_TITLES, type SetupStep } from "./setup-steps";
+import { STEP_TITLES, type SetupStep } from "./setup-steps";
 
 export function SetupView({ suffix, step, children, backHref, preview, desktopPreview }: {
   suffix: string; step?: SetupStep; children?: ReactNode; backHref?: string; preview?: ReactNode; desktopPreview?: ReactNode;
@@ -38,20 +36,6 @@ export function GoalFields({ goal, disabled = false }: { goal?: string | null; d
         ))}
       </fieldset>
       <Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={disabled}>Continue <ArrowRight aria-hidden className="size-4" /></Button>
-    </>
-  );
-}
-
-export function SetupPlaceholder({ step, profileId, sceneId }: { step: SetupStep; profileId: string; sceneId: string }) {
-  const next = nextStep(step);
-  const optional = SKIPPABLE_STEPS.includes(step);
-  return (
-    <>
-      <p className="text-body text-fg-secondary">This step&apos;s editor is coming in the next setup tasks. Your saved profile is unchanged.</p>
-      {(step === "you" || step === "contact") && <ButtonLink href={`/app/profiles/${profileId}/identity`} variant="outline" className="w-full">Edit your details</ButtonLink>}
-      {step === "contact" && <ButtonLink href={`/app/profiles/${profileId}/scenes/${sceneId}`} variant="outline" className="w-full">Edit profile content</ButtonLink>}
-      {!optional && next && step !== "review" && step !== "done" && <Button variant="action" size="touch" className="h-12 w-full" disabled>Continue</Button>}
-      {optional && next && <Link href={`?step=${next}`} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 font-medium focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>}
     </>
   );
 }

@@ -5,7 +5,7 @@ vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: m.limit }) }) }) } }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
-vi.mock("./actions", () => ({ saveLookAction: vi.fn(), saveStyleAction: vi.fn(), saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
+vi.mock("./actions", () => ({ publishSetupAction: vi.fn(), saveLookAction: vi.fn(), saveStyleAction: vi.fn(), saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 vi.mock("@/modules/profiles/view", () => ({ loadOwnerSceneView: m.view }));
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
@@ -99,4 +99,13 @@ test.each(["look", "style"])("%s loads the real owner view instead of a placehol
  draft([]); m.view.mockResolvedValue(setupDraft(null, {fullName: "Ana"}));
  const html = await render({step}); expect(html).toContain('data-setup-appearance-preview');
  expect(html).not.toContain("editor is coming"); expect(m.view).toHaveBeenCalledWith(expect.anything(),{accountId:"a1",profileId:"p1",sceneId:"s1"});
+});
+
+test("Review shows the real profile, canonical gaps, Fix and Change links",async()=>{
+ draft(["name","contact","content"]);m.view.mockResolvedValue(setupDraft(null,{fullName:"Ana"}));
+ const html=await render({step:"review"});expect(html).toContain('data-layout=');expect(html).not.toContain('inert=');expect(html).toContain('href="?step=you"');expect(html).toContain('href="?step=contact"');expect(html).toContain('Change');expect(html).toContain('Publish');expect(html).not.toContain('editor is coming');
+});
+test("Done links to this card's public page, customization and Home",async()=>{
+ draft([]);m.getOwnedProfile.mockResolvedValue({id:"p1",status:"published",gaps:[]});
+ const html=await render({step:"done"});expect(html).toContain('href="/c/TESTWXYZ"');expect(html).toContain('target="_blank"');expect(html).toContain('href="/app/profiles/p1"');expect(html).toContain('Go to Home');expect(html).not.toContain('Publish</button>');
 });

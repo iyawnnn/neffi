@@ -14,7 +14,7 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 | `orders` | Products and pricing, purchasers, order creation and edits, fulfilment, cancellation, derived order facts and totals, system completion, dashboard |
 | `payments` | Capped append-only payments and refunds, and reasoned voids |
 | `support` | Case lifecycle, assignment, immutable links, notes and queries; Completed-order money corrections, support shipments, Released DBC retirement/replacement, verified reissue/reset |
-| `profiles` | Profiles, Scenes, Blocks, publishing, appearance, the public Scene view and cache, starters |
+| `profiles` | Profiles, Scenes, Blocks, publishing, appearance, the public Scene view and cache |
 | `search.ts` | Owner global search (limited groups, literal wildcard escaping) |
 | `db.ts` | The `Db` type shared by services |
 

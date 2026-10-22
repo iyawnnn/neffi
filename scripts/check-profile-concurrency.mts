@@ -8,7 +8,7 @@ import * as schema from "../src/db/schema";
 import { randomCrockford } from "../src/lib/crockford";
 import { submitForm } from "../src/modules/forms/submissions";
 import { addBlock, moveBlock } from "../src/modules/profiles/blocks";
-import { createProfileFromStarter, publishProfile } from "../src/modules/profiles/profiles";
+import { createProfileFromSetup, publishProfile } from "../src/modules/profiles/profiles";
 
 const url = new URL(process.env.DATABASE_URL_TEST ?? "");
 assert.equal(url.hostname, "127.0.0.1", "Concurrency checks require a disposable loopback database");
@@ -81,8 +81,8 @@ try {
 
   await check("two setups for one card create one profile", async () => {
     const cardId = await ownedReleasedCard();
-    const input = { accountId: customer, cardId, purpose: "network" as const, essentials: { fullName: "Synthetic customer", headline: null, bio: null, email: "customer@example.test", phone: null, link: null } };
-    const pending = settle(Promise.all([createProfileFromStarter(dbA, input), createProfileFromStarter(dbB, input)]));
+    const input = { accountId: customer, cardId, goal: "networking" as const, identity: { fullName: "Synthetic customer", headline: null, company: null, bio: null, email: "customer@example.test", phone: null, website: null, location: null } };
+    const pending = settle(Promise.all([createProfileFromSetup(dbA, input), createProfileFromSetup(dbB, input)]));
     await pending.finished;
     if (pending.state.error) throw pending.state.error;
     const results = pending.state.value!;
@@ -91,6 +91,8 @@ try {
     profileId = results[0].profileId;
     const { rows: [profile] } = await admin.query("SELECT default_scene_id FROM profiles WHERE id=$1", [profileId]);
     sceneId = profile.default_scene_id;
+    await addBlock(dbA, { accountId: customer, profileId, sceneId, type: "form", content: {}, preset: "contact" });
+    for (let i = 0; i < 3; i++) await addBlock(dbA, { accountId: customer, profileId, sceneId, type: "link", content: { kind: "custom", label: `Initial ${i}`, url: "https://example.test/" } });
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM profiles WHERE account_id=$1", [customer])).rows[0].n, 1);
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM activity_events WHERE card_id=$1 AND type='card_profile_changed'", [cardId])).rows[0].n, 1);
   });

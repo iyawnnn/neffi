@@ -16,7 +16,7 @@ import { claimCard } from "../src/modules/activation/claim";
 import { connectCardToProfile, setCardDisabled } from "../src/modules/cards/manage";
 import { reserveDbcCards } from "../src/modules/orders/fulfillment";
 import { loadOrderFacts } from "../src/modules/orders/order";
-import { createProfileFromStarter } from "../src/modules/profiles/profiles";
+import { createProfileFromSetup } from "../src/modules/profiles/profiles";
 import { openCase, setCaseStatus } from "../src/modules/support/case";
 import { afterSaleRefund, voidCompletedPayment, recordCompletedPayment } from "../src/modules/support/money";
 import { retireAffectedCard, releaseReplacementCard, reissueActivationCode, resetCardOwnership } from "../src/modules/support/cards";
@@ -198,7 +198,7 @@ try {
       const accountId = randomUUID();
       await admin.query("INSERT INTO accounts(id,name,email,role) VALUES($1,'Synthetic setup customer',$2,'customer')", [accountId, `${accountId}@example.test`]);
       await claimCard(dbA, { credentialId: f.credentialId, accountId });
-      const setup = (tx: Db) => createProfileFromStarter(tx, { accountId, cardId: f.cardId, purpose: "network", essentials: { fullName: "Synthetic setup", headline: null, bio: null, email: null, phone: null, link: null } });
+      const setup = (tx: Db) => createProfileFromSetup(tx, { accountId, cardId: f.cardId, goal: "networking", identity: { fullName: "Synthetic setup", headline: null, company: null, bio: null, email: null, phone: null, website: null, location: null } });
       let profileId: string | undefined;
       let errors: unknown[];
       try {
@@ -304,7 +304,7 @@ try {
   });
   await check("R19 recovery vs Account-then-Card profile setup has no deadlock", async () => {
     const f = await recoveryFixture(), card = await fixture(); await claimCard(dbA, { credentialId: card.credentialId, accountId: f.accountId }); let recovered = false; let profileId = "";
-    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => createProfileFromStarter(dbB, { accountId: f.accountId, cardId: card.cardId, purpose: "network", essentials: { fullName: "Synthetic recovery profile", headline: null, bio: null, email: null, phone: null, link: null } }).then(r => { profileId = r.profileId; })]);
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => createProfileFromSetup(dbB, { accountId: f.accountId, cardId: card.cardId, goal: "networking", identity: { fullName: "Synthetic recovery profile", headline: null, company: null, bio: null, email: null, phone: null, website: null, location: null } }).then(r => { profileId = r.profileId; })]);
     assert(errors.every(e => !e)); assert(recovered); assert(profileId);
     assert.deepEqual((await admin.query("SELECT owner_account_id,profile_id FROM cards WHERE id=$1", [card.cardId])).rows[0], { owner_account_id: f.accountId, profile_id: profileId });
   });

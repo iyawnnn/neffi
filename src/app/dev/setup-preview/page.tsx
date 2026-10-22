@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SetupHeader } from "@/components/setup-header";
-import { GoalFields, SetupPlaceholder, SetupView } from "@/app/(customer)/app/setup/[cardId]/setup-view";
+import { GoalFields, SetupView } from "@/app/(customer)/app/setup/[cardId]/setup-view";
 import { previousStep, resolveStep } from "@/app/(customer)/app/setup/[cardId]/setup-steps";
 import { isGoal } from "@/modules/profiles/goals";
 import type { PublishGap } from "@/modules/profiles/rules";
 import { SetupForm } from "@/app/(customer)/app/setup/[cardId]/setup-form";
+import { SetupReview, SetupDone } from "@/app/(customer)/app/setup/[cardId]/setup-review";
+import { previewPublishAction } from "./publish";
 import { profileFixture, coverFixture } from "@/dev/profile-fixture";
 import { ACCENTS } from "@/modules/profiles/appearance-options";
 import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
@@ -58,9 +60,9 @@ export default async function SetupPreviewPage({ searchParams }: { searchParams:
             <GoalFields goal={rawGoal !== undefined ? goal : undefined} />
           </SetupForm>
         </SetupView>
-      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : step === "look" || step === "style" ? <PreviewAppearance step={step} goal={goal} view={appearanceView} /> : step === "links" ? <PreviewLinks key={`${goal ?? "none"}-${items}`} goal={goal} items={items} /> : (
+      ) : editorStep ? <PreviewForm key={`${state}-${editorStep}-${contactState}-${image ?? "none"}`} step={editorStep} goal={goal} profile={editorProfile} contact={contact} error={contactState === "error"} /> : step === "review" ? <SetupReview suffix="TEST" cardId="synthetic-card" profileId={query.publish === "error" ? "synthetic-failure" : "synthetic-profile"} view={appearanceView} gaps={gaps} action={previewPublishAction} /> : step === "done" ? <SetupDone suffix="TEST" profileId="synthetic-profile" token="synthetic-public-token" /> : step === "look" || step === "style" ? <PreviewAppearance step={step} goal={goal} view={appearanceView} /> : step === "links" ? <PreviewLinks key={`${goal ?? "none"}-${items}`} goal={goal} items={items} /> : (
         <SetupView suffix="TEST" step={step} backHref={previous ? `?state=${state}&step=${previous}` : "?state=new"}>
-          <SetupPlaceholder step={step} profileId="synthetic-profile" sceneId="synthetic-scene" />
+          <p className="text-body text-fg-secondary">Choose a setup step to preview.</p>
         </SetupView>
       )}
     </div>

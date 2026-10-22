@@ -107,6 +107,7 @@ const classifiedExports: Record<string, readonly string[]> = {
     "updateFormAction"
   ],
   "./(customer)/app/setup/[cardId]/actions.ts": [
+    "publishSetupAction",
     "saveYouAction",
     "savePhotoAction",
     "saveContactAction",

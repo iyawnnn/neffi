@@ -1,17 +1,17 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { ProfileError } from "@/modules/profiles/errors";
 
-const m = vi.hoisted(() => ({ authorize: vi.fn(), create: vi.fn(), connect: vi.fn(), cards: vi.fn(), setGoal: vi.fn(), getProfile: vi.fn(), lockProfile: vi.fn(), update: vi.fn(), updateAppearance: vi.fn(), upsertContact: vi.fn() }));
+const m = vi.hoisted(() => ({ authorize: vi.fn(), create: vi.fn(), connect: vi.fn(), cards: vi.fn(), setGoal: vi.fn(), getProfile: vi.fn(), lockProfile: vi.fn(), update: vi.fn(), publish: vi.fn(), updateAppearance: vi.fn(), upsertContact: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: { transaction: async (callback: (tx: object) => unknown) => callback({}) } }));
-vi.mock("@/modules/profiles/profiles", () => ({ createProfileFromSetup: m.create, setProfileGoal: m.setGoal, getOwnedProfile: m.getProfile, lockOwnedProfile: m.lockProfile, updateIdentity: m.update, updateAppearance: m.updateAppearance, upsertContactBlock: m.upsertContact }));
+vi.mock("@/modules/profiles/profiles", () => ({ createProfileFromSetup: m.create, setProfileGoal: m.setGoal, getOwnedProfile: m.getProfile, lockOwnedProfile: m.lockProfile, updateIdentity: m.update, publishProfile: m.publish, updateAppearance: m.updateAppearance, upsertContactBlock: m.upsertContact }));
 vi.mock("@/modules/cards/manage", () => ({ connectCardToProfile: m.connect }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
   notFound: () => { throw new Error("NOT_FOUND"); },
 }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.cards }));
-import { chooseProfileAction, continueGoalAction, saveContactAction, saveLookAction, savePhotoAction, saveStyleAction, saveYouAction } from "./actions";
+import { publishSetupAction, chooseProfileAction, continueGoalAction, saveContactAction, saveLookAction, savePhotoAction, saveStyleAction, saveYouAction } from "./actions";
 
 const CARD = "11111111-1111-4111-8111-111111111111";
 const PROFILE = "22222222-2222-4222-8222-222222222222";
@@ -169,4 +169,25 @@ test.each([saveLookAction, saveStyleAction])("appearance setup actions require a
   m.cards.mockResolvedValue([{ id: CARD, profileId: null }]);
   await expect(action(undefined, form({ layout: "classic", colorMode: "light", accentColor: "#0C0C0D" }))).rejects.toThrow("NOT_FOUND");
   expect(m.updateAppearance).not.toHaveBeenCalled();
+});
+
+test("Publish uses the existing domain and redirects to this card's Done", async () => {
+ await expect(publishSetupAction(undefined, form())).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=done`);
+ expect(m.publish).toHaveBeenCalledWith(expect.anything(),{accountId:"owner",profileId:PROFILE});
+});
+test("Publish validation returns canonical gaps without completing setup", async () => {
+ m.publish.mockRejectedValue(new ProfileError("not_ready",["name","contact"]));
+ expect(await publishSetupAction(undefined,form())).toMatchObject({error:expect.stringContaining("ready"),gaps:expect.arrayContaining(["Add your full name."])});
+});
+test("failed Publish is retryable and never claims success", async () => {
+ m.publish.mockRejectedValue(new Error("Synthetic outage"));
+ expect(await publishSetupAction(undefined,form())).toMatchObject({error:expect.stringContaining("Try again")});
+});
+test("repeat Publish on Published profile goes to Done without a second mutation", async () => {
+ m.lockProfile.mockResolvedValue(draft({status:"published"}));
+ await expect(publishSetupAction(undefined,form())).rejects.toThrow(`REDIRECT:/app/setup/${CARD}?step=done`);expect(m.publish).not.toHaveBeenCalled();
+});
+test.each(["unpublished","foreign"])("Publish rejects %s route", async status => {
+ if(status==="foreign")m.cards.mockResolvedValue([]);else m.lockProfile.mockResolvedValue(draft({status}));
+ await expect(publishSetupAction(undefined,form())).rejects.toThrow("NOT_FOUND");expect(m.publish).not.toHaveBeenCalled();
 });

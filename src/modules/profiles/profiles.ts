@@ -4,12 +4,10 @@ import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
 import { CardError, lockCard } from "../cards/card";
 import type { Db } from "../db";
-import { PRESETS } from "../forms/config";
 import { ProfileError } from "./errors";
 import { ACCENTS, COLOR_MODES, LAYOUTS, type ColorMode, type Layout } from "./appearance-options";
 import { GOALS, isGoal, NO_GOAL, type Goal } from "./goals";
 import { LIMITS, publishGaps, type Identity, type PublishGap } from "./rules";
-import { PURPOSES, starterBlocks, type Essentials, type Purpose } from "./starters";
 import { isProfileCoverId } from "@/integrations/media/cloudinary";
 import { profileCoverSchema, type CoverCrop, type ProfileCover } from "./cover";
 
@@ -38,52 +36,6 @@ export async function visibleBlockCount(tx: Db, sceneId: string | null): Promise
     .from(schema.sceneBlocks)
     .where(and(eq(schema.sceneBlocks.sceneId, sceneId), eq(schema.sceneBlocks.visible, true)));
   return row.n;
-}
-
-export async function createProfileFromStarter(
-  db: Db,
-  input: { accountId: string; cardId: string; purpose: Purpose; essentials: Essentials },
-): Promise<{ profileId: string; created: boolean }> {
-  return db.transaction(async (tx) => {
-    // Account row first, then the card: serializes the profile limit and a double submit for the same card.
-    await tx.select({ id: schema.accounts.id }).from(schema.accounts).where(eq(schema.accounts.id, input.accountId)).for("update");
-    const card = await lockCard(tx, input.cardId).catch((error) => {
-      if (error instanceof CardError) return null;
-      throw error;
-    });
-    if (!card || card.ownerAccountId !== input.accountId || card.kind !== "dbc" || card.state !== "released") throw new ProfileError("not_found");
-    if (card.profileId) return { profileId: card.profileId, created: false };
-
-    const [{ n }] = await tx.select({ n: count() }).from(schema.profiles).where(eq(schema.profiles.accountId, input.accountId));
-    if (n >= LIMITS.profilesPerAccount) throw new ProfileError("limit_reached");
-
-    const e = input.essentials;
-    const [profile] = await tx
-      .insert(schema.profiles)
-      .values({ accountId: input.accountId, fullName: e.fullName, headline: e.headline, bio: e.bio, email: e.email, phone: e.phone })
-      .returning({ id: schema.profiles.id });
-    const [scene] = await tx
-      .insert(schema.scenes)
-      .values({ profileId: profile.id, name: PURPOSES[input.purpose].sceneName })
-      .returning({ id: schema.scenes.id });
-    let position = 0;
-    for (const seed of starterBlocks(input.purpose, e)) {
-      let formId: string | null = null;
-      if (seed.preset) {
-        const preset = PRESETS[seed.preset];
-        const [form] = await tx
-          .insert(schema.formDefinitions)
-          .values({ profileId: profile.id, preset: seed.preset, title: preset.title, config: preset.config })
-          .returning({ id: schema.formDefinitions.id });
-        formId = form.id;
-      }
-      await tx.insert(schema.sceneBlocks).values({ sceneId: scene.id, type: seed.type, position: position++, content: seed.content, formId });
-    }
-    await tx.update(schema.profiles).set({ defaultSceneId: scene.id }).where(eq(schema.profiles.id, profile.id));
-    await tx.update(schema.cards).set({ profileId: profile.id }).where(eq(schema.cards.id, card.id));
-    await recordActivity(tx, { type: "card_profile_changed", actorAccountId: input.accountId, accountId: input.accountId, cardId: card.id });
-    return { profileId: profile.id, created: true };
-  });
 }
 
 export async function createProfileFromSetup(

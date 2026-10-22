@@ -4,19 +4,9 @@ import { useActionState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, inputClass } from "@/components/ui/input";
 import type { OwnedProfile } from "@/modules/profiles/profiles";
-import { createSceneAction, deleteProfileAction, publishAction } from "./actions";
+import { createSceneAction, deleteProfileAction } from "./actions";
 
-export function PublishButton({ profileId }: { profileId: string }) {
-  const [state, action, pending] = useActionState(publishAction, undefined);
-  return (
-    <form action={action} className="flex flex-col gap-3">
-      <input type="hidden" name="profileId" value={profileId} />
-      {state?.error ? <p role="alert" className="text-sm">{state.error}</p> : null}
-      {state?.gaps?.length ? <ul className="list-inside list-disc text-sm">{state.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul> : null}
-      <Button type="submit" size="touch" variant="action" className="w-full rounded-[10px] font-semibold interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none" disabled={pending}>Publish</Button>
-    </form>
-  );
-}
+export { PublishButton } from "./publish-button";
 
 export function AddSceneForm({ profileId, scenes, cancel }: { profileId: string; scenes: OwnedProfile["scenes"]; cancel?: ReactNode }) {
   const [state, action, pending] = useActionState(createSceneAction, undefined);
