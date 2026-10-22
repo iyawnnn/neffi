@@ -1,6 +1,11 @@
 import type { SceneView } from "@/modules/profiles/scene-view";
 import { LINK_KINDS, LINK_KIND_LABELS } from "@/modules/profiles/block-options";
 
+export const coverFixture = {
+  src: "/dev/profile-cover.svg",
+  srcSet: "/dev/profile-cover.svg?w=640 640w, /dev/profile-cover.svg?w=1080 1080w, /dev/profile-cover.svg?w=1600 1600w",
+};
+
 // Synthetic data for local visual review; never reads or seeds a database.
 export const profileFixture: SceneView = {
   appearance: { layout: "classic", mode: "light", accent: "#0C0C0D", cover: null },

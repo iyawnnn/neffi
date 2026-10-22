@@ -46,3 +46,15 @@ test.each(["full", "link-featured", "minimal"])("Showcase %s fixture uses its re
   }
   if (sample === "minimal") expect(html).not.toContain('aria-label="Featured"');
 });
+
+test.each(["light", "dark"])("%s local cover fixture works for full and minimal Showcase without Cloudinary", async mode => {
+  for (const sample of ["full", "minimal"]) {
+    const html = renderToStaticMarkup(await page({ layout: "showcase", cover: "sample", image: "photo", mode, sample }));
+    expect(html).toContain('class="pf-showcase-cover"');
+    expect(html).toContain("/dev/profile-cover.svg");
+    expect(html).toContain("/avatar-example.jpg");
+    expect(html).not.toContain('class="pf-showcase-band"');
+    expect(html).not.toContain("res.cloudinary.com");
+    expect(html).not.toContain("<form");
+  }
+});
