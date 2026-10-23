@@ -20,7 +20,7 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
     <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10">
       <div className="flex w-full max-w-[480px] flex-col gap-4">
         <p className="text-sm text-muted-foreground">This is a preview. Visitors see this when your Neffi is published.</p>
-        <nav aria-label="Preview scenes" className="flex flex-wrap gap-2">
+        <nav aria-label="Preview profile modes" className="flex flex-wrap gap-2">
           {profile.scenes.map(scene => <Link key={scene.id} href={`?scene=${scene.id}`} aria-current={scene.id === view.scene.id ? "page" : undefined} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium">{scene.name}</Link>)}
         </nav>
         <div className="overflow-hidden rounded-3xl border border-border"><ProfileRenderer view={view} /></div>

@@ -34,7 +34,7 @@ export type PublishGap = "name" | "contact" | "content";
 export const PUBLISH_GAP_COPY: Record<PublishGap, string> = {
   name: "Add your full name.",
   contact: "Add a phone number, email or website so people can reach you.",
-  content: "Show at least one item in your main scene.",
+  content: "Show at least one item in your default mode.",
 };
 
 export function publishGaps(p: { fullName: string | null; phone: string | null; email: string | null; website: string | null; visibleDefaultBlocks: number }): PublishGap[] {

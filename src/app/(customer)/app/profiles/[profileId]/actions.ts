@@ -19,7 +19,7 @@ const PROFILE_MESSAGES = {
   invalid: "Check the highlighted fields and try again.",
   limit_reached: "You've reached the limit for this. Remove one first.",
   has_cards: "Move the cards showing this profile to another profile before deleting it.",
-  default_scene: "Your main scene can't be deleted.",
+  default_scene: "Your default mode can't be deleted.",
   not_ready: "Your Neffi isn't ready to publish yet.",
 };
 const mediaConfig = { cloudName: env.cloudinaryCloudName, apiKey: env.cloudinaryApiKey, apiSecret: env.cloudinaryApiSecret };

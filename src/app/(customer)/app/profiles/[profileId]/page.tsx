@@ -86,7 +86,7 @@ export default async function ProfilePage({ params, searchParams }: PageProps<"/
           </ul>
           <div className="mt-3 flex flex-wrap gap-x-4">
             <SectionLink href={`${base}/identity`}>Edit details</SectionLink>
-            <SectionLink href={`${base}/scenes/${profile.defaultSceneId}`}>Edit main scene</SectionLink>
+            <SectionLink href={`${base}/scenes/${profile.defaultSceneId}`}>Edit profile mode</SectionLink>
           </div>
         </section>
       ) : null}

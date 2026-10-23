@@ -33,7 +33,7 @@ export default async function CardPage({ params }: PageProps<"/c/[token]">) {
         <nav aria-label="Manage your Neffi" className="pf-owner-bar flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm">
           <span>Only you see this</span>
           <Link href={`/app/profiles/${snapshot.profileId}/scenes/${view.scene.id}`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--pf-border)] px-3 font-medium">Edit</Link>
-          <Link href={`/app/profiles/${snapshot.profileId}`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--pf-border)] px-3 font-medium">Switch scene</Link>
+          <Link href={`/app/profiles/${snapshot.profileId}`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--pf-border)] px-3 font-medium">Switch mode</Link>
         </nav>
       ) : null}
       <ProfileRenderer view={view} visitorActions={{ saveContactHref: `/c/${token}/contact` }} />

@@ -15,10 +15,11 @@ beforeEach(() => {
   m.profile.mockResolvedValue({ id: "p1", scenes: [{ id: "s1", name: "Main" }, { id: "s2", name: "Events" }] });
   m.view.mockResolvedValue({ ...profileFixture, scene: { id: "s2", name: "Events" } });
 });
-test.each(["classic", "editorial", "showcase"] as const)("%s preview explains its purpose and offers scene switching", async layout => {
+test.each(["classic", "editorial", "showcase"] as const)("%s preview explains its purpose and offers profile mode switching", async layout => {
   m.view.mockResolvedValue({ ...profileFixture, appearance: { ...profileFixture.appearance, layout } });
   const html = await render({ scene: "s2" });
   expect(html).toContain(`data-layout="${layout}"`);
+  expect(html).toContain('aria-label="Preview profile modes"');
   expect(html).toContain("This is a preview. Visitors see this when your Neffi is published.");
   for (const id of ["s1", "s2"]) expect(html).toContain(`href="?scene=${id}"`);
   expect(m.view).toHaveBeenCalledWith({}, { accountId: "a1", profileId: "p1", sceneId: "s2" });

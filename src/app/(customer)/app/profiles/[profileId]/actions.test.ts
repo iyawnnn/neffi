@@ -107,3 +107,10 @@ test("delete linked-Card failure explains moving Cards, never disabling them", a
   m.deleteProfile.mockRejectedValue(new ProfileError("has_cards"));
   expect(await deleteProfileAction(undefined, dataWith({ confirm: "on" }))).toEqual({ error: "Move the cards showing this profile to another profile before deleting it." });
 });
+
+test("protected mode errors use customer terminology", async () => {
+  m.createScene.mockRejectedValue(new ProfileError("default_scene"));
+  const data = new FormData(); data.set("profileId", PROFILE); data.set("name", "Events"); data.set("copyFrom", "empty");
+  const state = await createSceneAction(undefined, data);
+  expect(state.error).toBe("Your default mode can't be deleted.");
+});
