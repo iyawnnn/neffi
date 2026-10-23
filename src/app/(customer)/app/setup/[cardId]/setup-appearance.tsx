@@ -22,7 +22,7 @@ export function SetupAppearance({ step, cardId, suffix, goal, view, action }: Pr
   const next = step === "look" ? "style" : "review";
   const render = <div inert aria-hidden="true"><ProfileRenderer view={preview} /></div>;
   return <SetupView suffix={suffix} step={step} backHref={step === "look" ? "?step=links" : "?step=look"} desktopPreview={render}>
-    <div data-setup-appearance-preview className="mx-auto max-h-[360px] w-full max-w-[390px] overflow-hidden rounded-3xl border lg:hidden">{render}</div>
+    <div data-setup-appearance-preview tabIndex={0} aria-label="Scrollable profile preview" className="neffi-appearance-preview-scroll mx-auto max-h-[22rem] w-full max-w-[390px] overflow-x-hidden overflow-y-auto overscroll-contain rounded-3xl border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:hidden">{render}</div>
     <SetupForm action={submit} changed={dirty} className="flex min-w-0 flex-col gap-5">
       <input type="hidden" name="cardId" value={cardId} />
       <div className="-mx-4 sm:-mx-6">

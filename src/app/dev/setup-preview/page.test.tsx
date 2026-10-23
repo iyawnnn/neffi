@@ -59,6 +59,6 @@ test("Photo and Contact fixtures cover empty, existing photo/logo, filled and va
   expect(errorContact).toContain("Public email");
 });
 test("Links preview uses the real setup Links surface for empty and existing synthetic items", async () => {
-  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "freelance", items: "empty" }))).toContain("Add something else");
-  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "business", items: "existing" }))).toContain("Added to your profile");
+  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "freelance", items: "empty" }))).toContain("Messaging &amp; community");
+  expect(renderToStaticMarkup(await page({ state: "draft", step: "links", goal: "business", items: "existing" }))).toContain("Added links");
 });

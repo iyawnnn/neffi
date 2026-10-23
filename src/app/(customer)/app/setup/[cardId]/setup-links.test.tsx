@@ -19,32 +19,43 @@ async function mount(goal: keyof typeof GOALS | null = null, blocks = [] as type
  return { host, close: async () => { await act(async () => root.unmount()); host.remove(); } };
 }
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === text || b.getAttribute("aria-label") === text)!;
-test.each([null, "networking", "freelance", "business", "student"] as const)("%s suggestions follow canonical Goal order; no automatic creation", async goal => {
+test.each([null, "networking", "freelance", "business", "student"] as const)("%s starts with calm collapsed categories and writes nothing", async goal => {
  const { host, close } = await mount(goal);
  try {
-  const expected = goal ? GOALS[goal].suggestions : ["linkedin", "facebook", "instagram", "custom"];
-  expect([...host.querySelectorAll('[aria-label="Suggested additions"] button')].map(b => b.getAttribute("data-suggestion"))).toEqual(expected.map(s => typeof s === "string" ? s : "resume"));
-  expect(m.mutate).not.toHaveBeenCalled(); expect(host.textContent).toContain("Nothing added yet");
+  expect(host.querySelectorAll('button[aria-expanded="false"]')).toHaveLength(4);
+  expect(host.querySelector('[data-platform]')).toBeNull();
+  expect(host.textContent).toContain("Added links");
+  expect(host.textContent).toContain("Nothing added yet");
+  expect(m.mutate).not.toHaveBeenCalled();
   expect([...host.querySelectorAll("a")].find(a => a.textContent === "Skip for now")?.getAttribute("href")).toBe("?step=look");
-  expect(host.querySelector('[data-layout] a[href*="example"]')).toBeNull();
  } finally { await close(); }
 });
-test("full chooser retains all 22 supported platforms and supported content/actions", async () => {
- const { close } = await mount();
+
+test("inline categories expose every canonical platform, plus existing content/actions without a chooser modal", async () => {
+ const { host, close } = await mount();
  try {
-  await act(async () => button("Add something else").click());
-  const dialog = document.querySelector('[role="dialog"]')!;
-  expect(LINK_KINDS).toHaveLength(22);
-  for (const kind of LINK_KINDS.filter(kind => kind !== "booking")) expect(dialog.textContent).toContain(PLATFORMS[kind].label);
-  expect(dialog.textContent).toContain("Book a meeting");
-  expect(dialog.textContent).toContain("Contact form"); expect(dialog.textContent).toContain("Project");
+  const kinds = new Set<string>();
+  for (const category of ["Social", "Professional", "Messaging & community", "Other links & actions"]) {
+   await act(async () => button(category).click());
+   expect(button(category).getAttribute("aria-expanded")).toBe("true");
+   expect(host.querySelectorAll('button[aria-expanded="true"]')).toHaveLength(1);
+   for (const platform of host.querySelectorAll('[data-platform]')) kinds.add(platform.getAttribute('data-platform')!);
+  }
+  expect([...kinds].sort()).toEqual([...LINK_KINDS].sort());
+  expect(host.textContent).toContain("Book a meeting");
+  expect(host.textContent).toContain("Contact form");
+  expect(host.textContent).toContain("Project");
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(m.mutate).not.toHaveBeenCalled();
  } finally { await close(); }
 });
+
 test("Resume opens existing Custom fields with only its label prefilled", async () => {
  const { close } = await mount("student");
  try {
-  await act(async () => button("Add Resume").click());
+  await act(async () => button("Professional").click());
+  await act(async () => button("Resume").click());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(document.querySelector<HTMLInputElement>('[name="label"]')?.value).toBe("Resume");
   expect(document.querySelector<HTMLInputElement>('[name="url"]')?.value).toBe("");
   expect(m.mutate).not.toHaveBeenCalled();
@@ -53,12 +64,14 @@ test("Resume opens existing Custom fields with only its label prefilled", async 
 test("invalid destination stays editable; explicit add uses the existing mutation", async () => {
  const { close } = await mount("networking");
  try {
-  await act(async () => button("Add LinkedIn").click());
+  await act(async () => button("Professional").click());
+  await act(async () => button("LinkedIn").click());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   m.mutate.mockResolvedValue({ error: "Check the highlighted fields and try again.", fields: { url: "Enter a valid link." } });
-  await act(async () => document.querySelector("[role=dialog] form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => document.querySelector("[data-inline-editor] form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(m.mutate).toHaveBeenCalledTimes(1);
   expect(m.mutate.mock.calls[0][0].get("operation")).toBe("add");
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Enter a valid link.");
+  expect(document.querySelector('[data-inline-editor]')?.textContent).toContain("Enter a valid link.");
   expect(document.activeElement?.getAttribute("name")).toBe("url");
  } finally { await close(); }
 });
@@ -68,7 +81,7 @@ test("existing hidden items stay listed; Remove uses intentional existing confir
   expect(host.textContent).toContain("Hidden");
   m.mutate.mockResolvedValue({ ok: true, blockId: "l1" });
   await act(async () => button("Remove LinkedIn").click());
-  await act(async () => button("Remove").click());
+  await act(async () => document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click());
   const data = m.mutate.mock.calls[0][0] as FormData;
   expect(data.get("operation")).toBe("remove"); expect(data.get("confirm")).toBe("on");
   expect(data.get("blockId")).toBe("l1"); expect(m.refresh).toHaveBeenCalled();
@@ -86,8 +99,9 @@ test("editing a saved link preserves its id and kind through the canonical updat
   m.mutate.mockResolvedValue({ ok: true });
   await act(async () => button("Edit LinkedIn").click());
   expect(m.load).toHaveBeenCalledWith("p1", "s1", "l1");
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   await setInput("url", "https://linkedin.com/in/updated");
-  await act(async () => document.querySelector("[role=dialog] form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => document.querySelector("[data-inline-editor] form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   const data = m.mutate.mock.calls[0][0] as FormData;
   expect(data.get("operation")).toBe("update"); expect(data.get("blockId")).toBe("l1");
   expect(data.get("kind")).toBe("linkedin"); expect(data.get("url")).toBe("https://linkedin.com/in/updated");
@@ -104,4 +118,43 @@ test("real preview renders saved public links without hidden links or fake place
   await act(async () => button("Preview").click());
   expect(document.querySelector('[role="dialog"] a[href="https://ana.example.test/work"]')).not.toBeNull();
  } finally { await act(async () => root.unmount()); host.remove(); }
+});
+
+test("choosing a platform opens its canonical fields inline and adds explicitly", async () => {
+ const { close } = await mount();
+ try {
+  await act(async () => button("Social").click());
+  await act(async () => button("Instagram").click());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.querySelector<HTMLInputElement>('[name="url"]')?.placeholder).toBe(PLATFORMS.instagram.placeholder);
+  expect(document.querySelector('[data-inline-editor] h3')?.textContent).toBe("Instagram");
+  expect(document.querySelectorAll('[data-platform]')).toHaveLength(0);
+  await setInput("url", "https://instagram.com/ana");
+  m.mutate.mockResolvedValue({ ok: true });
+  await act(async () => button("Add Instagram").click());
+  const data = m.mutate.mock.calls[0][0] as FormData;
+  expect(data.get("kind")).toBe("instagram"); expect(data.get("url")).toBe("https://instagram.com/ana");
+  expect(data.get("operation")).toBe("add"); expect(m.refresh).toHaveBeenCalled();
+  expect(document.querySelector('[data-inline-editor]')).toBeNull();
+ } finally { await close(); }
+});
+
+test("inline drafts retain the existing discard guard when choosing another platform or leaving", async () => {
+ const { host, close } = await mount();
+ try {
+  await act(async () => button("Social").click());
+  await act(async () => button("Instagram").click());
+  await setInput("url", "https://instagram.com/unsaved");
+  await act(async () => button("Social").click());
+  await act(async () => button("Facebook").click());
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Discard changes?");
+  await act(async () => button("Keep editing").click());
+  expect(document.querySelector<HTMLInputElement>('[name="url"]')?.value).toBe("https://instagram.com/unsaved");
+  const next = [...host.querySelectorAll('a')].find(a => a.textContent === "Continue")!;
+  const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+  await act(async () => { next.dispatchEvent(click); });
+  expect(click.defaultPrevented).toBe(true);
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Discard changes?");
+  expect(m.mutate).not.toHaveBeenCalled();
+ } finally { await close(); }
 });

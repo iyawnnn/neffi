@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button";
 import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
 import { SetupProgress } from "@/components/setup-header";
 import { STEP_TITLES, type SetupStep } from "./setup-steps";
+import "../../profiles/[profileId]/appearance/appearance-form.css";
 
-export function SetupView({ suffix, step, children, backHref, preview, desktopPreview }: {
-  suffix: string; step?: SetupStep; children?: ReactNode; backHref?: string; preview?: ReactNode; desktopPreview?: ReactNode;
+export function SetupView({ suffix, step, children, backHref, preview, desktopPreview, showCardSuffix = true }: {
+  suffix: string; step?: SetupStep; children?: ReactNode; backHref?: string; preview?: ReactNode; desktopPreview?: ReactNode; showCardSuffix?: boolean;
 }) {
   return (
     <main data-setup className="w-full flex-1">
       <div className={`mx-auto w-full px-4 pt-5 pb-12 sm:px-6 sm:pt-8 md:pb-16 ${desktopPreview ? "max-w-[1080px] lg:grid lg:grid-cols-[minmax(0,480px)_390px] lg:items-start lg:justify-between lg:gap-12" : "max-w-[528px]"}`}><div className="mx-auto w-full max-w-[480px] lg:mx-0">
         <SetupProgress step={step} backHref={backHref} preview={preview} />
-        <p className="mt-5 text-meta text-fg-secondary">Card ending in {suffix}</p>
+        {showCardSuffix && <p className="mt-5 text-meta text-fg-secondary">Card ending in {suffix}</p>}
         {step && <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">{STEP_TITLES[step]}</h1>}
         <div className="mt-5 flex flex-col gap-4 sm:mt-6">{children}</div>
-        </div>{desktopPreview && <aside aria-label="Profile preview" className="sticky top-28 hidden min-w-0 lg:block"><div className="max-h-[calc(100dvh-10rem)] overflow-x-hidden overflow-y-auto rounded-3xl border border-border">{desktopPreview}</div></aside>}
+        </div>{desktopPreview && <aside aria-label="Profile preview" className="sticky top-28 hidden min-w-0 lg:block"><div tabIndex={0} aria-label="Scrollable profile preview" className="neffi-appearance-preview-scroll max-h-[calc(100dvh-10rem)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-3xl border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{desktopPreview}</div></aside>}
       </div>
     </main>
   );

@@ -88,8 +88,8 @@ test("Draft cannot enter done, and reload keeps explicit allowed step", async ()
 test("Links loads the owned Default mode and real view without creating content", async () => {
   draft(); m.view.mockResolvedValue(setupDraft(null, { fullName: "Ana" }));
   const html = await render({ step: "links" });
-  expect(html).toContain("Add something else");
-  expect(html).toContain("Added to your profile");
+  expect(html).toContain("Messaging &amp; community");
+  expect(html).toContain("Added links");
   expect(html).toContain('href="?step=look"');
   expect(m.scene).toHaveBeenCalledWith(expect.anything(), "a1", "p1", "s1");
   expect(m.view).toHaveBeenCalledWith(expect.anything(), { accountId: "a1", profileId: "p1", sceneId: "s1" });
@@ -101,9 +101,9 @@ test.each(["look", "style"])("%s loads the real owner view instead of a placehol
  expect(html).not.toContain("editor is coming"); expect(m.view).toHaveBeenCalledWith(expect.anything(),{accountId:"a1",profileId:"p1",sceneId:"s1"});
 });
 
-test("Review shows the real profile, canonical gaps, Fix and Change links",async()=>{
+test("Review shows the real profile, restrained card summary, canonical gaps, Fix and Change links",async()=>{
  draft(["name","contact","content"]);m.view.mockResolvedValue(setupDraft(null,{fullName:"Ana"}));
- const html=await render({step:"review"});expect(html).toContain('data-layout=');expect(html).not.toContain('inert=');expect(html).toContain('href="?step=you"');expect(html).toContain('href="?step=contact"');expect(html).toContain('Change');expect(html).toContain('Publish');expect(html).not.toContain('editor is coming');
+ const html=await render({step:"review"});expect(html).toContain('data-layout=');expect(html).not.toContain('inert=');expect(html).toContain('href="?step=you"');expect(html).toContain('href="?step=contact"');expect(html).toContain('Change');expect(html).toContain('Publish');expect(html).toContain('Card ending in WXYZ');expect((html.match(/Card ending in WXYZ/g) ?? [])).toHaveLength(1);expect(html).toContain('This card will open this profile once published.');expect(html).toContain('data-neffi-card');expect(html).toContain('data-setup-review-row="you"');expect(html).toContain('neffi-appearance-preview-scroll');expect(html).toContain('aria-label="Scrollable profile preview"');expect(html).not.toContain('editor is coming');expect(html).not.toContain('Active');
 });
 test("Done links to this card's public page, customization and Home",async()=>{
  draft([]);m.getOwnedProfile.mockResolvedValue({id:"p1",status:"published",gaps:[]});

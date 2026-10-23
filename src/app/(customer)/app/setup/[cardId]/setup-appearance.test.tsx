@@ -30,3 +30,15 @@ test("Colours offers exactly two modes and eight named accents, previews unsaved
  expect(action).toHaveBeenCalledTimes(1);expect((action.mock.calls[0][1] as FormData).get('colorMode')).toBe('dark');expect(host.textContent).toContain('Try again');
  }finally{await act(async()=>root.unmount());host.remove()}
 });
+test("mobile appearance preview is a bounded, scrollable real ProfileRenderer viewport", async () => {
+ const host=document.createElement("div");document.body.append(host);const root=createRoot(host);
+ try {
+  await act(async()=>root.render(<SetupAppearance step="look" cardId="c1" suffix="TEST" goal={null} view={setupDraft(null,{fullName:"Ana"})} action={vi.fn()}/>));
+  const preview=host.querySelector<HTMLElement>('[data-setup-appearance-preview]')!;
+  expect(preview.className).toContain('neffi-appearance-preview-scroll');
+  expect(preview.className).toContain('overflow-y-auto');
+  expect(preview.getAttribute('aria-label')).toBe('Scrollable profile preview');
+  expect(preview.tabIndex).toBe(0);
+  expect(preview.querySelector('[data-layout]')).not.toBeNull();
+ } finally { await act(async()=>root.unmount());host.remove(); }
+});

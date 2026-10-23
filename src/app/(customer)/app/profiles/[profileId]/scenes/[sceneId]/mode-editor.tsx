@@ -16,6 +16,7 @@ import type { loadItemAction, mutateItemAction, SceneActionState } from "./actio
 import { BLOCK_META, BlockTile } from "./block-meta";
 import { ItemFields } from "./item-fields";
 import { FormFields } from "./form-editor";
+import { guardHistoryNavigation, type BrowserNavigation, type HistoryNavigation } from "../../identity/unsaved-navigation";
 
 export type ModeEditorItem = NonNullable<Awaited<ReturnType<typeof sceneForEditing>>>["blocks"][number];
 type Item = ModeEditorItem;
@@ -54,7 +55,7 @@ function describe(item: Item) {
   return { title, secondary, icon: item.type === "link" ? <LinkKindIcon kind={kind} /> : <BlockTile icon={BLOCK_META[item.type].icon} /> };
 }
 
-export function ModeEditor(props: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls }) => ReactNode; actions?: ModeEditorActions }) {
+export function ModeEditor(props: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls; editor?: ReactNode }) => ReactNode; actions?: ModeEditorActions; inlineEditor?: boolean }) {
   return <Toast.Provider limit={1}><Editor {...props} /><Notifications /></Toast.Provider>;
 }
 function Notifications() {
@@ -64,15 +65,17 @@ function Notifications() {
   </Toast.Viewport></Toast.Portal>;
 }
 
-function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls }) => ReactNode; actions?: ModeEditorActions }) {
+function Editor({ profileId, sceneId, blocks, renderItems, actions, inlineEditor = false }: { profileId: string; sceneId: string; blocks: Item[]; renderItems?: (args: { items: Item[]; controls: ModeEditorControls; editor?: ReactNode }) => ReactNode; actions?: ModeEditorActions; inlineEditor?: boolean }) {
   const router = useRouter();
   const toast = Toast.useToastManager();
   const [intent, setIntent] = useState<Intent | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [result, setResult] = useState<SceneActionState>();
-  const [discard, setDiscard] = useState<"close" | "back" | null>(null);
+  const [discard, setDiscard] = useState<"close" | "back" | "replace" | null>(null);
   const [dirty, setDirty] = useState(false);
+  const pendingChoice = useRef<(() => void) | null>(null);
+  const discardingNavigation = useRef(false);
   const form = useRef<HTMLFormElement>(null);
   const activeField = useRef<HTMLElement | null>(null);
   const baseline = useRef("");
@@ -87,7 +90,42 @@ function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileI
     if (intent && !intent.loading) heading.current?.focus();
   }, [intent]);
 
-  function close() { requestId.current++; setIntent(null); setResult(undefined); setDirty(false); }
+  useEffect(() => {
+    if (!inlineEditor || !dirty) return;
+    const navigation = (window as Window & { navigation?: BrowserNavigation }).navigation;
+    const leave = (url: string, key?: string) => {
+      if (busyRef.current) return;
+      pendingChoice.current = () => {
+        discardingNavigation.current = true;
+        if (key && navigation) navigation.traverseTo(key); else router.push(url);
+      };
+      setDiscard("replace");
+    };
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!anchor || anchor.download || (anchor.target && anchor.target !== "_self")) return;
+      const target = new URL(anchor.href, window.location.href);
+      if (!["http:", "https:"].includes(target.protocol) || target.href === window.location.href) return;
+      event.preventDefault(); event.stopPropagation(); leave(target.href);
+    };
+    const unload = (event: BeforeUnloadEvent) => { if (!discardingNavigation.current) { event.preventDefault(); event.returnValue = ""; } };
+    const traverse = (event: Event) => guardHistoryNavigation(event as HistoryNavigation, discardingNavigation.current, busyRef.current, leave);
+    document.addEventListener("click", click, true);
+    window.addEventListener("beforeunload", unload);
+    navigation?.addEventListener("navigate", traverse);
+    return () => { document.removeEventListener("click", click, true); window.removeEventListener("beforeunload", unload); navigation?.removeEventListener("navigate", traverse); };
+  }, [inlineEditor, dirty, router]);
+
+  function close() {
+    requestId.current++; setIntent(null); setResult(undefined); setDirty(false);
+    if (inlineEditor) requestAnimationFrame(() => (returnFocus.current?.isConnected ? returnFocus.current : document.querySelector<HTMLElement>("[data-add-item]"))?.focus());
+  }
+  function select(next: () => void) {
+    if (busyRef.current) return;
+    if (inlineEditor && dirty) { pendingChoice.current = next; setDiscard("replace"); }
+    else next();
+  }
   function requestLeave(action: "back" | "close") {
     if (busyRef.current) return;
     if (dirty) { setDiscard(action); return; }
@@ -103,9 +141,11 @@ function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileI
     return section;
   }
   function choose(type: BlockType, kind: LinkKind | undefined, label: string | undefined, trigger: HTMLElement) {
-    const section = sectionFor(type);
-    open(section, trigger);
-    setIntent({ section, type, kind, content: { ...(kind ? { kind } : {}), ...(label ? { label } : {}) } });
+    select(() => {
+      const section = sectionFor(type);
+      open(section, trigger);
+      setIntent({ section, type, kind, content: { ...(kind ? { kind } : {}), ...(label ? { label } : {}) } });
+    });
   }
   function openAll(trigger: HTMLElement) {
     returnFocus.current = trigger; setResult(undefined); setDirty(false); setIntent({ section: "links", all: true });
@@ -162,30 +202,11 @@ function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileI
   }, [result, busy]);
   const controls: ModeEditorControls = {
     choose, openAll,
-    edit: (item, trigger) => void edit(sectionFor(item.type), item, trigger),
-    remove: (item, trigger) => { returnFocus.current = trigger; setIntent({ section: sectionFor(item.type), remove: item }); },
+    edit: (item, trigger) => select(() => void edit(sectionFor(item.type), item, trigger)),
+    remove: (item, trigger) => select(() => { returnFocus.current = trigger; setResult(undefined); setDirty(false); setIntent({ section: sectionFor(item.type), remove: item }); }),
   };
   const title = intent?.remove ? `Remove ${describe(intent.remove).title}?` : intent?.loading ? "Edit item" : intent?.all ? "Add something else" : intent?.type ? intent.type === "link" ? `${intent.item ? "Edit " : ""}${PLATFORMS[intent.kind || "custom"].label}` : `${intent.item ? "Edit " : ""}${BLOCK_META[intent.type].label}` : intent ? chooserTitle[intent.section] : "";
-  // The renderer receives event handlers; none read or write refs until invoked by an event.
-  // eslint-disable-next-line react-hooks/refs
-  const customItems = renderItems?.({ items: blocks, controls });
-  return <>
-    <div className="flex min-w-0 flex-col gap-5">
-      {renderItems ? customItems : SECTIONS.map(section => <Section key={section.key} section={section} blocks={blocks.filter(block => (BLOCK_SECTIONS[section.key] as readonly string[]).includes(block.type))} profileId={profileId} sceneId={sceneId} mutateItem={mutate} onAdd={trigger => open(section.key, trigger)} onEdit={(item, trigger) => void edit(section.key, item, trigger)} onRemove={(item, trigger) => { returnFocus.current = trigger; setIntent({ section: section.key, remove: item }); }} />)}
-    </div>
-    <Dialog.Root open={!!intent} onOpenChange={next => { if (!next) requestLeave("close"); }}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/30" />
-        <Dialog.Viewport className="fixed inset-x-0 top-0 z-50 flex h-dvh items-center justify-center p-4 pt-[max(16px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]" style={viewport ? { top: `${top}px`, height: `${height}px` } : undefined}>
-          <Dialog.Popup aria-modal="true" initialFocus={heading} finalFocus={returnFocus} className="app-type flex max-h-full w-full max-w-[600px] flex-col overflow-hidden rounded-panel border bg-background text-foreground shadow-sm">
-            <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3 sm:px-5">
-              {intent?.type && !intent.item ? <Button type="button" size="touch" variant="ghost" aria-label="Back to choices" disabled={busy} onClick={() => requestLeave("back")} className="size-11 rounded-[10px] px-0"><ArrowLeft aria-hidden className="size-4" /></Button> : null}
-              <Dialog.Title ref={heading} tabIndex={-1} className="min-w-0 flex-1 text-section outline-none">{title}</Dialog.Title>
-              <Button type="button" size="touch" variant="ghost" aria-label="Close dialog" disabled={busy} onClick={() => requestLeave("close")} className="size-11 rounded-[10px] px-0"><X aria-hidden className="size-4" /></Button>
-            </header>
-            <Dialog.Description className="sr-only">{intent?.remove ? "Visitors will no longer see this item." : "Choose and edit what visitors see in this profile mode."}</Dialog.Description>
-            <div className="min-h-0 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin] sm:p-5">
-              {intent?.loading ? <p role="status" className="flex items-center gap-2 py-6 text-body text-fg-secondary"><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Loading item…</p> : intent?.all ? <AllChooser onChoose={(type, kind) => setIntent({ section: sectionFor(type), type, kind, content: kind ? { kind } : {} })} /> : intent && !intent.type && !intent.remove ? <Chooser section={intent.section} onChoose={(type, kind) => setIntent({ section: intent.section, type, kind, content: kind ? { kind } : {} })} /> : intent ? <form ref={form} onSubmit={submit} onFocusCapture={event => { if (event.target.matches("input,textarea,select")) activeField.current = event.target; }} onChange={() => setDirty(signature() !== baseline.current)} className="flex flex-col gap-5">
+  const editorForm = intent ? <form ref={form} onSubmit={submit} onFocusCapture={event => { if (event.target.matches("input,textarea,select")) activeField.current = event.target; }} onChange={() => setDirty(signature() !== baseline.current)} className="flex flex-col gap-5">
                 <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
                   {intent.remove ? <p className="text-body text-fg-secondary">Visitors will no longer see it. You can add it again later.</p> : intent.item?.type === "form" && intent.item.form ? <>
                     {(intent.item.form.useCount || 0) > 1 ? <p className="text-meta text-fg-secondary">Changes apply wherever this contact form is used.</p> : null}
@@ -197,22 +218,47 @@ function Editor({ profileId, sceneId, blocks, renderItems, actions }: { profileI
                 </fieldset>
                 {result?.error ? <p role="alert" className="text-body text-destructive">{result.error}</p> : null}
                 {result?.gaps?.map(gap => <p key={gap} className="text-meta text-fg-secondary">{gap}</p>)}
-                <footer className="flex flex-wrap justify-end gap-2.5 border-t pt-4">
+                <footer className={`border-t pt-4 [&>button]:min-h-11 ${inlineEditor ? "grid grid-cols-2 gap-2.5 [&>button]:w-full [&>button]:min-w-0 [&>button]:whitespace-normal" : "flex flex-wrap justify-end gap-2.5"}`}>
                   <Button type="button" size="touch" variant="outline" disabled={busy} onClick={() => requestLeave("close")} className="rounded-[10px]">Cancel</Button>
-                  <Button type="submit" size="touch" variant={intent.remove ? "destructive" : "action"} disabled={busy} className="gap-2 rounded-[10px]">{busy ? <><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />{intent.remove ? "Removing…" : intent.item ? "Saving…" : "Adding…"}</> : intent.remove ? "Remove" : intent.item ? "Save changes" : intent.type === "link" ? "Add link" : intent.type === "form" ? "Add contact form" : intent.section === "content" ? "Add content" : "Add action"}</Button>
+                  <Button type="submit" size="touch" variant={intent.remove ? "destructive" : "action"} disabled={busy} className="gap-2 rounded-[10px]">{busy ? <><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />{intent.remove ? "Removing…" : intent.item ? "Saving…" : "Adding…"}</> : intent.remove ? "Remove" : intent.item ? "Save changes" : intent.type === "link" ? inlineEditor ? `Add ${PLATFORMS[intent.kind || "custom"].label}` : "Add link" : intent.type === "form" ? "Add contact form" : intent.section === "content" ? "Add content" : "Add action"}</Button>
                 </footer>
-              </form> : null}
+              </form> : null;
+  const inlineContent = inlineEditor && intent && !intent.remove ? <section data-inline-editor aria-labelledby="inline-item-heading" className="border-y py-5">
+    <h3 id="inline-item-heading" ref={heading} tabIndex={-1} className="mb-4 text-section outline-none">{title}</h3>
+    {intent.loading ? <p role="status" className="text-body text-fg-secondary">Loading item...</p> : editorForm}
+  </section> : null;
+  // The renderer receives event handlers; none read or write refs until invoked by an event.
+  // eslint-disable-next-line react-hooks/refs
+  const customItems = renderItems?.({ items: blocks, controls, editor: inlineContent });
+  return <>
+    <div className="flex min-w-0 flex-col gap-5">
+      {renderItems ? customItems : SECTIONS.map(section => <Section key={section.key} section={section} blocks={blocks.filter(block => (BLOCK_SECTIONS[section.key] as readonly string[]).includes(block.type))} profileId={profileId} sceneId={sceneId} mutateItem={mutate} onAdd={trigger => open(section.key, trigger)} onEdit={(item, trigger) => void edit(section.key, item, trigger)} onRemove={(item, trigger) => { returnFocus.current = trigger; setIntent({ section: section.key, remove: item }); }} />)}
+    </div>
+    <Dialog.Root open={!!intent && (!inlineEditor || !!intent.remove)} onOpenChange={next => { if (!next) requestLeave("close"); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/30" />
+        <Dialog.Viewport className="fixed inset-x-0 top-0 z-50 flex h-dvh items-center justify-center p-4 pt-[max(16px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]" style={viewport ? { top: `${top}px`, height: `${height}px` } : undefined}>
+          <Dialog.Popup aria-modal="true" initialFocus={heading} finalFocus={returnFocus} className="app-type flex max-h-full w-full max-w-[600px] flex-col overflow-hidden rounded-panel border bg-background text-foreground shadow-sm">
+            <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3 sm:px-5">
+              {intent?.type && !intent.item ? <Button type="button" size="touch" variant="ghost" aria-label="Back to choices" disabled={busy} onClick={() => requestLeave("back")} className="size-11 rounded-[10px] px-0"><ArrowLeft aria-hidden className="size-4" /></Button> : null}
+              <Dialog.Title ref={heading} tabIndex={-1} className="min-w-0 flex-1 text-section outline-none">{title}</Dialog.Title>
+              <Button type="button" size="touch" variant="ghost" aria-label="Close dialog" disabled={busy} onClick={() => requestLeave("close")} className="size-11 rounded-[10px] px-0"><X aria-hidden className="size-4" /></Button>
+            </header>
+            <Dialog.Description className="sr-only">{intent?.remove ? "Visitors will no longer see this item." : "Choose and edit what visitors see in this profile mode."}</Dialog.Description>
+            <div className="min-h-0 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin] sm:p-5">
+              {intent?.loading ? <p role="status" className="flex items-center gap-2 py-6 text-body text-fg-secondary"><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Loading item…</p> : intent?.all ? <AllChooser onChoose={(type, kind) => setIntent({ section: sectionFor(type), type, kind, content: kind ? { kind } : {} })} /> : intent && !intent.type && !intent.remove ? <Chooser section={intent.section} onChoose={(type, kind) => setIntent({ section: intent.section, type, kind, content: kind ? { kind } : {} })} /> : editorForm}
             </div>
-            <Dialog.Root open={discard !== null} onOpenChange={next => { if (!next) setDiscard(null); }}>
-              <Dialog.Portal><Dialog.Backdrop className="fixed inset-0 z-[60] bg-foreground/30" /><Dialog.Popup finalFocus={() => activeField.current?.isConnected ? activeField.current : heading.current || returnFocus.current} className="app-type fixed top-1/2 left-1/2 z-[60] w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-panel border bg-background p-5 text-foreground shadow-sm">
-                <Dialog.Title className="text-section">Discard changes?</Dialog.Title><Dialog.Description className="mt-2 text-body text-fg-secondary">Your changes haven’t been saved.</Dialog.Description>
-                <div className="mt-5 flex flex-wrap justify-end gap-2"><Dialog.Close render={<Button size="touch" variant="outline" className="rounded-[10px]" />}>Keep editing</Dialog.Close><Button size="touch" variant="destructive" className="rounded-[10px]" onClick={() => { const action = discard; setDiscard(null); setDirty(false); if (action === "back" && intent) setIntent({ section: intent.section }); else close(); }}>Discard changes</Button></div>
-              </Dialog.Popup></Dialog.Portal>
-            </Dialog.Root>
+
           </Dialog.Popup>
         </Dialog.Viewport>
       </Dialog.Portal>
     </Dialog.Root>
+            <Dialog.Root open={discard !== null} onOpenChange={next => { if (!next) setDiscard(null); }}>
+              <Dialog.Portal><Dialog.Backdrop className="fixed inset-0 z-[60] bg-foreground/30" /><Dialog.Popup finalFocus={() => activeField.current?.isConnected ? activeField.current : heading.current || returnFocus.current} className="app-type fixed top-1/2 left-1/2 z-[60] w-[calc(100%_-_2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-panel border bg-background p-5 text-foreground shadow-sm">
+                <Dialog.Title className="text-section">Discard changes?</Dialog.Title><Dialog.Description className="mt-2 text-body text-fg-secondary">Your changes haven’t been saved.</Dialog.Description>
+                <div className="mt-5 flex flex-wrap justify-end gap-2"><Dialog.Close render={<Button size="touch" variant="outline" className="rounded-[10px]" />}>Keep editing</Dialog.Close><Button size="touch" variant="destructive" className="rounded-[10px]" onClick={() => { const action = discard; setDiscard(null); setDirty(false); if (action === "replace") { pendingChoice.current?.(); pendingChoice.current = null; } else if (action === "back" && intent) setIntent({ section: intent.section }); else close(); }}>Discard changes</Button></div>
+              </Dialog.Popup></Dialog.Portal>
+            </Dialog.Root>
   </>;
 }
 
