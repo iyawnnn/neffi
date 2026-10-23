@@ -1,8 +1,8 @@
 export type AppEnv = "development" | "preview" | "production";
 
 // Neon endpoint hostnames of the production project (hostnames are not secrets).
-// Empty until the production Neon project exists, so any production boot fails closed.
-export const PRODUCTION_DATABASE_HOSTS: readonly string[] = [];
+// neffi-production / lingering-mountain-71377561; pooled and direct names normalize to this host.
+export const PRODUCTION_DATABASE_HOSTS: readonly string[] = ["ep-gentle-cell-aoctmxkt.c-2.ap-southeast-1.aws.neon.tech"];
 
 const APP_ENVS: readonly AppEnv[] = ["development", "preview", "production"];
 

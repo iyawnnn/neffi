@@ -1,8 +1,37 @@
 import { describe, expect, test } from "vitest";
-import { assertDatabaseIsolation, resolveAppEnv } from "./isolation";
+import { assertDatabaseIsolation, PRODUCTION_DATABASE_HOSTS, resolveAppEnv } from "./isolation";
 
 const PROD = ["ep-prod-123.ap-southeast-1.aws.neon.tech"];
 const url = (host: string) => `postgresql://u:p@${host}/db?sslmode=require`;
+
+describe("registered production database", () => {
+  const host = "ep-gentle-cell-aoctmxkt.c-2.ap-southeast-1.aws.neon.tech";
+  const pooled = host.replace(".c-2.", "-pooler.c-2.");
+
+  test("registers only the separate neffi-production endpoint", () => {
+    expect(PRODUCTION_DATABASE_HOSTS).toEqual([host]);
+  });
+
+  test.each([host, pooled])("production accepts its endpoint %s", (endpoint) => {
+    expect(() => assertDatabaseIsolation("production", url(endpoint))).not.toThrow();
+  });
+
+  test.each(["development", "preview"] as const)("%s cannot use production", (environment) => {
+    for (const endpoint of [host, pooled]) {
+      expect(() => assertDatabaseIsolation(environment, url(endpoint))).toThrow(/production database/);
+    }
+  });
+
+  test("production rejects development and unknown endpoints", () => {
+    for (const endpoint of [
+      "ep-mute-block-azrjzr69.c-3.ap-southeast-1.aws.neon.tech",
+      "ep-mute-block-azrjzr69-pooler.c-3.ap-southeast-1.aws.neon.tech",
+      "ep-unknown.example.invalid",
+    ]) {
+      expect(() => assertDatabaseIsolation("production", url(endpoint))).toThrow(/registered production/);
+    }
+  });
+});
 
 describe("resolveAppEnv", () => {
   test("defaults to development when VERCEL_ENV is unset", () => {
