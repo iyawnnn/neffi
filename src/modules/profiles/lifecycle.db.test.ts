@@ -3,8 +3,9 @@ import { eq } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
 import { cards, formDefinitions, formSubmissions, profiles, sceneBlocks, scenes } from "@/db/schema";
 import { insertAccount, insertReleasedDbc } from "@/db/test-fixtures";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter, deleteProfile, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
+import { deleteProfile, publishProfile, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -13,7 +14,7 @@ async function setup(tx: TestTx) {
   const owner = await insertAccount(tx);
   const { card } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
-  const { profileId } = await createProfileFromStarter(tx, { accountId: owner.id, cardId: card.id, purpose: "get_clients", essentials: { fullName: "Ana", headline: "Designer", bio: null, email: "ana@e.test", phone: null, link: null } });
+  const { profileId } = await createSetupTestProfile(tx, { accountId: owner.id, cardId: card.id, identity, content: [{ type: "form", content: {}, preset: "project_inquiry" }, { type: "contact", content: { saveContact: true } }] });
   return { card, input: { accountId: owner.id, profileId } };
 }
 const row = async (tx: TestTx, id: string) => (await tx.select().from(profiles).where(eq(profiles.id, id)))[0];

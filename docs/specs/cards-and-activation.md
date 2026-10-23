@@ -37,7 +37,7 @@ Reserve moves specific Ready DBCs of the item's product to Reserved against an o
 
 Code outcomes: *invalid* (unknown), *yours* (already your card; goes to `/app`), *claimable* (unused, unrevoked, DBC, Released, no owner), *unavailable* (anything else: used elsewhere, revoked, unsold, retired). Messages are generic and reveal nothing about other Accounts. Limits: 20 checks per IP and 10 claims per Account per 10 minutes.
 
-After a claim, `/app` shows the card under **Ready to set up** until a Profile is connected. Setup can resume without the code. **Planned:** a successful claim redirects straight into guided setup for that card ([spec](profile-customization-onboarding.md#81-where-it-sits)).
+After a claim, `/app` shows the card under **Ready to set up** until a Profile is connected. Setup can resume without the code. A successful claim redirects straight into guided setup for that card ([spec](profile-customization-onboarding.md#81-where-it-sits)).
 
 ## Ownership, routing and disable
 

@@ -116,7 +116,7 @@ test("uses real details, appearance and card destinations with safe identifiers"
 test("publish requirements provide direct recovery links and do not claim drafts are public", async () => {
   m.profile.mockResolvedValue({ ...profile(), defaultSceneId: "s1", gaps: ["name", "contact", "content"] });
   const html = await render();
-  for (const text of ["Before you publish", "Add your full name.", "Edit details", "Edit main scene"]) {
+  for (const text of ["Before you publish", "Add your full name.", "Edit details", "Edit profile mode"]) {
     expect(html).toContain(text);
   }
 });
@@ -124,4 +124,12 @@ test("publish requirements provide direct recovery links and do not claim drafts
 test("unknown profile is not found", async () => {
   m.profile.mockResolvedValue(null);
   await expect(render()).rejects.toThrow("NOT_FOUND");
+});
+
+test("hub and publish recovery use customer terminology", async () => {
+  m.profile.mockResolvedValue({ ...profile(), defaultSceneId: "s1", gaps: ["content"] });
+  const html = await render();
+  const text = html.replace(/<[^>]*>/g, " ");
+  expect(text).not.toMatch(/\b(scene|block|theme)s?\b/i);
+  for (const label of ["Your details", "Profile mode", "Appearance"]) expect(text).toContain(label);
 });

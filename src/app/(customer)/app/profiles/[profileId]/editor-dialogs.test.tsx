@@ -108,3 +108,11 @@ test("multiple connected cards block deletion and offer card management recovery
   expect(html).not.toContain("<form");
   expect(html).not.toContain('type="submit"');
 });
+
+test("legacy add-mode form also uses customer terminology", async () => {
+  const { AddSceneForm } = await import("./profile-forms");
+  const html = renderToStaticMarkup(<AddSceneForm profileId="p1" scenes={[]} />);
+  expect(html).toContain("Mode name");
+  expect(html).toContain("Add mode");
+  expect(html.replace(/<[^>]*>/g, " ")).not.toMatch(/\b(scene|block|theme)s?\b/i);
+});

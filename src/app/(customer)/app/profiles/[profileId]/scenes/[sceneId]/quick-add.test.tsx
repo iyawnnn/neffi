@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { ModeEditor } from "./mode-editor";
+import { ModeEditor, type ModeEditorControls } from "./mode-editor";
 import { PRESETS } from "@/modules/forms/config";
 
 const m = vi.hoisted(() => ({ mutate: vi.fn(), load: vi.fn(), refresh: vi.fn() }));
@@ -209,4 +209,30 @@ test("new platform edits use the existing modal and preserve kind", async () => 
   await input("url", "discord.gg/new"); await submit();
   const data = m.mutate.mock.calls[0][0] as FormData;
   expect(data.get("operation")).toBe("update"); expect(data.get("kind")).toBe("discord");
+});
+
+test("renderItems reuses the Custom link dialog and pre-fills Resume", async () => {
+  let controls: ModeEditorControls | undefined;
+  await act(async () => root.render(<ModeEditor profileId="p1" sceneId="s1" blocks={blocks} renderItems={({ controls: next }) => { controls = next; return <button type="button" onClick={event => next.choose("link", "custom", "Resume", event.currentTarget)}>Add Resume</button>; }} />));
+  await click("Add Resume", host);
+  expect(dialog().querySelector<HTMLInputElement>('[name="kind"]')!.value).toBe("custom");
+  expect(dialog().querySelector<HTMLInputElement>('[name="label"]')!.value).toBe("Resume");
+  expect(controls).toBeDefined();
+});
+
+test("renderItems opens the existing chooser for every human section", async () => {
+  await act(async () => root.render(<ModeEditor profileId="p1" sceneId="s1" blocks={blocks} renderItems={({ controls }) => <button type="button" onClick={event => controls.openAll(event.currentTarget)}>Add something else</button>} />));
+  await click("Add something else", host);
+  expect(dialog().textContent).toContain("Socials & links");
+  expect(dialog().textContent).toContain("Content");
+  expect(dialog().textContent).toContain("Actions");
+});
+
+test("renderItems uses injected item actions", async () => {
+  const load = vi.fn().mockResolvedValue({ ...blocks[0], sceneId: "s1", form: null });
+  const mutate = vi.fn().mockResolvedValue({ ok: true });
+  await act(async () => root.render(<ModeEditor profileId="p1" sceneId="s1" blocks={blocks} actions={{ load, mutate }} renderItems={({ controls }) => <button type="button" onClick={event => controls.edit(blocks[0], event.currentTarget)}>Edit injected</button>} />));
+  await click("Edit injected", host);
+  await vi.waitFor(() => expect(load).toHaveBeenCalledWith("p1", "s1", "b1"));
+  expect(m.load).not.toHaveBeenCalled();
 });

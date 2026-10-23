@@ -7,8 +7,9 @@ import { db } from "@/db";
 import type { Db } from "@/modules/db";
 import { connectCardToProfile } from "@/modules/cards/manage";
 import { ProfileError } from "@/modules/profiles/errors";
-import { createProfileFromSetup, getOwnedProfile, lockOwnedProfile, setProfileGoal, updateIdentity, upsertContactBlock } from "@/modules/profiles/profiles";
-import { emailSchema, identitySchema, linkSchema, type Identity } from "@/modules/profiles/rules";
+import { createProfileFromSetup, getOwnedProfile, lockOwnedProfile, publishProfile, setProfileGoal, updateAppearance, updateIdentity, upsertContactBlock } from "@/modules/profiles/profiles";
+import { ACCENTS, COLOR_MODES, LAYOUTS } from "@/modules/profiles/appearance-options";
+import { emailSchema, identitySchema, linkSchema, PUBLISH_GAP_COPY, type Identity } from "@/modules/profiles/rules";
 import { isGoal } from "@/modules/profiles/goals";
 import { ownedCards } from "@/modules/cards/owned";
 import { fieldMessages, identityPhone, type DetailKey } from "../../profiles/[profileId]/identity/identity-values";
@@ -115,6 +116,64 @@ export async function saveContactAction(_previous: SetupState | undefined, data:
   }
   if (failure) return failure;
   redirect(`/app/setup/${cardId}?step=links`);
+}
+
+export async function saveLookAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
+  const accountId = await viewerId();
+  const cardId = uuid(text(data, "cardId"));
+  const layout = z.enum(LAYOUTS).safeParse(text(data, "layout"));
+  if (!layout.success) return invalid(["layout"]);
+  try {
+    await withRoutedDraft(accountId, cardId, async (tx, profile) => updateAppearance(tx, {
+      accountId, profileId: profile.id, layout: layout.data, colorMode: profile.colorMode,
+      accentColor: profile.accentColor ?? ACCENTS[0].hex,
+    }));
+  } catch (error) {
+    if (error instanceof ProfileError) notFound();
+    throw error;
+  }
+  redirect(`/app/setup/${cardId}?step=style`);
+}
+
+export async function saveStyleAction(_previous: SetupState | undefined, data: FormData): Promise<SetupState> {
+  const accountId = await viewerId();
+  const cardId = uuid(text(data, "cardId"));
+  const style = z.object({
+    colorMode: z.enum(COLOR_MODES),
+    accentColor: z.string().refine(value => ACCENTS.some(accent => accent.hex === value)),
+  }).safeParse({ colorMode: text(data, "colorMode"), accentColor: text(data, "accentColor") });
+  if (!style.success) return invalid(style.error.issues.map(issue => String(issue.path[0])));
+  try {
+    await withRoutedDraft(accountId, cardId, async (tx, profile) => updateAppearance(tx, {
+      accountId, profileId: profile.id, layout: profile.layout, ...style.data,
+    }));
+  } catch (error) {
+    if (error instanceof ProfileError) notFound();
+    throw error;
+  }
+  redirect(`/app/setup/${cardId}?step=review`);
+}
+
+export async function publishSetupAction(_previous: { error?: string; gaps?: string[] } | undefined, data: FormData): Promise<{ error?: string; gaps?: string[] }> {
+  const accountId = await viewerId();
+  const cardId = uuid(text(data, "cardId"));
+  const card = (await ownedCards(db, accountId)).find(card => card.id === cardId);
+  if (!card?.profileId) notFound();
+  try {
+    await db.transaction(async tx => {
+      const profile = await lockOwnedProfile(tx, accountId, card.profileId!);
+      if (profile.status === "published") return;
+      if (profile.status !== "draft") throw new ProfileError("not_found");
+      await publishProfile(tx, { accountId, profileId: profile.id });
+    });
+  } catch (error) {
+    if (error instanceof ProfileError) {
+      if (error.code === "not_found") notFound();
+      if (error.code === "not_ready") return { error: "Your Neffi isn't ready to publish yet.", gaps: error.gaps.map(gap => PUBLISH_GAP_COPY[gap]) };
+    }
+    return { error: "Couldn't publish your Neffi. Your profile is still saved. Try again." };
+  }
+  redirect(`/app/setup/${cardId}?step=done`);
 }
 
 export async function chooseProfileAction(data: FormData): Promise<void> {

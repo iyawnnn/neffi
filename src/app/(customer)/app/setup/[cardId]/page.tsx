@@ -10,12 +10,16 @@ import { and, eq } from "drizzle-orm";
 import { sceneBlocks } from "@/db/schema";
 import { env } from "@/config/env";
 import { imageUrl } from "@/integrations/media/cloudinary";
+import { sceneForEditing } from "@/modules/profiles/editor";
+import { SetupReview, SetupDone } from "./setup-review";
+import { SetupAppearance } from "./setup-appearance";
+import { SetupLinks } from "./setup-links";
 import { loadOwnerSceneView } from "@/modules/profiles/view";
-import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction } from "./actions";
+import { chooseProfileAction, continueGoalAction, saveYouAction, savePhotoAction, saveContactAction, saveLookAction, saveStyleAction, publishSetupAction } from "./actions";
 import { SETUP_STEPS } from "./setup-steps";
 import { SetupForm } from "./setup-form";
 import { SetupEditor } from "./setup-forms";
-import { GoalFields, SetupPlaceholder, SetupView } from "./setup-view";
+import { GoalFields, SetupView } from "./setup-view";
 import { previousStep, resolveStep } from "./setup-steps";
 
 export const instant = false;
@@ -52,6 +56,25 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
   const goal = isGoal(rawGoal) ? rawGoal : profile?.goal ?? null;
   const previous = previousStep(step);
   const backHref = previous ? `?step=${previous}${!profile && previous === "goal" && rawGoal !== undefined ? `&goal=${goal ?? ""}` : ""}` : "/app";
+  if (step === "done" && profile) return <SetupDone suffix={card.publicToken.slice(-4)} profileId={profile.id} token={card.publicToken} />;
+  if (step === "review" && profile) {
+    const view = await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId });
+    if (!view) notFound();
+    return <SetupReview suffix={card.publicToken.slice(-4)} cardId={card.id} profileId={profile.id} view={view} gaps={profile.gaps} action={publishSetupAction} />;
+  }
+  if ((step === "look" || step === "style") && profile) {
+    const view = await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId });
+    if (!view) notFound();
+    return <SetupAppearance key={step} step={step} cardId={card.id} suffix={card.publicToken.slice(-4)} goal={profile.goal} view={view} action={step === "look" ? saveLookAction : saveStyleAction} />;
+  }
+  if (step === "links" && profile) {
+    const [view, scene] = await Promise.all([
+      loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }),
+      sceneForEditing(db, viewer.accountId, profile.id, profile.defaultSceneId),
+    ]);
+    if (!view || !scene) notFound();
+    return <SetupLinks suffix={card.publicToken.slice(-4)} goal={goal} profileId={profile.id} sceneId={profile.defaultSceneId} blocks={scene.blocks} view={view} />;
+  }
   if (step === "you" || step === "photo" || step === "contact") {
     const view = profile ? await loadOwnerSceneView(db, { accountId: viewer.accountId, profileId: profile.id, sceneId: profile.defaultSceneId }) : null;
     const [contactBlock] = profile ? await db.select({ content: sceneBlocks.content }).from(sceneBlocks).where(and(eq(sceneBlocks.sceneId, profile.defaultSceneId), eq(sceneBlocks.type, "contact"))).limit(1) : [];
@@ -66,7 +89,7 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
           <input type="hidden" name="cardId" value={card.id} />
           <GoalFields goal={rawGoal !== undefined ? goal : profile ? profile.goal : undefined} />
         </SetupForm>
-      ) : profile ? <SetupPlaceholder step={step} profileId={profile.id} sceneId={profile.defaultSceneId} /> : null}
+      ) : null}
     </SetupView>
   );
 }

@@ -1,6 +1,6 @@
 # 0014 — Guided setup builds the first Profile; Goal only recommends
 
-**Status:** Accepted (2026-10-21; planned, not implemented). Replaces the three setup purposes (Network, Get Clients, Show My Work) described in [profiles and the public card](../specs/profiles-and-public-card.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md).
+**Status:** Implemented (2026-10-21). Replaces the three setup purposes (Network, Get Clients, Show My Work) described in [profiles and the public card](../specs/profiles-and-public-card.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md).
 
 ## Context
 

@@ -47,7 +47,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 
 - [Cards and activation](specs/cards-and-activation.md): inventory, provisioning, release, claim, credentials
 - [Profiles and the public card](specs/profiles-and-public-card.md): Profiles, Scenes, Blocks, Forms, Inbox, `/c/{token}`
-- [Profile layouts, appearance and guided setup](specs/profile-customization-onboarding.md): Classic/Editorial/Showcase, Light/Dark, accents, Goals, guided setup (planned)
+- [Profile layouts, appearance and guided setup](specs/profile-customization-onboarding.md): Classic/Editorial/Showcase, Light/Dark, accents, Goals, guided setup
 - [Profile mode editor](specs/profile-mode-editor.md): the Scene/Profile mode content editor
 - [Google Review Card](specs/google-review-card.md): the simple GRC model
 - [Orders and fulfilment](specs/orders-and-fulfillment.md)
@@ -73,9 +73,9 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | [0010](decisions/0010-environment-isolation.md) | Environment isolation |
 | [0011](decisions/0011-fresh-card-state-cached-scene-content.md) | Fresh Card state, cached Scene content, noindex |
 | [0012](decisions/0012-support-controlled-account-recovery.md) | Owner verification and new-inbox proof preserve the Account; no merge or code resend |
-| [0013](decisions/0013-universal-layouts-profile-appearance.md) | Universal layouts are presentations of one Profile model; appearance is Layout + Mode + Accent (planned) |
-| [0014](decisions/0014-guided-setup-and-goal.md) | Guided setup builds the first Profile; Goal only recommends (planned) |
-| [0015](decisions/0015-showcase-cover-image.md) | Showcase may show an optional cover image; the accent band is the fallback (planned) |
+| [0013](decisions/0013-universal-layouts-profile-appearance.md) | Universal layouts are presentations of one Profile model; appearance is Layout + Mode + Accent |
+| [0014](decisions/0014-guided-setup-and-goal.md) | Guided setup builds the first Profile; Goal only recommends |
+| [0015](decisions/0015-showcase-cover-image.md) | Showcase may show an optional cover image; the accent band is the fallback |
 
 ## Status
 
@@ -100,4 +100,3 @@ These Notion statements disagree with the repository or are stale. Notion is not
 ## Open questions
 
 - The final public domain and NFC origin.
-- `profiles.theme` exists in the schema but nothing reads or writes it. Its removal is planned in [0013](decisions/0013-universal-layouts-profile-appearance.md).

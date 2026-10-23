@@ -48,13 +48,15 @@ test("a revision changed during content resolution cannot render stale data", as
   m.load.mockResolvedValue(null);
   await expect(render()).rejects.toThrow("NOT_FOUND");
 });
-test("the signed-in owner sees the same public page with Edit and Switch scene", async () => {
+test("the signed-in owner sees the same public page with Edit and Switch mode", async () => {
   m.header.mockReturnValue(signCardRequest("TOKEN", { ...published, owner: true }));
   const html = await render();
   expect(html).toContain('href="/c/TOKEN/contact"');
   expect(html).toContain('href="/app/profiles/p1/scenes/s1"');
   expect(html).toContain('href="/app/profiles/p1"');
   expect(html).toContain("Only you see this");
+  expect(html).toContain("Switch mode");
+  expect(html.replace(/<[^>]*>/g, " ")).not.toMatch(/\b(scene|block|theme)s?\b/i);
   expect(html).not.toContain("ownerCardId");
 });
 test("only this segment disables prefetch and its metadata carries no profile data", () => {

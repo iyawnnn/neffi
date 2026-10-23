@@ -1,7 +1,6 @@
 "use client";
 
-import { Dialog } from "@base-ui/react/dialog";
-import { Eye, X } from "lucide-react";
+import { Eye } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { LocationCombobox } from "../../profiles/[profileId]/identity/location-c
 import { basicFields, detailValues, fieldMessages, mobileNumber, phoneInput, type DetailsProfile, type DetailKey } from "../../profiles/[profileId]/identity/identity-values";
 import type { SetupState } from "./actions";
 import { SetupForm } from "./setup-form";
+import { SetupPreviewDialog } from "./setup-preview";
 import { SetupView } from "./setup-view";
 import { setupDraft, type SetupImageUrls } from "./setup-draft";
 
@@ -99,8 +99,6 @@ export function SetupEditor({ step, cardId, suffix, goal, profile, view, imageUr
         <div className="flex flex-col gap-3"><Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={busy}>{pending ? "Saving..." : "Continue"}</Button>{step === "photo" && <Link href="?step=contact" className="inline-flex min-h-11 items-center justify-center rounded-lg text-body text-fg-secondary focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>}</div>
       </SetupForm>
     </SetupView>
-    <Dialog.Root open={previewOpen} onOpenChange={setPreviewOpen}><Dialog.Portal><Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/30" /><Dialog.Popup className="app-type fixed inset-0 z-50 flex flex-col bg-canvas text-foreground sm:inset-4 sm:mx-auto sm:max-w-[438px] sm:rounded-3xl sm:border">
-      <div className="flex items-center justify-between border-b bg-background px-4 py-3"><Dialog.Title className="text-section">Profile preview</Dialog.Title><Dialog.Close render={<Button type="button" size="touch" variant="ghost" className="size-11" aria-label="Close preview" />}><X aria-hidden className="size-5" /></Dialog.Close></div><Dialog.Description className="sr-only">Preview your current setup details. Close to continue editing.</Dialog.Description><div className="min-h-0 flex-1 overflow-y-auto"><div inert><ProfileRenderer view={preview} /></div></div>
-    </Dialog.Popup></Dialog.Portal></Dialog.Root>
+    <SetupPreviewDialog view={preview} open={previewOpen} onOpenChange={setPreviewOpen} />
   </>;
 }

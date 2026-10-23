@@ -3,8 +3,9 @@ import { asc, and, eq } from "drizzle-orm";
 import { beforeAll, expect, test, vi } from "vitest";
 import { cards, profiles, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertClaimedCard, insertProvisioningDbc, insertReadyDbc, insertReleasedDbc } from "@/db/test-fixtures";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
-import { createProfileFromStarter, publishProfile, unpublishProfile, updateIdentity } from "../profiles/profiles";
+import { publishProfile, unpublishProfile, updateIdentity } from "../profiles/profiles";
 import { createScene, showScene } from "../profiles/scenes";
 import { retireCard } from "./card";
 import { connectCardToProfile, setCardDisabled } from "./manage";
@@ -17,7 +18,7 @@ async function publishedCard(tx: TestTx, accountId?: string, fullName = "Ana") {
   const owner = accountId ?? (await insertAccount(tx)).id;
   const { card } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: owner }).where(eq(cards.id, card.id));
-  const { profileId } = await createProfileFromStarter(tx, { accountId: owner, cardId: card.id, purpose: "get_clients", essentials: { fullName, headline: "Designer", bio: null, email: "ana@e.test", phone: null, link: "https://cal.com/ana" } });
+  const { profileId } = await createSetupTestProfile(tx, { accountId: owner, cardId: card.id, goal: "business", identity: { fullName, headline: "Designer", company: null, bio: null, email: "ana@e.test", phone: null, website: null, location: null }, content: [{ type: "booking", content: { label: "", url: "https://cal.com/ana" } }, { type: "form", content: {}, preset: "project_inquiry" }, { type: "contact", content: { saveContact: true } }] });
   await publishProfile(tx, { accountId: owner, profileId });
   const [{ defaultSceneId }] = await tx.select({ defaultSceneId: profiles.defaultSceneId }).from(profiles).where(eq(profiles.id, profileId));
   return { accountId: owner, card: { ...card, ownerAccountId: owner }, profileId, defaultSceneId: defaultSceneId! };
@@ -29,7 +30,7 @@ test.each(["", "not a token!", "A".repeat(65), "ZZZZZZZZZZZZZZZZZZZZZZZZZZ"])("u
 }));
 test("a Published, enabled, claimed card resolves to its profile's Default Scene", () => rollback(db, async tx => {
   const c = await publishedCard(tx);
-  expect(await resolveCard(tx, c.card.publicToken!)).toEqual({ status: "published", cardId: c.card.id, ownerAccountId: c.accountId, profileId: c.profileId, sceneId: c.defaultSceneId, version: 0 });
+  expect(await resolveCard(tx, c.card.publicToken!)).toEqual({ status: "published", cardId: c.card.id, ownerAccountId: c.accountId, profileId: c.profileId, sceneId: c.defaultSceneId, version: 3 });
 }));
 test("the shown scene wins over the Default Scene", () => rollback(db, async tx => {
   const c = await publishedCard(tx);

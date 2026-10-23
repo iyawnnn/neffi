@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { expect, test } from "vitest";
 import * as s from "@/db/schema";
 import { createTestDb } from "@/db/testing";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { checkActivationCode, claimCard } from "@/modules/activation/claim";
 import { recordNfcCheck } from "@/modules/cards/card";
 import { matchPackage, provisionDbc } from "@/modules/cards/dbc";
@@ -18,7 +19,7 @@ import { handOverOrder, reserveDbcCards } from "@/modules/orders/fulfillment";
 import { loadOrderFacts } from "@/modules/orders/order";
 import { getOrderDetail } from "@/modules/orders/queries";
 import { recordPayment } from "@/modules/payments/record";
-import { createProfileFromStarter, publishProfile } from "@/modules/profiles/profiles";
+import { publishProfile } from "@/modules/profiles/profiles";
 import { loadVersionedPublicSceneView } from "@/modules/profiles/view";
 import { searchRecords } from "@/modules/search";
 
@@ -79,14 +80,16 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     expect((await db.select({ id: s.accounts.id }).from(s.accounts)).map(row => row.id).sort()).toEqual([owner.id, a.id, c.id].sort());
     expect((await db.select({ owner: s.cards.ownerAccountId }).from(s.cards).orderBy(asc(s.cards.id))).map(row => row.owner)).toEqual([a.id, c.id]);
 
-    const { profileId } = await createProfileFromStarter(db, { accountId: a.id, cardId: provisioned[0].cardId, purpose: "get_clients", essentials: { fullName: "Journey customer", headline: "Designer", bio: "Synthetic services", email: a.email, phone: null, link: "https://booking.example.invalid/journey" } });
+    const { profileId } = await createSetupTestProfile(db, { accountId: a.id, cardId: provisioned[0].cardId, goal: "freelance", identity: { fullName: "Journey customer", headline: "Designer", company: null, bio: "Synthetic services", email: a.email, phone: null, website: null, location: null }, content: [{ type: "contact", content: { saveContact: true } }, { type: "form", content: {}, preset: "project_inquiry" }] });
+    expect((await db.select({ status: s.profiles.status }).from(s.profiles).where(eq(s.profiles.id, profileId)))[0].status).toBe("draft");
+    expect((await resolvePublicExperience(db, provisioned[0].publicToken, key => loadVersionedPublicSceneView(db, key))).status).toBe("unavailable");
     await publishProfile(db, { accountId: a.id, profileId });
     const experience = await resolvePublicExperience(db, provisioned[0].publicToken, key => loadVersionedPublicSceneView(db, key));
     assert(experience.status === "published", "Published claimed Card must resolve");
     const [profile] = await db.select({ defaultSceneId: s.profiles.defaultSceneId }).from(s.profiles).where(eq(s.profiles.id, profileId));
     expect(experience.view.scene.id).toBe(profile.defaultSceneId);
     const form = experience.view.blocks.find(block => block.type === "form");
-    assert(form?.type === "form", "Get Clients starter must expose its public Form");
+    assert(form?.type === "form", "Explicitly added inquiry form must be public after publishing");
     const [definition] = await db.select({ preset: s.formDefinitions.preset }).from(s.formDefinitions).where(eq(s.formDefinitions.id, form.formId));
     expect(definition.preset).toBe("project_inquiry");
     const submitted = await submitForm(db, { formId: form.formId, clientKey: randomUUID(), answers: { name: "Synthetic visitor", email: "visitor@example.invalid", message: "Synthetic project inquiry" } });

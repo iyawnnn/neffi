@@ -2,12 +2,13 @@ import { asc, eq } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
 import { cards, formDefinitions, profiles, sceneBlocks } from "@/db/schema";
 import { insertAccount, insertReleasedDbc } from "@/db/test-fixtures";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { connectCardToProfile, setCardDisabled } from "../cards/manage";
 import { PRESETS } from "../forms/config";
 import { updateForm } from "../forms/forms";
 import { addBlock, deleteBlock, moveBlock, setBlockVisible, updateBlock } from "./blocks";
-import { createProfileFromStarter, publishProfile, setProfileGoal, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
+import { publishProfile, setProfileGoal, setProfileImage, unpublishProfile, updateAppearance, updateIdentity } from "./profiles";
 import { createScene, deleteScene, renameScene, showScene } from "./scenes";
 
 let db: TestDb;
@@ -17,7 +18,7 @@ async function setup(tx: TestTx) {
   const account = await insertAccount(tx);
   const { card } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: account.id }).where(eq(cards.id, card.id));
-  const { profileId } = await createProfileFromStarter(tx, { accountId: account.id, cardId: card.id, purpose: "get_clients", essentials: { fullName: "Ana", headline: null, bio: null, email: "ana@e.test", phone: null, link: "https://cal.com/ana" } });
+  const { profileId } = await createSetupTestProfile(tx, { accountId: account.id, cardId: card.id, identity: { fullName: "Ana", headline: null, company: null, bio: null, email: "ana@e.test", phone: null, website: null, location: null }, content: [{ type: "booking", content: { label: "", url: "https://cal.com/ana" } }, { type: "form", content: {}, preset: "project_inquiry" }, { type: "contact", content: { saveContact: true } }] });
   const [profile] = await tx.select().from(profiles).where(eq(profiles.id, profileId));
   const defaultSceneId = profile.defaultSceneId!;
   const blocks = await tx.select().from(sceneBlocks).where(eq(sceneBlocks.sceneId, defaultSceneId)).orderBy(asc(sceneBlocks.position));
@@ -76,6 +77,6 @@ test.each(steady)("%s leaves the content version alone", (_name, run) => rollbac
   await run(tx, c);
   expect(await version(tx, c.profileId)).toBe(before);
 }));
-test("a new profile starts at version 0", () => rollback(db, async tx => {
-  expect(await version(tx, (await setup(tx)).profileId)).toBe(0);
+test("explicit setup content advances the version once per item", () => rollback(db, async tx => {
+  expect(await version(tx, (await setup(tx)).profileId)).toBe(3);
 }));

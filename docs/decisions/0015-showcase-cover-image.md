@@ -1,6 +1,6 @@
 # 0015 — Showcase may show an optional cover image
 
-**Status:** Accepted (2026-10-22; planned, not implemented). Amends [0013](0013-universal-layouts-profile-appearance.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md) §4, §7.4 and §10.
+**Status:** Implemented (2026-10-22). Amends [0013](0013-universal-layouts-profile-appearance.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md) §4, §7.4 and §10.
 
 ## Context
 

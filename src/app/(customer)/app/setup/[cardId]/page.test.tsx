@@ -1,14 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn(), view: vi.fn(), limit: vi.fn() }));
+const m = vi.hoisted(() => ({ requireAccount: vi.fn(), ownedCards: vi.fn(), ownedProfiles: vi.fn(), getOwnedProfile: vi.fn(), view: vi.fn(), limit: vi.fn(), scene: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: m.limit }) }) }) } }));
 vi.mock("@/modules/cards/owned", () => ({ ownedCards: m.ownedCards }));
 vi.mock("@/modules/profiles/profiles", () => ({ ownedProfiles: m.ownedProfiles, getOwnedProfile: m.getOwnedProfile }));
-vi.mock("./actions", () => ({ saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
+vi.mock("./actions", () => ({ publishSetupAction: vi.fn(), saveLookAction: vi.fn(), saveStyleAction: vi.fn(), saveYouAction: vi.fn(), savePhotoAction: vi.fn(), saveContactAction: vi.fn(), chooseProfileAction: vi.fn(), continueGoalAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); }, notFound: () => { throw new Error("NOT_FOUND"); } }));
 vi.mock("@/modules/profiles/view", () => ({ loadOwnerSceneView: m.view }));
 vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
+vi.mock("@/modules/profiles/editor", () => ({ sceneForEditing: m.scene }));
+import { setupDraft } from "./setup-draft";
 import SetupPage from "./page";
 const render = async (query: Record<string, string | string[]> = {}) => renderToStaticMarkup(await SetupPage({ params: Promise.resolve({ cardId: "c1" }), searchParams: Promise.resolve(query) }));
 beforeEach(() => {
@@ -18,6 +20,7 @@ beforeEach(() => {
   m.ownedProfiles.mockResolvedValue([]);
   m.view.mockResolvedValue(null);
   m.limit.mockResolvedValue([]);
+  m.scene.mockResolvedValue({ blocks: [] });
 });
 function draft(gaps: string[] = ["contact", "content"]) {
   m.ownedCards.mockResolvedValue([{ id: "c1", publicToken: "TESTWXYZ", profileId: "p1" }]);
@@ -76,8 +79,33 @@ test("published route redirects hub except explicit done shell", async () => {
   expect(await render({ step: "done" })).toContain("Your Neffi is live");
 });
 test("Draft cannot enter done, and reload keeps explicit allowed step", async () => {
-  draft();
+  draft(); m.view.mockResolvedValue(setupDraft(null, { fullName: "Ana" }));
   await expect(render({ step: "done" })).rejects.toThrow("REDIRECT:?step=contact");
   expect(await render({ step: "style" })).toContain("Make it yours");
   expect(await render({ step: "style" })).toContain("Make it yours");
+});
+
+test("Links loads the owned Default mode and real view without creating content", async () => {
+  draft(); m.view.mockResolvedValue(setupDraft(null, { fullName: "Ana" }));
+  const html = await render({ step: "links" });
+  expect(html).toContain("Messaging &amp; community");
+  expect(html).toContain("Added links");
+  expect(html).toContain('href="?step=look"');
+  expect(m.scene).toHaveBeenCalledWith(expect.anything(), "a1", "p1", "s1");
+  expect(m.view).toHaveBeenCalledWith(expect.anything(), { accountId: "a1", profileId: "p1", sceneId: "s1" });
+});
+
+test.each(["look", "style"])("%s loads the real owner view instead of a placeholder", async step => {
+ draft([]); m.view.mockResolvedValue(setupDraft(null, {fullName: "Ana"}));
+ const html = await render({step}); expect(html).toContain('data-setup-appearance-preview');
+ expect(html).not.toContain("editor is coming"); expect(m.view).toHaveBeenCalledWith(expect.anything(),{accountId:"a1",profileId:"p1",sceneId:"s1"});
+});
+
+test("Review shows the real profile, restrained card summary, canonical gaps, Fix and Change links",async()=>{
+ draft(["name","contact","content"]);m.view.mockResolvedValue(setupDraft(null,{fullName:"Ana"}));
+ const html=await render({step:"review"});expect(html).toContain('data-layout=');expect(html).not.toContain('inert=');expect(html).toContain('href="?step=you"');expect(html).toContain('href="?step=contact"');expect(html).toContain('Change');expect(html).toContain('Publish');expect(html).toContain('Card ending in WXYZ');expect((html.match(/Card ending in WXYZ/g) ?? [])).toHaveLength(1);expect(html).toContain('This card will open this profile once published.');expect(html).toContain('data-neffi-card');expect(html).toContain('data-setup-review-row="you"');expect(html).toContain('neffi-appearance-preview-scroll');expect(html).toContain('aria-label="Scrollable profile preview"');expect(html).not.toContain('editor is coming');expect(html).not.toContain('Active');
+});
+test("Done links to this card's public page, customization and Home",async()=>{
+ draft([]);m.getOwnedProfile.mockResolvedValue({id:"p1",status:"published",gaps:[]});
+ const html=await render({step:"done"});expect(html).toContain('href="/c/TESTWXYZ"');expect(html).toContain('target="_blank"');expect(html).toContain('href="/app/profiles/p1"');expect(html).toContain('Go to Home');expect(html).not.toContain('Publish</button>');
 });

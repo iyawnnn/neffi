@@ -1,6 +1,6 @@
 # Profile mode editor: design and implementation specification
 
-**Date:** 2026-10-18. **State:** UX direction locked by the maintainer; implementation specification awaiting review. This document describes the target, not a claim that it is implemented. No implementation is authorized by this documentation pass.
+**Date:** 2026-10-18. **State:** Implemented. The editor is aligned with the grouped public layouts ([0013](../decisions/0013-universal-layouts-profile-appearance.md)); Appearance (layout, mode, accent, cover) has its own route.
 
 **Route:** `/app/profiles/[profileId]/scenes/[sceneId]`.
 

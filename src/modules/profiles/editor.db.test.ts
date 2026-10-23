@@ -2,10 +2,10 @@ import { eq } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
 import { cards, profiles } from "@/db/schema";
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
+import { createSetupTestProfile } from "@/db/setup-test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { addBlock } from "./blocks";
 import { blockForEditing, sceneForEditing } from "./editor";
-import { createProfileFromStarter } from "./profiles";
 import { createScene } from "./scenes";
 
 let db: TestDb;
@@ -14,7 +14,7 @@ async function setup(tx: TestTx) {
   const owner = await insertAccount(tx);
   const { card } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: owner.id }).where(eq(cards.id, card.id));
-  const { profileId } = await createProfileFromStarter(tx, { accountId: owner.id, cardId: card.id, purpose: "network", essentials: { fullName: "Ana", headline: null, bio: "A".repeat(80), email: "ana@e.test", phone: null, link: "https://github.com/ana" } });
+  const { profileId } = await createSetupTestProfile(tx, { accountId: owner.id, cardId: card.id, goal: "networking", identity: { fullName: "Ana", headline: null, company: null, bio: "A".repeat(80), email: "ana@e.test", phone: null, website: null, location: null }, content: [{ type: "contact", content: { saveContact: true } }, { type: "link", content: { kind: "custom", label: "", url: "https://github.com/ana" } }, { type: "about", content: { text: "A".repeat(80) } }, { type: "form", content: {}, preset: "connect" }] });
   const [profile] = await tx.select().from(profiles).where(eq(profiles.id, profileId));
   return { accountId: owner.id, profileId, sceneId: profile.defaultSceneId! };
 }
