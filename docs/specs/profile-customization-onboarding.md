@@ -1,6 +1,6 @@
 # Spec: Profile layouts, appearance and guided setup
 
-**Date:** 2026-10-21. **State:** Planned. Architecture locked by the maintainer. Nothing in this spec is implemented yet. Current behavior stays as described in [profiles and the public card](profiles-and-public-card.md) and [cards and activation](cards-and-activation.md) until each implementation task lands and updates those specs. The task sequence is in [the implementation plan](../superpowers/plans/2026-10-21-profile-customization-onboarding.md). That plan is not a specification.
+**Date:** 2026-10-21. **State:** Implemented (T2–T15). Architecture locked by the maintainer. Current behavior is described here, in [profiles and the public card](profiles-and-public-card.md) and in [cards and activation](cards-and-activation.md). The task sequence is in [the implementation plan](../superpowers/plans/2026-10-21-profile-customization-onboarding.md). That plan is not a specification.
 
 Decisions: [0013 universal layouts and Profile appearance](../decisions/0013-universal-layouts-profile-appearance.md), [0014 guided setup and Goal](../decisions/0014-guided-setup-and-goal.md), [0015 optional Showcase cover image](../decisions/0015-showcase-cover-image.md). Related: [0003](../decisions/0003-profile-scene-model.md), [0011](../decisions/0011-fresh-card-state-cached-scene-content.md), [profile mode editor](profile-mode-editor.md), [customer UI](../architecture/customer-ui.md), [marketing UI](../architecture/marketing-ui.md).
 

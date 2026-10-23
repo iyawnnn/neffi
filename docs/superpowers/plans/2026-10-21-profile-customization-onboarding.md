@@ -1,7 +1,7 @@
 # Profile layouts, appearance and guided setup — Implementation Plan
 
 > **Canonical path:** `docs/superpowers/plans/2026-10-21-profile-customization-onboarding.md`. This is a plan, not a specification. Behavior is defined by [the spec](../../specs/profile-customization-onboarding.md), [0013](../../decisions/0013-universal-layouts-profile-appearance.md), [0014](../../decisions/0014-guided-setup-and-goal.md) and [0015](../../decisions/0015-showcase-cover-image.md). If this plan and the spec disagree, the spec wins; stop and report.
-> **Status:** T1 (architecture/spec/docs lock) committed on `main` 2026-10-21. T2–T6 merged to `main` (`395ee83`). T7 is implemented and visually approved but not yet committed. 2026-10-22: the optional Showcase cover was added as tasks T8a–T8c ([0015](../../decisions/0015-showcase-cover-image.md)); T7 is committed unchanged. T8 onward not started. Codex is the sole implementer.
+> **Status:** T1 (architecture/spec/docs lock) committed on `main` 2026-10-21. T2–T6 merged to `main` (`395ee83`). 2026-10-22: the optional Showcase cover was added as tasks T8a–T8c ([0015](../../decisions/0015-showcase-cover-image.md)). All tasks T2–T15 are implemented. Manual physical acceptance (real phone, real NFC tap, live Cloudinary) is pending.
 
 ## Context
 

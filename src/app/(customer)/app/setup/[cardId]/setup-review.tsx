@@ -32,7 +32,7 @@ function ReviewRows({ view }: { view: SceneView }) {
     { step: "style", label: "Colours", summary: `${view.appearance.mode === "dark" ? "Dark" : "Light"} · ${accent}`, Icon: Palette },
   ] as const;
   return <section aria-labelledby="setup-changes" className="border-t pt-5"><h2 id="setup-changes" className="text-section">Your setup</h2><ul className="mt-2 divide-y divide-border">
-    {rows.map(({ step, label, summary, Icon }) => <li key={step} data-setup-review-row={step}><Link href={`?step=${step}`} className="flex min-h-14 items-center gap-3 rounded-lg py-2 pr-1 focus-visible:outline-2 focus-visible:outline-brand">
+    {rows.map(({ step, label, summary, Icon }) => <li key={step} data-setup-review-row={step}><Link href={`?step=${step}`} className="flex min-h-12 items-center gap-3 rounded-lg py-2 pr-1 focus-visible:outline-2 focus-visible:outline-brand">
       <Icon aria-hidden className="size-4 shrink-0 text-fg-secondary" /><span className="min-w-0 flex-1"><span className="block text-body font-medium">{label}</span>{summary && <span className="block truncate text-meta text-fg-secondary">{summary}</span>}</span><span className="inline-flex min-h-11 items-center text-meta font-medium text-action-text underline underline-offset-4">Change</span>
     </Link></li>)}
   </ul></section>;

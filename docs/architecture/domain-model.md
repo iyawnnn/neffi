@@ -59,7 +59,7 @@ Eligible means: at least one item; every DBC item has its full quantity Released
 
 **Shipment:** `in_transit ⇄ delivered | failed | returned | lost` (status only; never reopens the Order).
 
-**Profile:** `draft → published ⇄ unpublished`. Publish needs a name, one contact method (phone, email or website) and a visible Block in the Default Scene. **Planned:** Profile appearance gains a layout (Classic, Editorial, Showcase) and a colour mode (Light, Dark), and a nullable recommendation-only Goal is added ([0013](../decisions/0013-universal-layouts-profile-appearance.md), [0014](../decisions/0014-guided-setup-and-goal.md)). An optional Showcase cover image (Cloudinary id, stored size and a 3:1 crop) is stored on the Profile, separately from the photo/logo ([0015](../decisions/0015-showcase-cover-image.md)).
+**Profile:** `draft → published ⇄ unpublished`. Publish needs a name, one contact method (phone, email or website) and a visible Block in the Default Scene. Profile appearance holds a layout (Classic, Editorial, Showcase) and a colour mode (Light, Dark), and a nullable recommendation-only Goal ([0013](../decisions/0013-universal-layouts-profile-appearance.md), [0014](../decisions/0014-guided-setup-and-goal.md)). An optional Showcase cover image (Cloudinary id, stored size and a 3:1 crop) is stored on the Profile, separately from the photo/logo ([0015](../decisions/0015-showcase-cover-image.md)).
 
 ## Derived values (never stored)
 
