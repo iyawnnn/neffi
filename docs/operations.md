@@ -8,11 +8,11 @@ Procedures for setting up, migrating, deploying, provisioning and verifying Neff
 |---|---|---|
 | Local development | Neon `neffi-dev` | `.env.local` (git-ignored) |
 | Vercel Preview | Neon `neffi-dev` | Vercel env vars, Preview scope |
-| Production / pilot | Separate production Neon project (not created yet) | Vercel env vars, Production scope only |
+| Production / pilot | Neon `neffi-production` (separate project) | Vercel env vars, Production scope only |
 
 Safeguards:
 
-- `src/config/isolation.ts` refuses a production database host outside production, and in production refuses any host not listed in `PRODUCTION_DATABASE_HOSTS`. That list is empty until the production project exists, so a production deployment currently fails closed by design.
+- `src/config/isolation.ts` refuses a production database host outside production, and in production refuses any host not listed in `PRODUCTION_DATABASE_HOSTS`. Only the verified `neffi-production` endpoint is registered; an empty list still fails closed.
 - The migration config uses the same guard.
 - Database, auth and env modules import `server-only`, so a Client Component importing them fails the build.
 - CI runs `check:bundle` so server secret values cannot ship in client bundles or prerendered pages.
@@ -26,6 +26,50 @@ Safeguards:
 4. Enable "Automatically expose System Environment Variables".
 5. After explicit push approval, push a branch and check `<preview-url>/api/health` and `<preview-url>/api/auth/ok`. Complete the auth Preview checks below; keep Vercel Authentication enabled.
 
+## Production setup (infrastructure acceptance)
+
+Use `https://getneffi.com` as the permanent Production site, auth and NFC origin. Keep Cloudflare as DNS provider; do not move nameservers to Vercel. The Vercel URL is a deployment/debug fallback, not the card origin. `www.getneffi.com` redirects to the apex.
+
+Production uses Neon project `neffi-production` (`lingering-mountain-71377561`), default branch `production` (`br-damp-tree-aodwri8s`), database `neffi`, PostgreSQL 18 in Singapore (`aws-ap-southeast-1`). The registered direct hostname is `ep-gentle-cell-aoctmxkt.c-2.ap-southeast-1.aws.neon.tech`; the pooled endpoint inserts `-pooler` before `.c-2`. Never put either connection string into `.env.local`, Preview or Development.
+
+Configure these in **Vercel > neffi > Settings > Environment Variables > Production** only:
+
+| Class | Variable | Production value/source |
+|---|---|---|
+| Secret | `DATABASE_URL` | New Production database, pooled connection |
+| Secret, operator-only | `DATABASE_URL_UNPOOLED` | Same Production database, direct connection; not read by the app |
+| Secret | `BETTER_AUTH_SECRET` | New cryptographically random secret, at least 32 characters; never reuse development |
+| Nonsecret, server-only | `BETTER_AUTH_URL` | `https://getneffi.com` (explicitly required in Production) |
+| Nonsecret, server-only | `GOOGLE_CLIENT_ID` | Approved Production OAuth web client |
+| Secret | `GOOGLE_CLIENT_SECRET` | Matching Production OAuth client secret |
+| Secret | `RESEND_API_KEY` | Approved Production send-only credential |
+| Nonsecret, server-only | `AUTH_EMAIL_FROM` | Approved sender on a verified sending domain; no invented mailbox |
+| Nonsecret, optional server-only | `SUPPORT_REPLY_TO` | Approved monitored support address |
+| Secret | `ACTIVATION_CODE_SECRET` | New cryptographically random secret, at least 32 characters; retain after any credentials are issued |
+| Nonsecret, server-only | `CARD_URL_ORIGIN` | `https://getneffi.com`; never use `*.vercel.app` for customer cards |
+| Nonsecret, server-only | `CLOUDINARY_CLOUD_NAME` | Approved Production Cloudinary product environment, separate from development |
+| Nonsecret, server-only | `CLOUDINARY_API_KEY` | Matching Production media key |
+| Secret | `CLOUDINARY_API_SECRET` | Matching Production media secret |
+| Browser-public, optional in schema | `NEXT_PUBLIC_SENTRY_DSN` | Approved Sentry project DSN; required to verify monitoring |
+
+Enable Vercel's automatic system variables. `VERCEL_ENV` and `NEXT_PUBLIC_VERCEL_ENV` must be `production`; `VERCEL_BRANCH_URL` is platform-provided and is not the Production auth origin. Sentry source-map uploads/release creation remain disabled in Next config; setting `SENTRY_AUTH_TOKEN` alone does not enable them.
+
+Generate auth/activation secrets with a cryptographically secure generator (at least 32 random bytes), transfer directly into the secret store, and never log, document or screenshot their values. Do not copy the development/Preview provider configuration into Production without confirming the provider environment and authorization.
+
+Before deployment:
+
+1. Add the apex and `www` to the existing Vercel project. Inspect Vercel's current domain configuration for the exact recommended A/CNAME and any verification TXT records. Enter them in Cloudflare with **DNS only / grey cloud**, TTL **Auto**; never guess targets. Keep unrelated mail/TXT records. Verify domain routing and HTTPS before any customer provisioning.
+2. Register the exact Google callback `https://getneffi.com/api/auth/callback/google` in the approved OAuth client. Google Console changes are a manual operator step unless separately authorized. Do not substitute the fallback deployment hostname as the permanent callback.
+3. Verify the approved Resend sender domain using the exact DNS records supplied by Resend. A `resend.dev` test sender can deliver only to the Resend account owner's inbox; it is not customer-email readiness. Do not send unsolicited test messages.
+4. Confirm Production Cloudinary credentials and approve the one-image upload/confirm/delivery/replace/remove test. Reuse the signed upload pipeline. Never use the development media environment by assumption.
+5. Configure Sentry and inspect one controlled exception in environment `production`. Confirm absence of cookies, body, query strings, sensitive headers, tokens, OTPs and activation codes; use no real credentials in the test. Without dashboard access, record this as unverified.
+6. Merge the reviewed isolation registration into `main` through the normal repository workflow. Deploy that exact `main` commit, not an arbitrary feature branch. Retain access protection; verify that it covers the custom Production domain, since `all_except_custom_domains` does not establish protection there. Do not treat a successful build as public launch.
+7. Smoke-test the real deployment: public/health/auth routes, redirects, ownership/private routes, Draft/setup/editor/Appearance, all layouts, Publish/public card/contact/vCard, approved media, CSP/nosniff/frame blocking, HTTPS/session cookies, forbidden Origin and public/private cache behavior. Use only approved synthetic acceptance data; never customer data.
+
+**Customer NFC gate:** do not program customer cards until `getneffi.com` is connected, HTTPS is valid, `CARD_URL_ORIGIN=https://getneffi.com`, and final card-route checks pass. Card records store tokens, not the temporary deployment hostname. Canonical/metadata origin work will use `getneffi.com` in the later SEO audit; do not start SEO or present unfinished legal pages as final during infrastructure acceptance.
+
+The dated setup evidence and manual DNS/provider gates are in [the Production readiness record](verification/2026-10-23-production-readiness.md).
+
 ## Database migrations
 
 PostgreSQL is the source of truth; Neon is replaceable hosting.
@@ -35,9 +79,9 @@ PostgreSQL is the source of truth; Neon is replaceable hosting.
 3. Run `pnpm test`, `pnpm db:check`, and `pnpm db:erd`; commit the regenerated ERD with any migration change. Separate custom SQL statements with `--> statement-breakpoint` so PGlite and the live migrator apply the same sequence.
 4. After the live-database approval gate, run `pnpm db:migrate` against the development database. Running it again should make no changes.
 
-There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent; Migrations `0001`–`0015` are all committed (accounts/auth, commerce, inventory/profiles, operations, integrity guards, credential serialization, auth abuse limits and cleanup, card provisioning, scenes/forms, profile content version, owner operations). CI generates the schema and rejects a diff in `drizzle/`.
+There is intentionally no `db:push`: schema changes always go through reviewed, committed migrations, and applied migrations are never edited. `drizzle/0000_foundation_baseline.sql` stays permanent. The committed journal has 19 entries through `0018_concerned_patch`, including social platform additions (`0016`), profile appearance/Goal (`0017`) and Showcase cover storage (`0018`). CI generates the schema and rejects a diff in `drizzle/`.
 
-**Live-database gate.** Applying pending migrations, running roles or resets on `neffi-dev`, or any other live change needs a confirmed restore point (Neon branch or snapshot) and explicit approval; approval for one change does not authorize another. Do not migrate or reset restore branches. After approval, migrate twice (the second run must be a no-op) and inspect the journal. Shared Neon development is migrated through `0015_validate_dbc_ready_checks` as of 2026-10-15: the 16-entry journal, validated `cards_dbc_ready_checks_recorded` constraint and unchanged 27-table / 16-enum schema were verified. See the completed 0015 gate below for the legacy-data correction and retained restore points. The production database is not created or configured, and Production is untouched.
+**Live-database gate.** Applying pending migrations, running roles or resets on `neffi-dev`, or any other live change needs a confirmed restore point (Neon branch or snapshot) and explicit approval; approval for one change does not authorize another. Do not migrate or reset restore branches. After approval, migrate twice (the second run must be a no-op) and inspect the journal. The 2026-10-15 shared-development observation verified 16 journal entries through `0015_validate_dbc_ready_checks`, the validated `cards_dbc_ready_checks_recorded` constraint and 27 tables / 16 enums. See the completed 0015 gate below for that legacy-data correction and retained restore points. The separately authorized initial Production migration is recorded in [the 2026-10-23 evidence](verification/2026-10-23-production-readiness.md); it did not modify development.
 
 **Recovery:** Drizzle has no down migrations. Before applying migrations to a shared database, keep a restore branch or snapshot. Recover with that restore point or a reviewed forward migration. There is no automated destructive rollback.
 
