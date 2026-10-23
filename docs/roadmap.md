@@ -1,6 +1,6 @@
 # Engineering roadmap and milestone status
 
-Engineering delivery status as of 2026-10-16: milestones, launch gates and deferred engineering scope. This is the only place current engineering milestone status is maintained; the reports in [`verification/`](verification/) and [operations.md](operations.md) keep dated evidence. Notion owns product release direction and priority. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification; [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/) describe current behavior.
+Engineering delivery status as of 2026-10-23: milestones, launch gates and deferred engineering scope. This is the only place current engineering milestone status is maintained; the reports in [`verification/`](verification/) and [operations.md](operations.md) keep dated evidence. Notion owns product release direction and priority. Implementation plans for each milestone are kept as history under [`superpowers/plans/`](superpowers/plans/). They are not the current specification; [PRODUCT.md](../PRODUCT.md) and [`specs/`](specs/) describe current behavior.
 
 | Milestone | Scope | Status |
 |---|---|---|
@@ -19,7 +19,17 @@ Engineering delivery status as of 2026-10-16: milestones, launch gates and defer
 | M12 | Pilot readiness gate | Later. It cannot pass while any required physical acceptance is pending |
 | Profile layouts and guided setup | Classic/Editorial/Showcase, Light/Dark, Goals, guided setup, optional Showcase cover ([spec](specs/profile-customization-onboarding.md), [0015](decisions/0015-showcase-cover-image.md)) | Implemented. Architecture locked 2026-10-21; cover added 2026-10-22. T2–T15 and T8a–T8c complete; physical NFC, real-phone and real-Cloudinary acceptance pending. [Plan](superpowers/plans/2026-10-21-profile-customization-onboarding.md) |
 
-Production remains untouched and unconfigured. Shared Neon development is migrated through `0015_validate_dbc_ready_checks` as of 2026-10-15: 16 migration entries, validated `cards_dbc_ready_checks_recorded`, and 27 tables / 16 enums. The initial 0015 pre-check found one legacy synthetic Ready Card; its separately approved Ready-to-Blank correction retained NULL physical-verification fields, and the rerun pre-check returned 0. Migration 0015 succeeded and reran as a no-op; both M10 restore points remain retained. See [operations](operations.md#migration-0015-gate-and-verified-shared-development-state). Full recovery acceptance with a verified Neffi-owned sending domain and two independent external inboxes remains a launch gate.
+## Production and launch gates
+
+Production is deployed at `https://getneffi.com`, separate from `neffi-dev`, with committed migrations through `0018_concerned_patch`. The permanent origin is configured; infrastructure acceptance does not mean public launch or physical acceptance. See the [post-live acceptance record](verification/2026-10-23-production-acceptance.md) for attributed results and the [initial migration record](verification/2026-10-23-production-readiness.md) for database/restore identity. Earlier M4/M5/M7 physical results and M11 test counts above are historical milestone evidence, not current Production card acceptance.
+
+- **Verified:** domain/HTTPS/www redirect, isolated initial migration, auth health, Google and OTP login, verified sender, both sign-out/session-revocation flows, anonymous protected-route behavior, Sentry delivery/processed privacy, and forwarded-IP trust for the observed direct Vercel ingress. The focused review reported zero confirmed vulnerabilities; this is not a guarantee of absence.
+- **Pending provider confirmation:** effective Cloudinary resource-type/original metadata restrictions and Vercel credential separation. Separate environment records alone do not prove distinct credential values.
+- **Pending physical/card-dependent acceptance:** genuine internal-card NFC write/read/tap, package-code match, supported release/claim, guided setup E2E, live photo/Showcase cover upload/crop/replace/remove, public `/c/{token}` and vCard. Do not fabricate evidence or provision a customer card to clear these gates.
+- **Other launch requirements:** reviewed Privacy/Terms and approved commercial copy remain required. Full recovery acceptance with two independent authorized external inboxes remains unverified. No SEO launch is authorized by these infrastructure results.
+
+The 2026-10-15 shared-development migration observation is retained in [operations](operations.md#migration-0015-gate-and-verified-shared-development-state); it is not a statement of a newly queried Development journal. Latest layout/setup implementation and reported local checks are summarized in the [dated implementation evidence](verification/2026-10-23-profile-setup-evidence.md).
+
 
 ## Deliberately deferred
 

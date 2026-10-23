@@ -1,5 +1,8 @@
 # Milestone 11: Full Verification — Verification Plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **Canonical path:** `docs/superpowers/plans/2026-10-15-milestone-11-full-verification.md`. It is saved uncommitted on `main`; Codex commits it as T0.
 > **Status:** revised after the independent audit of 2026-10-15, which raised B1, I1–I5 and M1–M7, all applied. D1 was ruled by the user on 2026-10-15: integrated PGlite journey tests, no Playwright. Not executed.
 > **Roles:** Codex is the sole implementer. Claude plans, reviews and guards scope.

@@ -10,4 +10,4 @@ Real customer data is never copied to development or Preview. Secrets are scoped
 
 ## Consequences
 
-No production deployment exists yet. Procedures are in [operations](../operations.md).
+Production is deployed separately from development. Procedures are in [operations](../operations.md); current acceptance status belongs in [roadmap](../roadmap.md).

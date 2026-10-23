@@ -26,7 +26,7 @@ The latest maintainer brief is the authority for this target UX. Existing domain
 
 ## 3. Existing architecture to preserve
 
-The inspection baseline is the current working tree, including uncommitted scene-editor work. Preserve that work unless directly superseded by this approved target; do not reset it to a historical commit.
+The implemented editor preserves the following domain contracts; the original working-tree implementation context is historical.
 
 | Existing area | Preserved contract |
 | --- | --- |
@@ -36,11 +36,11 @@ The inspection baseline is the current working tree, including uncommitted scene
 | `modules/profiles/block-options.ts` | Existing enum-backed kinds and section membership |
 | `modules/forms/config.ts`, `forms.ts` | Three existing configurations, field/question constraints and profile-owned definitions |
 | Mode route `actions.ts` | Authenticated server-action pattern, IDs, ownership, safe error mapping |
-| `SceneViewPreview`, public view loader | One globally ordered visible item list, safe URL filtering and current visitor functionality |
+| `SceneViewPreview`, public view loader | Role-grouped public rendering with stored order within each group, safe URL filtering and current visitor functionality |
 
 Limits remain 20 items per mode, 5 form definitions per profile and existing profile/mode limits. Preserve rejection of hiding/removing the final visible item of a published profile's default mode. Default-mode deletion remains forbidden. Preserve the existing currently-shown/default fallback behavior.
 
-The working tree already contains section-aware `moveBlock(..., { among })`. This is not yet a reason to assume it is committed or shipped; verify its presence when implementing. Its intended semantics are specified in section 11.
+Section-aware `moveBlock(..., { among })` is implemented; its storage semantics are specified in section 11.
 
 ## 4. Page information architecture
 
@@ -97,20 +97,15 @@ Create/reconcile one client-safe platform metadata registry keyed by the existin
 
 The current `social-icons.tsx` brand paths and `block-options.ts` labels are the starting point. Consolidate without changing persisted kind values or automatically relabeling stored custom labels. If labels must be usable outside React, keep one pure metadata source with an icon identifier and resolve that identifier in the centralized icon renderer. Do not introduce a plugin/provider system or platform tables.
 
-Chooser grouping and order are fixed:
+Chooser groups and order come from the canonical [platform registry](../../src/modules/profiles/platform-registry.ts), derived from all 22 supported kinds. Use that registry rather than a second catalogue here. Migration `0016_extend_social_platforms` added Discord, Reddit, Threads, Pinterest, Behance and Dribbble.
 
-| Group | Kinds in display order |
-| --- | --- |
-| Popular | Facebook, Messenger, Instagram, TikTok, LinkedIn, YouTube |
-| More | GitHub, X (Twitter), WhatsApp, Viber, Telegram, Portfolio, Shop, Menu, Custom link |
-
-Visible group labels are `Popular` and `More`, not “Popular in the Philippines.” Heading: `Add a social or link`. Each option is a horizontal icon/name tile, equal height, equal column width. Desktop has exactly 3 columns; below `sm` (640px), exactly 2. Group headings span all columns. An odd final row is allowed; never add a fake option to fill it. Target tile height 48–56px; long labels wrap inside the equal-height grid without horizontal overflow. No search at this catalogue size.
+Heading: `Add a social or link`. Each option is a horizontal icon/name tile, equal height, equal column width. Desktop has exactly 3 columns; below `sm` (640px), exactly 2. Group headings span all columns. An odd final row is allowed; never add a fake option to fill it. Target tile height 48–56px; long labels wrap inside the equal-height grid without horizontal overflow. No search at this catalogue size.
 
 Recognizable brand glyphs: Facebook, Messenger, Instagram, TikTok, LinkedIn, YouTube, GitHub, X, WhatsApp, Viber, Telegram. Generic neutral glyphs: Portfolio, Shop, Menu, Custom link. Brand color stays in the small glyph treatment, not full row/tile surfaces. Reuse licensed/source-attributed assets already present where suitable.
 
-**Legacy Booking link:** `link.kind = booking` remains valid and editable under Socials & links, with centralized metadata. It is intentionally absent from the new social chooser: new booking actions use the actual `booking` block type under Actions. Do not convert, delete, hide, or reclassify existing Booking links. Unsupported Discord, Reddit and Threads are absent; never disguise them as named custom platform options. Custom link is an ordinary generic user-entered link, not an unsupported-platform adapter.
+**Legacy Booking link:** `link.kind = booking` remains valid and editable under Socials & links, with centralized metadata. It is intentionally absent from the new social chooser: new booking actions use the actual `booking` block type under Actions. Do not convert, delete, hide, or reclassify existing Booking links. Discord, Reddit and Threads are supported registry kinds. Custom link remains an ordinary generic user-entered link.
 
-The registry must be reusable by preview/public components later. This pass does not require adding icons or changing the visual appearance of the public profile.
+The same registry supplies labels/icons to the editor, guided setup and public layouts.
 
 ## 8. Social add/edit UX
 
@@ -170,9 +165,9 @@ Normal section header offers `Reorder` immediately before `+ Add` when at least 
 
 **Storage mapping:** sections are editor projections, not separate stored lists. Read the complete list in global position order, then filter by the section's type set. A move swaps the selected item with the nearest preceding/following item in that same set, skipping other types. Write dense global positions under the existing profile lock and bump `content_version`.
 
-Example: global `[link A, about X, link B, form Y]`; moving B up in Socials & links yields `[link B, about X, link A, form Y]`. About X and Form Y retain their global slots and relative order. Public rendering continues consuming this single list; it does not group sections. Thus a link can cross content/action items in the public sequence when it swaps with another link. The UI must not imply globally grouped public sections. This limitation is intentional in this scoped pass. **Planned change:** [0013](../decisions/0013-universal-layouts-profile-appearance.md) makes public layouts render content grouped by role, keeping stored order within each group, so section reorder will match public order. The slot-swap storage mapping above stays valid.
+Example: global `[link A, about X, link B, form Y]`; moving B up in Socials & links yields `[link B, about X, link A, form Y]`. About X and Form Y retain their global slots and relative order. Public layouts group by role under [0013](../decisions/0013-universal-layouts-profile-appearance.md), retaining stored order within each public group. Editor sections are coarser than public groups (for example Socials & links contains both); no separate section-position columns exist.
 
-Current working-tree `among` behavior implements the intended swap. The prior global-adjacent API alone cannot implement section ordering: if `among` is absent from the implementation baseline, adding it is an explicit, narrowly scoped domain behavior extension requiring DB tests, not a migration. Server maps validated section names to fixed `BLOCK_SECTIONS`; never trust arbitrary client-supplied type arrays. Ensure the target block belongs to the submitted section and the route's owned mode. Do not automatically normalize old records into grouped order or add section-position columns.
+The implemented `among` behavior performs that swap; the global-adjacent API alone does not implement section ordering. Server maps validated section names to fixed `BLOCK_SECTIONS`; never trust arbitrary client-supplied type arrays. Ensure the target block belongs to the submitted section and the route's owned mode. Do not automatically normalize old records into grouped order or add section-position columns.
 
 ## 12. Visibility and remove behavior
 
@@ -278,7 +273,7 @@ Use existing Vitest/server-render and happy-dom patterns. Tests should prove beh
 | Domain ordering | Interleaved link/about/project/action fixtures prove nearest same-section swap and unchanged other-section slots; dense global positions, profile lock, content-version bump, boundary no-op; forged section/foreign mode/item refused |
 | Accessibility | Named/focus-trapped dialog; keyboard chooser/menu flow; Escape, dirty-dismiss confirmation, Back-step focus, restoration, no Base UI warnings, 44px touch-target tests unchanged |
 | Boundaries | Client-import graph unchanged/passing; runtime Zod only in server validation/actions; authenticated edit-data reads and mutation authorization regressions |
-| Public compatibility | Original one-list global order and visible filtering; all six types; legacy Booking link; nullable labels; unsafe URLs still filtered; vCard availability; shared form config/submissions remain compatible |
+| Public compatibility | Role-grouped rendering with within-group stored order and visible filtering; all six types; legacy Booking link; nullable labels; unsafe URLs still filtered; vCard availability; shared form config/submissions remain compatible |
 
 Run relevant mode-route/actions/component tests, profile editor/blocks DB tests, forms/public view tests, affected customer/access checks, full typecheck and targeted lint. Use CI-equivalent synthetic environment for tests that import server configuration; never target a shared database for automated fixtures.
 
@@ -286,8 +281,8 @@ Manual acceptance after implementation: 320/375/390px phones and a representativ
 
 ## 21. Risks, conflicts and edge cases
 
-1. **Existing experiment differs from locked UX:** inline add and menu moves are superseded; permanent preview stays removed. No implementation changes belong in this pass.
-2. **Global order versus grouped editor:** section swapping can move items across other types in the public sequence. Preserve the slot-swap behavior and test it; grouping the public page or persisting separate section order would be a distinct product change. Grouped public rendering is now planned by [0013](../decisions/0013-universal-layouts-profile-appearance.md); separate persisted section order is still out of scope.
+1. **Existing experiment differs from locked UX:** inline add and menu moves are superseded; permanent preview stays removed. Guided setup deliberately uses a separate inline editor; these modal rules apply to the mode editor.
+2. **Public order:** stored positions are global; editor moves swap nearest same-section items. Public layouts group by role and retain stored order within each group ([0013](../decisions/0013-universal-layouts-profile-appearance.md)). Preserve the slot-swap tests; separate persisted section order remains out of scope.
 3. **Redirecting actions:** same-dialog completion requires the narrow server adapter change in section 18. Do not catch/swallow framework redirects or falsely report a save as complete.
 4. **Shared form definitions:** updates may affect copied modes, and removing a block does not necessarily release the form-definition quota. Preserve behavior and communicate actual sharing.
 5. **Custom label optionality:** the current schema allows blank labels. This design does not make Custom link Label required without a separate explicit decision.
@@ -304,8 +299,8 @@ The existing block model supports the approved design **without a database migra
 - Drag-and-drop and drag handles.
 - Shared social library, connected social accounts and new platform tables.
 - Database migrations or changing the persisted Scene/Block naming.
-- Separate persisted section ordering or global editor reorder UX. Grouped public rendering is planned separately in [0013](../decisions/0013-universal-layouts-profile-appearance.md).
+- Separate persisted section ordering or global editor reorder UX. Grouped public rendering is implemented under [0013](../decisions/0013-universal-layouts-profile-appearance.md).
 - Public-profile/preview visual redesign and per-mode identity/appearance.
 - Automatic cloning of shared contact forms, new form types, or template/data-model redesign.
 
-Stop after specification review. Do not implement, install dependencies, migrate, commit, push or open a PR as part of this pass.
+This is a current contract. Original implementation sequencing remains in the [historical plan](../superpowers/plans/2026-10-21-profile-customization-onboarding.md), not an instruction to repeat completed work.

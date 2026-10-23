@@ -53,6 +53,6 @@ No customer transfer or unclaim button; no GRC activation; no printed per-card Q
 
 ## Owner corrections after release (M9A)
 
-M9B adds help links from activation states and Card detail to `/support`. Activation links carry only a topic, never the typed code. Signed-in Card context links only the requesting Account's owned Card. Activation codes remain out of band and are blocked in owner reply/resolution email bodies; claim, provisioning and resolver behavior are unchanged.
+Help links are implemented from activation states and Card detail to `/support`. Activation links carry only a topic, never the typed code. Signed-in Card context links only the requesting Account's owned Card. Activation codes remain out of band and are blocked in owner reply/resolution email bodies; claim, provisioning and resolver behavior are unchanged.
 
 An active Support Case permits retirement of an affected Released DBC and a verified free replacement against its original item. Retirement clears owner and routing; the old URL remains permanently unavailable. Reissue is for a linked unclaimed Released DBC; wrong-account reset clears a claimed card's owner/routing while leaving the former Account's Profile untouched. Both require offline purchase/claim verification, confirmation and a required note; the new code is revealed once for delivery outside Neffi. Old credentials stay used or revoked, and the same card keeps its permanent URL. See [support and corrections](support-and-corrections.md).

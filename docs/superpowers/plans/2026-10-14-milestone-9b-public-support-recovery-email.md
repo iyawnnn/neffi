@@ -1,5 +1,8 @@
 # Milestone 9B: Public Support, Recovery & Email Implementation Plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **Status (2026-10-15): T0-T13 implemented and approved; T14 temporary remote resources deleted and verified absent; reduced T15 approved; T16 push/PR authorized; merge requires separate approval.**
 > - **Decisions:** D1-D9 were ruled by you. N1 and N2 take the safe defaults you approved.
 > - **Audit:** the Opus pre-implementation audit corrections (I1-I9 and related minor items) are applied.

@@ -11,6 +11,6 @@
 
 ## Consequences
 
-Rotating `ACTIVATION_CODE_SECRET` makes every unclaimed code unverifiable. Lost-code and wrong-account cases after release need a controlled support action (planned in M9A) that issues a new credential for the same Card.
+Rotating `ACTIVATION_CODE_SECRET` makes every unclaimed code unverifiable. Lost-code and wrong-account cases after release need a controlled [support action](../specs/support-and-corrections.md) that issues a new credential for the same Card.
 
 The global ceiling bounds distributed guessing; an attacker can temporarily exhaust it and block legitimate activations. If both the database and activation secret leak, the ~40-bit space permits offline brute force. Rotate the secret and reissue unclaimed codes after such a compromise. Issuance retries lookup collisions up to five times; exhaustion fails the transaction without partial card changes.

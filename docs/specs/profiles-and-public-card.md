@@ -12,8 +12,8 @@ Customer (Account owner), visitor, and the Card's owner viewing their own public
 
 ## Profile
 
-- Created only during first-card setup from a claimed DBC (a purpose, then essentials), idempotently for the same card. Purposes are recipes, not stored: **Network**, **Get Clients**, **Show My Work**.
-- Holds identity (name, headline, company, bio, phone, email, website, location) and appearance (one of 8 accent colours; an image or logo via Cloudinary). Appearance applies to every Scene.
+- Created at the You step of guided setup from a claimed DBC, idempotently for the same card. Goal comes first: four advisory Goals or Not sure yet. The nullable Goal is stored; no starter Blocks or Forms are created. Detailed steps and resume rules belong to the [guided setup spec](profile-customization-onboarding.md#8-guided-setup).
+- Holds identity (photo/logo, name, headline, company, bio, location), contact (phone, email, website) and Profile-level appearance (Classic/Editorial/Showcase, Light/Dark, one of eight accents and optional Showcase cover). Scenes hold socials, links, work and other Blocks. The [customization spec](profile-customization-onboarding.md#4-canonical-profile-model) owns the detailed model.
 - Status: **Draft**, **Published**, **Unpublished**. Publishing requires a name, at least one of phone, email or website, and a visible Block in the Default Scene. The database also checks that a Published Profile has a name and a Default Scene; the contact-method and visible-Block rules are enforced in code. While Published, edits that would break this are refused, as is hiding or deleting the last visible Default-Scene Block.
 - Deleting a Profile is blocked while Cards are connected.
 - Limits: 10 Profiles per Account, 5 Scenes per Profile, 20 Blocks per Scene, 5 Forms per Profile.
@@ -32,7 +32,7 @@ Presets **Connect**, **Project Inquiry**, **Contact**. Fixed fields (name, email
 
 On every request the server reads the Card by token. The page renders only if the Card is a DBC, **Released**, has an owner, is not turned off, has a Profile that is **Published**, and resolves a Scene. Otherwise visitors see the same generic "This Neffi isn't available right now" 404 for every reason (unknown, unclaimed, off, no Profile, Draft, Unpublished, retired). No account or ownership data is revealed.
 
-- The shown Scene's visible Blocks render in order. Visitors can follow links, call or email, open booking links, send the Form, and **Save contact** (`/c/{token}/contact` returns a vCard only when the shown Scene has a Contact Block with Save Contact).
+- The shown Scene's visible Blocks render grouped by role, preserving stored position order within each group ([rendering contract](profile-customization-onboarding.md#6-rendering-contract)). Visitors can follow links, call or email, open booking links, send the Form, and **Save contact** (`/c/{token}/contact` returns a vCard only when the shown Scene has a Contact Block with Save Contact).
 - If the signed-in viewer owns the Card, they see the same page plus **Edit** and **Switch scene**; for an unavailable card they get a **Manage this card** link. Other signed-in users see the ordinary visitor view.
 - Scene content is cached per `(profile, scene, content_version)`. Card state, routing and publish status are never cached. Pages are `noindex`.
 - The **Sharing QR** on the Card page encodes exactly `/c/{token}`. The package activation QR is a different, common QR ([0004](../decisions/0004-two-qr-codes.md)).

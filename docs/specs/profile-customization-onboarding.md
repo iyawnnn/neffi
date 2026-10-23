@@ -48,7 +48,7 @@ No new tables. The model is the existing Profile + Scenes + Blocks, plus three a
 |---|---|---|
 | Identity: photo or logo | `profiles.image_asset_id`, `image_is_logo` | One image. A logo is shown uncropped, a photo round |
 | Identity: name, headline, company, location | `profiles.full_name`, `headline`, `company`, `location` | Location uses the PSGC combobox (existing) |
-| Identity: short intro | `profiles.bio` (≤300) | Rendered in every layout (§6.3). Today the public page never shows it |
+| Identity: short intro | `profiles.bio` (≤300) | Rendered in every layout unless an About Block duplicates it (§6.3) |
 | Contact | `profiles.phone`, `email`, `website` | Public contact, separate from the sign-in email |
 | Save Contact | A `contact` Block with `saveContact` in the shown Profile mode | Contact details are visible to visitors only through a visible Contact Block (existing behavior) |
 | Socials | `link` Blocks whose kind has category `social` | §6.2 |
@@ -92,9 +92,9 @@ A Goal recommends a Layout, orders suggestions and names the first Profile mode.
 
 - Website, phone, email and Save Contact belong to the Contact step for every Goal and are not repeated as suggestions.
 - "Resume" is an ordinary Custom link with the label pre-filled. Neffi has no resume type.
-- No form is created automatically. "Contact form" is a suggestion. Today's starters auto-create forms; guided setup does not.
+- No form is created automatically. "Contact form" is a suggestion; guided setup creates no starter content.
 - The Goal is stored once the Profile exists. It is **not editable** after setup in V1, and nothing outside guided setup shows a recommendation derived from it, because a stale Goal must not steer later choices. It stays stored for resume and future use.
-- The goals replace the current purposes (`network`, `get_clients`, `show_my_work`). Purposes were never stored, so there is no data mapping. Notion still lists the three starter goals; see [known drift](../README.md#known-drift).
+- The Goals replaced the former purposes (`network`, `get_clients`, `show_my_work`). Purposes were never stored, so there is no data mapping. Notion still lists the three starter goals; see [known drift](../README.md#known-drift).
 
 The Goal table lives in one pure, client-safe module (replacing `purpose-options.ts` and `starters.ts`).
 
@@ -277,16 +277,16 @@ Route: `/app/setup/[cardId]?step=<id>`. The route name and query pattern are ret
 | 2 | `you` | Let's start with you | Full name*, Headline, Company, City / municipality (existing combobox), Short intro (counter /300) | Full name | **Creates the Draft Profile** (§8.3) |
 | 3 | `photo` | Add a photo or logo | Existing upload; "This is a logo" switch; guidance: "A clear photo of your face, or your logo. JPG, PNG, WebP or HEIC, up to 5 MB." Preview of the crop | Optional (Skip for now) | Image + logo flag (existing actions) |
 | 4 | `contact` | How can people reach you? | Mobile number (+63 control), Public email (pre-filled with the sign-in email, helper "Shown on your profile. Clear it to keep your sign-in email private."), Website; Save contact switch (on), helper "Visitors can save your details to their phone." | At least one of mobile, email or website | Identity contact fields + Contact Block upsert |
-| 5 | `links` | What should people find? | Goal-ordered suggestion rows (§5) + "Add something else" (full chooser). Each opens the **existing mode-editor add dialog** for that kind/type; saved items list below with Remove | Optional (Skip for now) | Each item saved immediately via existing Block services |
+| 5 | `links` | What should people find? | Four collapsed categories: Social, Professional, Messaging & community, Other links & actions. Registry-backed choices use Goal ranking within each category and open an inline add/edit form; Added links lists saved items with Edit/Remove | Optional (Skip for now) | Each item saved immediately via existing Block services |
 | 6 | `look` | Choose how your profile looks | Classic, Editorial, Showcase, each with a live mini-render of the customer's own profile and a one-line description; "Recommended" badge on the Goal's layout | Pre-selected with the recommendation | `layout` |
 | 7 | `style` | Make it yours | Colours: Light / Dark (segmented control). Accent: 8 swatches with names. Preview-first | Pre-selected Light + Ink | `color_mode`, `accent_color` |
-| — | `review` | Review your Neffi | Full preview; list of publish gaps with "Fix" links to their step; compact "Change" list (You, Photo, Contact, Links, Look, Colours); primary **Publish** | Publish gaps must be empty to publish | Publish |
+| — | `review` | Review your Neffi | Product-card illustration and truthful pre-publish copy; real profile preview; publish gaps with Fix links; Your setup rows with derived summaries and Change links; primary **Publish** | Publish gaps must be empty to publish | Publish |
 | — | `done` | Your Neffi is live | "Tap your card on your phone to try it." Buttons: View your page (`/c/{token}`, new tab), Customize more (Profile hub), Go to Home | — | — |
 
 Layout descriptions: Classic: "Centred and simple. Works for anyone." Editorial: "Type-led and polished. Great for leading with your details." Showcase: "Puts your work and links up front."
 
 Step rules:
-- **One decision per screen.** Each screen asks one question with one form group. Choice lists stay short and fixed: Goal 5 rows, layouts 3, accents 8 named swatches, link suggestions at most 7 plus "Add something else".
+- **One decision per screen.** Each screen asks one question with one form group. Choice lists stay short and fixed: Goal 5 rows, layouts 3, accents 8 named swatches, Links has four initially collapsed categories with registry-derived choices.
 - Labels are persistent; optional fields show a quiet "Optional"; examples are placeholders, never pre-filled values (except the sign-in email, labelled as above).
 - Validation runs on Continue and on blur of an already-errored field, never while typing. Errors sit below the field, say how to fix it ("Enter a mobile number like 912 345 6789"), and focus moves to the first invalid field.
 - Mobile keyboard: correct `inputmode`/`autocomplete` (existing Details editor values); Continue stays in normal flow, not pinned over the keyboard; the active field is scrolled into view.
@@ -314,12 +314,12 @@ The customer should always feel they are building their profile, not filling in 
 
 | Viewport | Steps 1–2 | Steps 3–5 | Steps 6–7 | Review |
 |---|---|---|---|---|
-| Phone / tablet (<1024px) | Form only | Form + header **Preview** button opening a full-screen dialog | Preview first: scaled render on top, choices below | Full-size render |
-| Desktop (≥1024px) | Step 1 single column; from step 2, form left (max ~480px) + sticky preview right | Same | Preview larger, choices left | Full-size render centred |
+| Phone / tablet (<1024px) | Form only | Form + header **Preview** button opening a full-screen dialog | Preview first: bounded scrolling real-renderer frame, choices below | Card illustration, bounded inline scrolling preview (max 22rem), setup summaries and Publish; no preview dialog |
+| Desktop (≥1024px) | Step 1 single column; from step 2, form left (max ~480px) + sticky preview right | Same | Choices left, sticky bounded scrolling preview right | Card illustration, summaries and Publish left; sticky real preview right |
 
 - The preview is the real `ProfileRenderer` inside a 390px-wide preview shell (24px radius, hairline border). It is never a separate mock.
 - Data: the server passes the saved owner view. A pure client function overlays the current step's unsaved fields (identity, contact, layout, mode, accent). Before the Profile exists (step 2) the overlay builds from the draft alone. No client-side Zod, database or server-only imports ([client import graph test](../../src/app/client-import-graph.test.ts)).
-- The look step's mini-renders are the same renderer, scaled and inert.
+- The look choices and preview use the same renderer; preview containers are inert where controls are duplicated.
 - Preview never accepts input. It is `aria-hidden` only where duplicated by the form, and the full-screen preview dialog is a named dialog with Close.
 
 ## 9. Save, publish and resume
@@ -333,7 +333,7 @@ The customer should always feel they are building their profile, not filling in 
 | Is a profile public right after activation? | No. Claim creates no Profile; setup creates a Draft |
 | After publishing | Every editor save is live immediately (no unpublished-changes layer in V1). Unpublish/republish stays on the Profile hub |
 | Abandoned before step 2 | Only the claim exists. `/app` keeps "Set up this Neffi"; resume starts at `goal` |
-| Abandoned after step 2 | `/app/setup/{cardId}` with no `step` resumes at the **earliest incomplete required step**, derived from persisted data: publish gap `name` → `you`; gap `contact` or `content` → `contact` (that step creates the Contact Block); no gaps → `review`. Optional steps are never resume targets; Review lists them. No step column is stored |
+| Abandoned after step 2 | `/app/setup/{cardId}` with no `step` resumes at the **earliest incomplete required step**, derived from persisted data: publish gap `name` → `you`; gap `contact` or `content` → `contact` (that step creates the Contact Block); no gaps → `review`. Optional steps are never resume targets; Review lists them. Persisted layout/mode/accent defaults satisfy Look/Colours. No `onboarding_step` or other step column is stored |
 | Explicit `?step=` | Honoured whenever its prerequisite exists: `goal` and `you` always; `photo` through `review` need the Profile, otherwise redirect to `goal`; `done` needs a Published Profile, otherwise redirect to the derived resume step. Unknown values are treated as no `step` |
 | Card routes to a Published Profile | Setup redirects to the Profile hub (existing) |
 | Browser refresh | The URL keeps the step; saved data reloads; unsaved current-step input is protected by the `beforeunload` guard |
@@ -382,7 +382,7 @@ Existing Profiles after migration: Classic, Light, accent unchanged (NULL → In
 
 **Cover migration (task T8a, [0015](../decisions/0015-showcase-cover-image.md)).** A second forward, additive migration adds the six nullable `cover_*` columns and their CHECKs (§4). It has no defaults, no backfill and no drops. Every existing Profile has no cover and renders the accent band, which is valid by construction.
 
-Applying either migration to the shared `neffi-dev` database is a separate, explicit maintainer decision ([operations](../operations.md)). Production does not exist yet.
+Applying either migration to the shared `neffi-dev` database is a separate, explicit maintainer decision ([operations](../operations.md)). Production uses the separate `neffi-production` project; its initial migration evidence is [recorded separately](../verification/2026-10-23-production-readiness.md). Do not infer permission to migrate either live environment from this spec.
 
 ## 12. Accessibility
 

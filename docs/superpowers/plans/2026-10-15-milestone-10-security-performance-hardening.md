@@ -1,5 +1,8 @@
 # Milestone 10: Security & Performance Hardening — Implementation Plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **Canonical path:** `docs/superpowers/plans/2026-10-15-milestone-10-security-performance-hardening.md`. It is saved uncommitted and survives the T0 checkout of `main`; Codex commits it as T0.
 > **Status:** planning complete; D1 and D2 ruled by the user on 2026-10-15. User corrections applied: T12 is minimal and browser-only; dev HMR/WebSocket is verified under the CSP; hex IPv4-mapped coverage is added. The independent Opus audit's findings I1–I3 and M1–M9 are applied. Not implemented. Codex is the sole implementer.
 

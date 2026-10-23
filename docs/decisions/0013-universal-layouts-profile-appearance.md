@@ -1,6 +1,6 @@
 # 0013 — Universal layouts are presentations of one Profile model
 
-**Status:** Implemented (2026-10-21). Amends [0003](0003-profile-scene-model.md) and supersedes the "public page renders one ordered list" rule in the [profile mode editor spec](../specs/profile-mode-editor.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md). Amended by [0015](0015-showcase-cover-image.md) (planned): Appearance also holds an optional cover image that only Showcase renders.
+**Status:** Implemented (2026-10-21). Amends [0003](0003-profile-scene-model.md) and supersedes the "public page renders one ordered list" rule in the [profile mode editor spec](../specs/profile-mode-editor.md). Spec: [profile layouts, appearance and guided setup](../specs/profile-customization-onboarding.md). Amended by [0015](0015-showcase-cover-image.md) (implemented): Appearance also holds an optional cover image that only Showcase renders.
 
 ## Context
 
