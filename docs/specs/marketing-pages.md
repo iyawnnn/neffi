@@ -1,6 +1,6 @@
 # Supporting marketing pages
 
-The supporting routes use the existing `(marketing)` layout and its navigation, Back to Top and footer. Home and Product remain the visual references; their source and composition are unchanged by these pages. See the [marketing UI reference](../architecture/marketing-ui.md) for tokens and shared chrome, and the [homepage spec](marketing-homepage.md) for page ownership.
+The supporting routes use the existing `(marketing)` layout, which delegates navigation, Back to Top and footer to the canonical `PublicSiteShell`. `/activate`, `/sign-in`, `/support` and `/support/recover` use the same shell through route-local layouts and keep their focused forms. There is one public navigation implementation. `/app/**` has separate product navigation; guided setup is focused; `/c/{token}` and unavailable card states inherit neither site shell. Home and Product remain the visual references; their source and composition are unchanged by these pages. See the [marketing UI reference](../architecture/marketing-ui.md) for tokens and shared chrome, and the [homepage spec](marketing-homepage.md) for page ownership.
 
 ## Content authority
 

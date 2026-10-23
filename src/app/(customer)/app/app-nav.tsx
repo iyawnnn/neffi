@@ -29,32 +29,18 @@ function subscribeToScroll(onChange: () => void) {
 const isScrolled = () => window.scrollY > 8;
 const isScrolledOnServer = () => false;
 
-// Logo left, sections centred on the viewport (a 1fr/auto/1fr grid, from md), Inbox and account right.
+// Keep account tools above the workspace; primary sections live in the floating dock.
 export function AppHeader({ account, unread }: { account: HeaderAccount; unread: number }) {
   const pathname = usePathname();
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, isScrolledOnServer);
   if (pathname.startsWith("/app/setup/")) return <SetupHeader />;
   return (
     <header className="sticky top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 mx-auto mt-[calc(env(safe-area-inset-top)+0.75rem)] w-full max-w-6xl bg-inherit px-4 md:top-3 md:mt-3 md:px-6">
-      <div data-scrolled={scrolled} className="app-shell grid h-[58px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 interact transition-[border-color,box-shadow] md:h-16 md:px-5">
+      <div data-scrolled={scrolled} className="app-shell flex h-[58px] w-full items-center justify-between px-3 interact transition-[border-color,box-shadow] md:h-16 md:px-5">
         <Link href="/app" aria-label="Neffi home" className="inline-flex min-h-11 cursor-pointer items-center justify-self-start rounded-md interact transition-opacity hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
           <NeffiLogo aria-hidden className="h-6 w-auto text-foreground" />
         </Link>
-        <nav aria-label="Main" className="hidden md:block">
-          <ul className="flex items-center gap-0.5">
-            {sections.map(({ label, href }) => (
-              <li key={href}>
-                <Link href={href} aria-current={isCurrent(pathname, href) ? "page" : undefined} className="group inline-flex min-h-11 cursor-pointer items-center focus-visible:outline-none">
-                  {/* Active: a quiet raised tab (Snow surface, hairline inset ring, 1px shadow). No underline, no Vermilion. */}
-                  <span className="inline-flex h-9 items-center rounded-[9px] px-3.5 text-nav text-fg-secondary interact transition-[color,background-color,box-shadow] group-hover:bg-canvas group-hover:text-foreground group-focus-visible:outline-2 group-focus-visible:outline-brand group-aria-[current=page]:bg-canvas group-aria-[current=page]:text-foreground group-aria-[current=page]:shadow-[inset_0_0_0_1px_var(--border),0_1px_2px_color-mix(in_oklab,var(--foreground)_6%,transparent)]">
-                    {label}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="col-start-3 flex min-w-0 max-w-full items-center gap-0.5 justify-self-end">
+        <div className="flex min-w-0 max-w-full items-center gap-0.5 justify-self-end">
           <InboxLink unread={unread} current={isCurrent(pathname, "/app/inbox")} />
           <AccountMenu account={account} current={isCurrent(pathname, "/app/account")} />
         </div>
@@ -119,20 +105,19 @@ function AccountMenu({ account, current }: { account: HeaderAccount; current: bo
   );
 }
 
-// Floating tab bar below md: 12px off the edge plus the safe area, 66px tall. The current tab is marked by a
-// Vermilion icon and a stronger label only; no inner pill.
+// Equal-width implicit columns accommodate another primary section without changing the shell.
 export function AppNav() {
   const pathname = usePathname();
   if (pathname.startsWith("/app/setup/")) return null;
   return (
-    <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:hidden">
-      <ul className="app-shell mx-auto grid max-w-md grid-cols-3 p-2">
+    <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
+      <ul className="nav-ink-surface mx-auto grid h-[66px] w-full max-w-md auto-cols-fr grid-flow-col gap-1 p-2 md:h-[72px] md:max-w-lg">
         {sections.map(({ label, href, icon: Icon }) => {
           const current = isCurrent(pathname, href);
           return (
             <li key={href} className="flex">
-              <Link href={href} aria-current={current ? "page" : undefined} className={cn("flex min-h-12 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-[10px] text-label interact transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand", current ? "font-semibold text-foreground" : "text-fg-secondary active:text-foreground")}>
-                <Icon aria-hidden className={cn("size-[1.375rem] interact transition-colors", current ? "text-brand" : "text-fg-secondary")} strokeWidth={current ? 2 : 1.6} />
+              <Link href={href} aria-current={current ? "page" : undefined} className={cn("flex min-h-12 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-label interact transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand md:text-nav", current ? "bg-canvas font-semibold text-foreground shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]" : "text-canvas/80 hover:bg-white/[0.06] hover:text-canvas active:text-canvas")}>
+                <Icon aria-hidden className={cn("size-[1.375rem] interact transition-colors md:hidden", current ? "text-action-text" : "text-canvas/80")} strokeWidth={current ? 2 : 1.6} />
                 {label}
               </Link>
             </li>

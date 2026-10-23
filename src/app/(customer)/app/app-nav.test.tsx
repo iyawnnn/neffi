@@ -28,16 +28,14 @@ const sectionLinks = (html: string) =>
     .filter(({ attrs }) => !attrs.includes('aria-label="Neffi home"') && !attrs.includes('href="/app/inbox"'));
 
 // Account lives in the avatar menu, so on /app/account no section is current.
-test.each([["/app", "Home"], ["/app/profiles/x", "Profiles"], ["/app/cards/x", "Cards"], ["/app/account", null]])("both navigations mark only the current section at %s", (path, current) => {
+test.each([["/app", "Home"], ["/app/profiles/x", "Profiles"], ["/app/cards/x", "Cards"], ["/app/account", null], ["/app/inbox", null]])("the shared desktop/mobile dock marks only the current section at %s", (path, current) => {
   m.pathname = path;
-  for (const nav of [<AppNav key="bottom" />, <AppHeader key="top" account={ACCOUNT} unread={0} />]) {
-    const links = sectionLinks(renderToStaticMarkup(nav));
-    expect(links.map(({ label }) => label)).toEqual(["Home", "Profiles", "Cards"]);
-    expect(links.map(({ href }) => href)).toEqual(["/app", "/app/profiles", "/app/cards"]);
-    for (const { attrs, label } of links) {
-      expect(attrs).toMatch(/\bmin-h-1[12]\b/);
-      expect(attrs.includes('aria-current="page"')).toBe(label === current);
-    }
+  const links = sectionLinks(renderToStaticMarkup(<AppNav />));
+  expect(links.map(({ label }) => label)).toEqual(["Home", "Profiles", "Cards"]);
+  expect(links.map(({ href }) => href)).toEqual(["/app", "/app/profiles", "/app/cards"]);
+  for (const { attrs, label } of links) {
+    expect(attrs).toMatch(/\bmin-h-1[12]\b/);
+    expect(attrs.includes('aria-current="page"')).toBe(label === current);
   }
 });
 
@@ -62,4 +60,17 @@ test.each([0, 1, 3])("the Inbox bell links to the real Inbox and shows an unread
   expect(bell![0]).toContain(unread ? `aria-label="Inbox, ${unread} unread"` : 'aria-label="Inbox"');
   expect(bell![0]).toMatch(/\bsize-11\b/);
   expect(bell![1].includes("bg-brand")).toBe(unread > 0);
+});
+
+
+test("primary navigation is a separate Ink dock that grows without a three-column grid", () => {
+  m.pathname = "/app";
+  const header = renderToStaticMarkup(<AppHeader account={ACCOUNT} unread={1} />);
+  const dock = renderToStaticMarkup(<AppNav />);
+  expect(header).not.toContain('aria-label="Main"');
+  expect(dock).toContain("nav-ink-surface");
+  expect(dock).toContain("auto-cols-fr");
+  expect(dock).not.toContain("grid-cols-3");
+  expect(dock.match(/<nav[^>]*>/)?.[0]).not.toContain("md:hidden");
+  expect(dock).not.toContain("Get Neffi");
 });

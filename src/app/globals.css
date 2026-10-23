@@ -194,6 +194,13 @@
   font-synthesis: none;
 }
 
+@utility nav-ink-surface {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 18px;
+  background: var(--foreground);
+  box-shadow: 0 16px 40px -16px color-mix(in oklab, var(--foreground) 65%, transparent);
+}
+
 @utility app-shell {
   border: 1px solid var(--border);
   border-radius: 16px;

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertCircle, ArrowRight, CircleHelp, CircleUser } from "lucide-react";
+import { AlertCircle, CircleHelp, CircleUser } from "lucide-react";
 import { getViewer } from "@/auth/access";
-import { NeffiLogo } from "@/components/neffi-logo";
 import { SignInForm } from "../sign-in/sign-in-form";
 import {
   ClaimForm,
@@ -106,32 +105,8 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex flex-col bg-canvas">
       <div className="mx-auto flex w-full max-w-[440px] md:max-w-[1080px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-14 gap-4 sm:gap-5 md:gap-6">
-        {/* Floating Public Header */}
-        <header className="w-full">
-          <div className="flex h-14 sm:h-15 w-full items-center justify-between rounded-[16px] border border-border/80 bg-background px-4 sm:px-6 shadow-xs transition-[border-color,box-shadow] duration-200">
-            <Link
-              href="/"
-              aria-label="Neffi home"
-              className="inline-flex min-h-11 items-center rounded-md transition-opacity duration-200 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <NeffiLogo aria-hidden className="h-5.5 sm:h-6 w-auto text-foreground" />
-            </Link>
-            <Link
-              href={viewer ? "/app" : "/sign-in?next=/activate"}
-              className="group inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-foreground transition-colors duration-[220ms] hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <span className="nav-interact transition-colors group-hover:text-brand">
-                {viewer ? "My Neffi" : "Sign in"}
-              </span>
-              <ArrowRight
-                aria-hidden
-                className="size-3.5 shrink-0 nav-interact nav-arrow"
-              />
-            </Link>
-          </div>
-        </header>
 
         {/* Activation Surface */}
         <main className="w-full">
@@ -187,6 +162,10 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
 
                 {/* Body content */}
                 {body}
+
+                <Link href={viewer ? "/app" : "/sign-in?next=/activate"} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md text-meta font-medium text-foreground hover:text-action-text focus-visible:outline-2 focus-visible:outline-brand">
+                  {viewer ? "My Neffi" : "Sign in"}
+                </Link>
 
                 {/* Help UX: compact tertiary row beneath Continue */}
                 <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-1.5 text-center">

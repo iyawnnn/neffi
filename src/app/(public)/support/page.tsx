@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { ArrowRight, CreditCard, KeyRound, LifeBuoy, LogIn, Mail } from "lucide-react";
 import { z } from "zod";
 import { getViewer } from "@/auth/access";
-import { NeffiLogo } from "@/components/neffi-logo";
 import { categories } from "@/modules/support/domain";
 import { SupportForm } from "./support-form";
 
@@ -152,33 +151,8 @@ export default async function SupportPage({
   const viewer = await getViewer();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      {/* Shared-width container ensures exact pixel-perfect alignment between header and main shell */}
+    <div className="flex flex-col bg-canvas">
       <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-16 gap-5 sm:gap-6 md:gap-7">
-        {/* Floating Public Header */}
-        <header className="w-full">
-          <div className="flex h-14 sm:h-15 w-full items-center justify-between rounded-[16px] border border-border/80 bg-background px-4 sm:px-6 shadow-xs transition-[border-color,box-shadow] duration-200">
-            <Link
-              href="/"
-              aria-label="Neffi home"
-              className="inline-flex min-h-11 items-center rounded-md transition-opacity duration-200 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <NeffiLogo aria-hidden className="h-5.5 sm:h-6 w-auto text-foreground" />
-            </Link>
-            <Link
-              href={viewer ? "/app" : "/sign-in"}
-              className="group inline-flex min-h-11 items-center gap-1.5 text-meta font-medium text-foreground transition-colors duration-[220ms] hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <span className="nav-interact transition-colors group-hover:text-brand">
-                {viewer ? "My Neffi" : "Sign in"}
-              </span>
-              <ArrowRight
-                aria-hidden
-                className="size-3.5 shrink-0 nav-interact nav-arrow"
-              />
-            </Link>
-          </div>
-        </header>
 
         {/* Main Content Area */}
         <main className="w-full">
@@ -197,6 +171,10 @@ export default async function SupportPage({
                 <p className="mt-1.5 text-body text-fg-secondary leading-normal">
                   Tell us what happened and we’ll help you get back on track.
                 </p>
+
+                <Link href={viewer ? "/app" : "/sign-in"} className="mt-3 inline-flex min-h-11 items-center rounded-md text-meta font-medium text-foreground hover:text-action-text focus-visible:outline-2 focus-visible:outline-brand">
+                  {viewer ? "My Neffi" : "Sign in"}
+                </Link>
 
                 {/* Middle Support Topics (desktop only) */}
                 <div className="hidden md:flex flex-col gap-4 mt-6">
