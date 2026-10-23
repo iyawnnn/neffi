@@ -4,7 +4,7 @@ This is the engineering-facing summary of how Neffi behaves **today**. It covers
 
 ## Identity
 
-Neffi sells NFC cards that turn one tap into an action. It is built for non-technical customers in the Philippines, and the two owners sell and fulfil through Facebook Messenger, with manual payment (GCash, bank transfer, cash) and manual courier recording. The brand is "Neffi" (the wordmark is lowercase `neffi`). Earlier planning material called it "TapCard". The final public domain is not yet locked; the code uses `CARD_URL_ORIGIN`. Brand, naming, pricing and the business model are owned by Notion.
+Neffi sells NFC cards that turn one tap into an action. It is built for non-technical customers in the Philippines, and the two owners sell and fulfil through Facebook Messenger, with manual payment (GCash, bank transfer, cash) and manual courier recording. The brand is "Neffi" (the wordmark is lowercase `neffi`). Earlier planning material called it "TapCard". The tagline is **One tap. Instant connection.** The permanent public origin is `https://getneffi.com`; card URLs are `https://getneffi.com/c/{token}`. `www.getneffi.com` redirects 308 to the apex. Configuration uses `CARD_URL_ORIGIN`; see [operations](docs/operations.md#production-setup-infrastructure-acceptance). Brand, naming, pricing and the business model are owned by Notion.
 
 Two product lines:
 

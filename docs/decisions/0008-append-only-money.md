@@ -11,4 +11,4 @@
 
 ## Consequences
 
-Corrections after completion cannot reopen an order. They need explicit compensating actions, planned in M9A (see the [roadmap](../roadmap.md)).
+Corrections after completion cannot reopen an order. They use explicit compensating actions described in [support and corrections](../specs/support-and-corrections.md).

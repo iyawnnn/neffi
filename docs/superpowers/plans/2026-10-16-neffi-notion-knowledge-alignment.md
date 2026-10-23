@@ -1,5 +1,8 @@
 # Neffi Notion knowledge alignment — operational plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **For agentic workers:** Run this plan in a Claude session that has the Notion connector (`notion-fetch`, `notion-search`, `notion-update-page`). Steps use checkbox (`- [ ]`) syntax. Before the first write, read `notion://docs/enhanced-markdown-spec`.
 
 **Goal:** Make Neffi — Business Hub the entry point for business and product, organized by the 01–08 grouping. Make the engineering material in Notion visibly defer to GitHub. Delete, move and recreate nothing.

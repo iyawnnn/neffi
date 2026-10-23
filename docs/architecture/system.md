@@ -4,7 +4,7 @@ For current engineering milestone status, see [the roadmap](../roadmap.md). See 
 
 ## Shape
 
-One Next.js 16 App Router **modular monolith** (TypeScript, React 19, Tailwind and shadcn/ui) on PostgreSQL. Server Components are the default; Client Components are limited to interactive forms and editors. Mutations are Server Actions that authenticate, authorize and validate (Zod) before calling a domain service. Route Handlers are used only for the auth callbacks, the public form submission endpoint, the vCard download (`/c/{token}/contact`) and health. Image-upload signing is a Server Action. There is no separate API service, queue, cache server or search engine.
+One Next.js 16 App Router **modular monolith** (TypeScript, React 19, Tailwind and shadcn/ui) on PostgreSQL. Server Components are the default; Client Components are limited to interactive forms and editors. Mutations are Server Actions that authenticate, authorize and validate (Zod) before calling a domain service. Route Handlers are used for the auth callbacks, the public form submission endpoint, the vCard download (`/c/{token}/contact`), OWNER-only records search (`/admin/search/records`) and health. Image-upload signing is a Server Action. There is no separate API service, queue, cache server or search engine.
 
 | Surface | Routes | Access |
 |---|---|---|
@@ -63,4 +63,4 @@ M9B recovery locks case → Account `FOR UPDATE` → proof; it never locks Card/
 
 ## Environments
 
-Development and Preview share the `neffi-dev` database; Production is a separate project that does not exist yet and fails closed ([0010](../decisions/0010-environment-isolation.md)). Configuration is validated at startup and names a bad variable without printing its value. Variable names are listed in `.env.example`; procedures are in [operations](../operations.md).
+Development and Preview share the `neffi-dev` database; Production uses the separate `neffi-production` project and accepts only its registered host; an empty allowlist fails closed ([0010](../decisions/0010-environment-isolation.md)). Configuration is validated at startup and names a bad variable without printing its value. Variable names are listed in `.env.example`; procedures are in [operations](../operations.md).

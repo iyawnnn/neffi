@@ -1,5 +1,8 @@
 # Milestone 9A: Support Cases & Corrections Implementation Plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **Status: planned — approved, NOT implemented.** Approved 2026-10-14 (scope split S1/S2 and decisions B1–B9 approved by the user as written). Current product behavior is in [PRODUCT.md](../../../PRODUCT.md) and [docs/README.md](../../README.md); nothing here is current behavior until M9A ships. This plan is committed by the documentation consolidation on branch `docs/consolidation`.
 >
 > **For agentic workers:** **Codex is the sole implementation agent.** Execute task by task with superpowers:executing-plans (or subagent-driven-development), following §0. The plan is executor-independent: resume from repository state and the local ledger alone.

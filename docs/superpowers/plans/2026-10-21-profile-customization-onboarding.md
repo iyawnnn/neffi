@@ -1,5 +1,8 @@
 # Profile layouts, appearance and guided setup — Implementation Plan
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 > **Canonical path:** `docs/superpowers/plans/2026-10-21-profile-customization-onboarding.md`. This is a plan, not a specification. Behavior is defined by [the spec](../../specs/profile-customization-onboarding.md), [0013](../../decisions/0013-universal-layouts-profile-appearance.md), [0014](../../decisions/0014-guided-setup-and-goal.md) and [0015](../../decisions/0015-showcase-cover-image.md). If this plan and the spec disagree, the spec wins; stop and report.
 > **Status:** T1 (architecture/spec/docs lock) committed on `main` 2026-10-21. T2–T6 merged to `main` (`395ee83`). 2026-10-22: the optional Showcase cover was added as tasks T8a–T8c ([0015](../../decisions/0015-showcase-cover-image.md)). All tasks T2–T15 are implemented. Manual physical acceptance (real phone, real NFC tap, live Cloudinary) is pending.
 

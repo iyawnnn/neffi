@@ -1,6 +1,6 @@
 # Authenticated customer UI
 
-`/app` is the approved authenticated customer-product visual anchor. Future customer pages inherit its typography, tokens, app chrome, object treatment and interaction language, with layouts appropriate to their own tasks. Profiles, Cards and other customer pages are separate follow-up work; do not copy the dashboard composition onto every route.
+`/app` is the approved authenticated customer-product visual anchor. Future customer pages inherit its typography, tokens, app chrome, object treatment and interaction language, with layouts appropriate to their own tasks. Profiles, Cards and guided setup use these conventions with task-specific compositions; do not copy the dashboard composition onto every route.
 
 The public marketing site has its own reference, [marketing-ui.md](marketing-ui.md); it shares tokens but not this chrome.
 
@@ -83,6 +83,6 @@ The shared `interact` and `nav-interact` utilities use **220ms**, `cubic-bezier(
 
 Supported Quick Actions, Profile/Card rows and View all links use the same `ArrowRight` icon in both states. `nav-arrow` starts muted and right-facing; hovering the whole link on a hover-capable fine-pointer device changes it to Vermillion and applies `translate(2px, -1px) rotate(-45deg)` around its center. Do not swap icon shapes. Reduced motion removes the transform and transitions; touch devices retain the right-facing arrow and do not rely on hover for usability.
 
-Guided setup and the profile editors inherit these `/app` tokens and chrome. The public profile layouts (`/c/{token}`) have their own visual rules in the [profile layouts spec](../specs/profile-customization-onboarding.md#7-layouts) (planned).
+Guided setup and the profile editors inherit these `/app` tokens and chrome. The public profile layouts (`/c/{token}`) have their own visual rules in the [profile layouts spec](../specs/profile-customization-onboarding.md#7-layouts).
 
 Authenticated customer UI is mobile-first: preserve clear tap targets of at least 44px, visible keyboard focus, meaningful labels, task-specific responsive layouts and consistent chrome. Use available desktop width intentionally. Validate mobile wrapping, overflow, safe-area clearance, keyboard/menu behavior and reduced motion when extending these patterns. Consistency means shared typography, tokens, chrome, interactions and object language, not identical page layouts.

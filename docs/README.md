@@ -92,11 +92,14 @@ These Notion statements disagree with the repository or are stale. Notion is not
 - Older Notion material still describes the superseded GRC lifecycle (Blank, Reserved, encode and test, Released) and a narrow GRC provisioning capability in M4. [Decision 0006](decisions/0006-grc-simple-commercial-line.md) is authoritative.
 - Engineering status in Notion lags the repository: the hub callout, the AI Build Handoff, Locked Plan step 9, and Step 9, whose Milestone Progress Record is stale (for example, M7 and M10 are still marked "Not started"). [roadmap.md](roadmap.md) is authoritative.
 - Step 7 says OWNER MFA/step-up is enabled, the Locked Plan's Step 7 section proposes TOTP/step-up before commercial launch, and Step 8 lists Turnstile and migration rehearsal as M10 deliverables. MFA/step-up and Turnstile are deferred ([roadmap](roadmap.md#deliberately-deferred)).
-- Examples use `tapcard.ph` or `neffi.ph`. No source has locked the final public domain, so use `CARD_URL_ORIGIN`.
+- Older examples use `tapcard.ph` or `neffi.ph`; the permanent origin is now `https://getneffi.com`. Follow [Production configuration](operations.md#production-setup-infrastructure-acceptance) for `CARD_URL_ORIGIN` and OAuth callbacks.
 - "Quick Demo" and "Standard vs Custom package" are not part of the implemented product.
 - Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). The optional Showcase cover image ([0015](decisions/0015-showcase-cover-image.md)) is not yet recorded in Notion. Update Notion manually.
 - The hub and the AI Build Handoff refer to `docs/superpowers/plans/2026-10-14-neffi-ui-design-system-overhaul.md`, which exists only on the parked `feat/ui-design-system` branch.
 
-## Open questions
+## Remaining repository/source drift
 
-- The final public domain and NFC origin.
+- The public Guide still teaches the old three purposes; the accepted contract is the four Goals in [0014](decisions/0014-guided-setup-and-goal.md). Guide copy needs a separately reviewed source change.
+- `src/modules/profiles/block-options.ts` retains an old global-public-order comment; actual rendering groups by role ([profile spec](specs/profile-customization-onboarding.md#6-rendering-contract)). This documentation cleanup leaves source comments unchanged.
+
+For pending acceptance, use [roadmap.md](roadmap.md), not historical plans.

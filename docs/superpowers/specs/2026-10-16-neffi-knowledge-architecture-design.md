@@ -1,5 +1,8 @@
 # Neffi knowledge architecture — design
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 **Status:** approved design, not implemented. Date: 2026-10-16. Baseline: `origin/main` `b1881af9d93c9181efde2ff077c4c67eeb68f617` (after M11, PR #13).
 
 This is a design record. Once it is implemented, the normative wording lives in `AGENTS.md` and `docs/README.md`, and this file becomes history, like a milestone plan.

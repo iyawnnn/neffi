@@ -1,5 +1,8 @@
 # Neffi Account Recovery Architecture Audit
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 **Context.** We want two recovery paths: a self-service path for customers who still control their current email, and the existing support path for those who don't. This audit checks that idea against the code: Better Auth 1.7.7 (the installed source was read, so no public docs were needed), `src/auth/options.ts`, `src/modules/accounts/recovery.ts` and `secure.ts`, `/app/account`, `/support` and `/support/recover`, migrations 0001, 0007 and 0014, and ADR 0012. It is read-only: no files, migrations or databases were changed.
 
 **Headline:** most of the self-service path already exists. Signing in with an email code proves control of the current email. `/app/account → Change sign-in email` then verifies the new email with a code sent there and commits the change. What is missing is three safety gaps in that flow and clear signposting. No new recovery flow, OTP purpose, table or migration is needed.

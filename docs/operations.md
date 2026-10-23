@@ -28,7 +28,7 @@ Safeguards:
 
 ## Production setup (infrastructure acceptance)
 
-Use `https://getneffi.com` as the permanent Production site, auth and NFC origin. Keep Cloudflare as DNS provider; do not move nameservers to Vercel. The Vercel URL is a deployment/debug fallback, not the card origin. `www.getneffi.com` redirects to the apex.
+Use `https://getneffi.com` as the permanent Production site, auth and NFC origin. Keep Cloudflare as DNS provider; do not move nameservers to Vercel. The Vercel URL is a deployment/debug fallback, not the card origin. `www.getneffi.com` redirects 308 to the apex.
 
 Production uses Neon project `neffi-production` (`lingering-mountain-71377561`), default branch `production` (`br-damp-tree-aodwri8s`), database `neffi`, PostgreSQL 18 in Singapore (`aws-ap-southeast-1`). The registered direct hostname is `ep-gentle-cell-aoctmxkt.c-2.ap-southeast-1.aws.neon.tech`; the pooled endpoint inserts `-pooler` before `.c-2`. Never put either connection string into `.env.local`, Preview or Development.
 
@@ -43,7 +43,7 @@ Configure these in **Vercel > neffi > Settings > Environment Variables > Product
 | Nonsecret, server-only | `GOOGLE_CLIENT_ID` | Approved Production OAuth web client |
 | Secret | `GOOGLE_CLIENT_SECRET` | Matching Production OAuth client secret |
 | Secret | `RESEND_API_KEY` | Approved Production send-only credential |
-| Nonsecret, server-only | `AUTH_EMAIL_FROM` | Approved sender on a verified sending domain; no invented mailbox |
+| Nonsecret, server-only | `AUTH_EMAIL_FROM` | `Neffi <hello@getneffi.com>` on the verified `getneffi.com` Resend domain |
 | Nonsecret, optional server-only | `SUPPORT_REPLY_TO` | Approved monitored support address |
 | Secret | `ACTIVATION_CODE_SECRET` | New cryptographically random secret, at least 32 characters; retain after any credentials are issued |
 | Nonsecret, server-only | `CARD_URL_ORIGIN` | `https://getneffi.com`; never use `*.vercel.app` for customer cards |
@@ -69,6 +69,24 @@ Before deployment:
 **Customer NFC gate:** do not program customer cards until `getneffi.com` is connected, HTTPS is valid, `CARD_URL_ORIGIN=https://getneffi.com`, and final card-route checks pass. Card records store tokens, not the temporary deployment hostname. Canonical/metadata origin work will use `getneffi.com` in the later SEO audit; do not start SEO or present unfinished legal pages as final during infrastructure acceptance.
 
 The dated setup evidence and manual DNS/provider gates are in [the Production readiness record](verification/2026-10-23-production-readiness.md).
+
+## Live deployment and recovery
+
+### Deploy from main
+
+1. Work on a dedicated branch/worktree, open a reviewed PR into `main`, and wait for GitHub CI and the Vercel Preview check. CI runs frozen dependency install, lint, typecheck, tests, schema/journal checks, a production build and the bundle/secret scan (`.github/workflows/ci.yml`). Preview uses development resources; do not copy Production credentials into it.
+2. Merge only when checks are green and the diff has no unexpected source/configuration changes. Sync `main` and record its SHA. Deploy that SHA to Vercel **Production** through the project integration or an authorized fresh Production deployment; do not promote an arbitrary feature branch.
+3. Treat environment values as deployment snapshots. After an approved Production variable change, create a fresh deployment from current `main`; do not assume an older redeployment used the new snapshot. Inspect scope/existence without printing secrets. `AUTH_EMAIL_FROM` resolves through env parsing to the existing Resend sender; do not hardcode it or delete Preview variables to fix Production mail.
+4. Confirm READY, source SHA, Production target, apex/www alias assignment and valid HTTPS. Check www → apex 308, `/`, `/product`, `/activate`, `/sign-in`, `/support`, `/api/health` and `/api/auth/ok`, response headers, and signed-out protection of `/app`. A streamed protected shell may initially return 200; it must withhold private content and enter the auth flow. Use an authorized maintainer account for any approved login/session test; never record OTPs or session tokens.
+5. Record deployment identity, results and limitations in dated verification evidence; update only the [roadmap](roadmap.md) for current status. Provider/media and physical-card acceptance require their own genuine evidence. An infrastructure deployment is not public-launch acceptance.
+
+### Application rollback versus database recovery
+
+- For an application regression, identify a known-good Production deployment/SHA and confirm compatibility with the **current** schema and required environment. Use Vercel's available rollback action or redeploy the approved known-good source as Production; confirm the environment snapshot and re-run the checks above. An old deployment can contain old configuration. Provider-console availability and the selected target require operator judgment; this is not a rehearsed automatic recovery procedure.
+- Application rollback does not undo database migrations. Drizzle has no down-migration workflow here. Do not edit applied migrations or blindly restore an old database to match old code. Prefer a reviewed compatible forward fix when possible.
+- Before an authorized live migration, verify the exact project/branch/database, committed journal and a ready restore branch/snapshot. Apply only pending committed migrations; re-run once to prove no-op and inspect the journal/schema. If the journal is already current, do not rerun setup or seed. Never run `db:seed` in Production.
+- The initial Production setup retained `pre-initial-migrations-20261023` (`br-flat-scene-aol9sp19`), documented in the [initial evidence](verification/2026-10-23-production-readiness.md). It is a **pre-schema** restore point, not a backup of later Accounts or transactions. Obtain a new appropriate restore point for later approved changes. No scheduled backups, restore-window guarantee or tested disaster-recovery cutover is claimed.
+- If data recovery is required, pause affected writes and obtain explicit approval for the recovery timestamp, expected data loss and target. Inspect Neon's available restore/branch options in the console; preserve the affected branch and validate the recovery candidate before cutover. If its endpoint differs, a reviewed Production allowlist change and fresh deployment are required; do not weaken isolation. Update only approved Production connection scopes, validate compatibility, then recheck health/auth/routing and journal state before resuming writes. Retain rollback evidence and keep secrets out of reports. Never use `neffi-dev` as a recovery target.
 
 ## Database migrations
 
@@ -160,14 +178,19 @@ Both protected layouts and pages validate access on the server. `/app` requires 
 
 ### Owner role operations
 
-After live approval, verify the endpoint belongs to `neffi-dev / production` before each write, then run:
+Before each role write, obtain explicit approval for the target environment, Account and intended role, and a confirmed restore point. Verify project, branch, database and hostname without printing the connection string:
+
+- **Development:** `neffi-dev / production` (Neon branch name, not application Production), using Development credentials.
+- **Production:** `neffi-production / production / neffi`; compare the host with `PRODUCTION_DATABASE_HOSTS` and the [initial database identity record](verification/2026-10-23-production-readiness.md#database-identity-and-migration-evidence). Use a dedicated operator process with `VERCEL_ENV=production` and the approved direct `DATABASE_URL_UNPOOLED` supplied securely in its process environment. Never put it in the normal Development `.env.local`, Preview config or shell history. Confirm no conflicting `.env.local` is loaded; the script loads that file if present. Clear the operator credentials after the command.
+
+Then run the intended command:
 
 ```sh
 pnpm accounts:set-role <email> owner
 pnpm accounts:set-role <email> customer
 ```
 
-This operator CLI uses the direct migration URL and existing environment/isolation checks. Production fails closed until a production host is registered. It loads `.env.local` locally, needs no OAuth/Resend credentials, and runs the service under Node's `react-server` condition to preserve its `server-only` import boundary. There is no public role-change endpoint: Better Auth ignores submitted roles, forces new Accounts to customer, and disables `/update-user`.
+This operator CLI uses the direct migration URL and existing environment/isolation checks. Production accepts only the registered Production host; an empty allowlist fails closed. It loads `.env.local` locally, needs no OAuth/Resend credentials, and runs the service under Node's `react-server` condition to preserve its `server-only` import boundary. There is no public role-change endpoint: Better Auth ignores submitted roles, forces new Accounts to customer, and disables `/update-user`.
 
 Email lookup is case-insensitive. Unknown or ambiguous Accounts and invalid roles fail without writes. A locked transaction changes the role and inserts `activity_events` with type `account_role_changed`, the Account ID and note `customer→owner` or `owner→customer`; audit failure rolls the role back. Setting the current role is a no-op with no new event. Success prints the Account ID only (also for a no-op); failure prints a generic diagnostic and exits nonzero without SQL, email or credentials.
 
@@ -175,7 +198,7 @@ Email lookup is case-insensitive. Unknown or ambiguous Accounts and invalid role
 
 `/dev/email-preview` renders every email type with fake data at 375 or 600 px. It exists only in local development, returns 404 elsewhere and never sends mail. Local tests use fresh PGlite databases and mocked Google/Resend responses; they send no mail and need no live database. CI supplies synthetic auth configuration, checks migration drift and scans public bundles for secret values. A local build requires the auth variables; synthetic CI values prove compilation but cannot verify delivery or OAuth setup.
 
-At an approved live check, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Application Production remains untouched.
+At an approved live check, test OTP to the permitted inbox, Google sign-in, same-email refusal followed by OTP and Connect Google, sign-out, customer denial at `/admin`, then the owner grant and owner access. After separate push/Vercel approval, repeat at the registered branch alias. Other Preview URLs support OTP only when their origin matches the configured base URL; Google works only with a registered callback. Preview uses development credentials and stays behind Vercel Authentication. Current Production evidence and pending gates are linked from [roadmap](roadmap.md).
 
 Accepted abuse limits: another person can consume an email's send quota or invalidate its outstanding code; delivery failures also consume quota. Defaults allow up to nine incorrect guesses across three sends per ten minutes. An email daily cap can deny email-code access for up to 24 hours; Google and Support remain fallbacks. M10 uses daily caps instead of Turnstile. Add Turnstile to OTP send only if distributed abuse causes TOO_MANY_REQUESTS spikes or Resend quota alerts. Shared carrier IPs can hit daily caps; tune the constants if pilot traffic warrants it.
 

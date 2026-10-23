@@ -1,5 +1,8 @@
 # Recovery Code 8 → 6 Digit Audit
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 **Context.** The proposal is to shorten the support-assisted recovery code from 8 digits to 6. That would match the 6-digit sign-in code and fit six boxes on mobile. This is a read-only audit traced from the current code, including the uncommitted segmented input on `/support/recover`. No files, migrations or data were changed.
 
 **Key finding.** Guessing a recovery code can only complete the recovery that was already approved: the Account moves to the new address the owner entered. Nothing in the completion step lets an attacker choose a different destination. So a correct guess gives an attacker **no access**. The code proves the customer controls the approved new inbox. It is not the factor that protects the Account.

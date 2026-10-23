@@ -1,5 +1,8 @@
 # Activation Code 8-Character Migration Audit
 
+> **Implementation history — not a current specification.** Retained as written for provenance; instructions, names and verification plans below describe that implementation context. Current contracts and superseding decisions are indexed in [the documentation authority map](../../README.md#authority-map); current status is in [roadmap](../../roadmap.md). Earlier GRC lifecycle assumptions are superseded by [0006](../../decisions/0006-grc-simple-commercial-line.md).
+
+
 **Context.** The packaging now has room for an 8-character code (`N8KF-42PQ`) instead of 16 (`XXXX-XXXX-XXXX-XXXX`). Nothing has gone to production, so this is a clean cutover with no support for the old format. This is a read-only audit and plan. No files, migrations or databases were changed.
 
 ---
