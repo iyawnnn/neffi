@@ -21,7 +21,7 @@ Customer instructions follow implemented behavior and the current [activation](c
 ## Product instructions
 
 - The package contains the card, a common activation QR insert and the private unique activation code. The QR opens `/activate`; the customer types the code, signs in and confirms **Add to my account**.
-- Claiming a card does not itself create a profile. The accepted journey resumes under **Ready to set up**, then follows [guided setup](profile-customization-onboarding.md#8-guided-setup): Goal, You, Photo/Logo, Contact, Links, Look, Colours, Review/Publish and Done. Goal only recommends; it does not restrict content or layouts. The live Guide copy still describes the superseded three purposes; see [known source drift](../README.md#remaining-repositorysource-drift). Correcting that copy requires a separate source change.
+- Claiming a card does not itself create a profile. The customer resumes under **Ready to set up**, then follows [guided setup](profile-customization-onboarding.md#8-guided-setup): Goal, You, Photo/Logo, Contact, Links, Look, Colours, Review/Publish and Done. Goal only recommends; it does not restrict content or layouts.
 - Sharing QR is available on a claimed, connected card's page and downloadable as SVG. It has the same permanent URL as NFC. The package QR does not share a profile.
 - Recipients view a published profile in their browser without a Neffi account or separate app. The card must be connected and turned on.
 - Account recovery goes through support verification. Customers should complete recovery before signing in with a new address; no self-service card transfer is promised.
