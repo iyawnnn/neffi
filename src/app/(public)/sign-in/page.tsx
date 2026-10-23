@@ -5,7 +5,6 @@ import { CircleHelp } from "lucide-react";
 import { getViewer } from "@/auth/access";
 import { authErrorMessage } from "@/auth/messages";
 import { safeNext } from "@/auth/policy";
-import { NeffiLogo } from "@/components/neffi-logo";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
@@ -23,21 +22,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   if (await getViewer() && next !== "/app/account") redirect(next);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background md:items-center md:justify-center md:p-6 lg:p-10">
-      <main className="flex w-full flex-col bg-background md:grid md:grid-cols-[48%_52%] md:max-w-[1080px] md:min-h-[640px] md:overflow-hidden md:rounded-2xl md:border md:border-border/80 md:bg-card md:shadow-xs">
+    <div className="flex flex-col items-center px-4 pt-6 pb-10 sm:px-6 sm:pt-8 md:pb-14">
+      <main className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xs md:grid md:grid-cols-[48%_52%] md:max-w-[1080px] md:min-h-[640px]">
         {/* HERO REGION (mobile banner / desktop left panel) */}
         <div className="relative w-full overflow-hidden bg-[#FAF9F5] border-b border-border/50 aspect-[16/9] min-h-[185px] max-h-[225px] md:aspect-auto md:h-full md:min-h-[640px] md:max-h-none md:border-b-0 md:border-r md:border-border/60">
-          {/* Integrated Neffi Logo top-left */}
-          <div className="absolute top-5 left-5 z-10 sm:top-6 sm:left-6 md:top-7 md:left-7 lg:top-9 lg:left-9">
-            <Link
-              href="/"
-              aria-label="Neffi home"
-              className="inline-flex min-h-11 items-center rounded-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <NeffiLogo aria-hidden className="h-5.5 md:h-6 w-auto text-foreground" />
-            </Link>
-          </div>
-
           {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
           <picture className="block h-full w-full">
             <source

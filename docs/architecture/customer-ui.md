@@ -54,20 +54,24 @@ Vermillion primarily marks primary CTAs, progress/completion, focus, real unread
 
 The dashboard canvas belongs to the outer customer layout, selected by `main[data-canvas]`, so the area around the inset header matches the content. The sticky wrapper inherits that background; the shell stays white. Preserve this canvas/panel hierarchy.
 
-Use rounded rectangles, thin neutral borders and minimal shadow. The implemented radii are 12px for panels, 16px for `app-shell`, 10px for button links and object tiles, 12px for the account control, and 9px for desktop navigation tabs. Avoid excessive nested cards and `rounded-full` on large application shells. Circular account avatars, small icon containers and compact status badges do not define the shell silhouette.
+Use rounded rectangles, thin neutral borders and minimal shadow. The implemented radii are 12px for panels, 16px for `app-shell`, 10px for button links and object tiles, 12px for the account control, 18px for the Ink dock and 12px for its navigation items. Avoid excessive nested cards and `rounded-full` on large application shells. Circular account avatars, small icon containers and compact status badges do not define the shell silhouette.
 
 ## Shared chrome and navigation
 
 Primary customer navigation is **Home, Profiles, Cards**. Account settings and sign out belong in the account control. The bell links to the real Inbox, with a Vermillion dot only for actual unread messages; it is not a separate notification product.
 
-`app-shell` shares the white background, neutral border, 16px radius and restrained shadow between the top header and mobile bottom nav. Header scrolling strengthens only border/shadow through `data-scrolled`; there is no resizing, blur or morphing.
+The top header retains a white `app-shell` surface with the Neffi home link, Inbox bell and account menu. It is inset/sticky, 58px high below 768px and 64px from 768px, aligned to the content. Scrolling strengthens its border/shadow without morphing or blur. Primary sections no longer appear in the header.
 
-- From 768px: a 64px-high inset sticky header, 12px from the top, aligned with the content's `max-w-6xl` / 24px horizontal padding. A `minmax(0, 1fr) auto minmax(0, 1fr)` grid keeps the navigation centered independently of logo/account width. Active tabs use a neutral box and Ink text, without a Vermillion fill or underline.
-- Below 768px: a 58px-high inset top shell, 16px horizontal page alignment, sticky at `12px + safe-area-inset-top`. It contains the logo, bell and account/avatar.
-- The mobile bottom shell has three evenly distributed tabs, a 66px height, 12px horizontal inset (capped by `max-w-md`), and a bottom offset of `12px + safe-area-inset-bottom`. Active icons are Vermillion with stronger Ink labels; there is no inner active bubble.
-- The customer content wrapper reserves `106px + safe-area-inset-bottom` below mobile content, leaving about 28px before the floating nav at the end of the page.
+`AppNav` is a separate floating Ink bottom dock at every breakpoint. It shares the `nav-ink-surface` material (18px corners, white hairline, restrained Ink shadow) with the public desktop dock, while keeping product navigation and a quiet Snow active surface. Mobile shows icons and labels; desktop shows labels. Equal-width implicit grid columns accommodate a fourth primary section without a three-item CSS assumption. Inbox and Account remain in the top header on every screen.
 
-Keep account hover/open feedback on one coherent rectangular control. Retain the existing dropdown items, accessible focus and real sign-out behavior.
+- Below 768px: 66px dock, 12px horizontal/bottom inset plus safe-area bottom, capped at `max-w-md`. Links are at least 48px high; the current icon uses a restrained brand accent.
+- From 768px: 72px dock, 16px plus safe-area inset above the bottom edge, capped at `max-w-lg`.
+- The layout reserves bottom clearance at every breakpoint. The details editor's narrow-screen sticky Save/Cancel footer sits above the dock.
+- `/app/setup/**` remains a focused authenticated variant: `SetupHeader`, progress, Back/Continue and Finish later; no normal app dock/account controls. Existing authorization and session maintenance still apply.
+
+Keep account hover/open feedback on one coherent rectangular control, with the existing dropdown items, accessible focus and real sign-out behavior.
+
+The public site uses one Marketing Shell, including authentication/activation/support routes. The app shares its design language, not its acquisition links or footer. Public `/c/{token}` and unavailable card states remain independent profile surfaces.
 
 ## Product objects and reusable composition
 

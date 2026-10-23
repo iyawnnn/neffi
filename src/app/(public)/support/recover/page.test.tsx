@@ -13,10 +13,9 @@ test("public recovery is noindex and accepts only inbox/code proof with early-si
   expect(metadata.robots).toMatchObject({ index: false, follow: false });
 });
 
-test("renders floating public header, 3-step progress, and contact support link", async () => {
+test("renders recovery progress and contact support within the shared public shell", async () => {
   const html = renderToStaticMarkup(await Page());
   expect(html).toContain('href="/support"');
-  expect(html).toContain("Support");
   expect(html).toContain("nav-arrow");
   expect(html).toContain("Verified by support");
   expect(html).toContain("Your recovery request has been approved.");

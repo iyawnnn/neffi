@@ -234,7 +234,7 @@ function DesktopDock({ pathname, moreCurrent }: { pathname: string; moreCurrent:
       }}
       className="fixed bottom-4 left-1/2 z-40 hidden w-[min(44.5rem,calc(100vw-2rem))] -translate-x-1/2 min-[769px]:block"
     >
-      <ul className="grid h-[4.5rem] grid-cols-[1fr_1fr_11rem_1fr_1fr] items-center rounded-[18px] border border-white/10 bg-foreground p-2 shadow-[0_16px_40px_-16px_color-mix(in_oklab,var(--foreground)_65%,transparent)]">
+      <ul className="nav-ink-surface grid h-[4.5rem] grid-cols-[1fr_1fr_11rem_1fr_1fr] items-center p-2">
         {leading.map(item)}
         <li>
           <CrystalCta />
