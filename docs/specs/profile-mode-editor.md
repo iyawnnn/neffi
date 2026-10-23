@@ -36,7 +36,7 @@ The implemented editor preserves the following domain contracts; the original wo
 | `modules/profiles/block-options.ts` | Existing enum-backed kinds and section membership |
 | `modules/forms/config.ts`, `forms.ts` | Three existing configurations, field/question constraints and profile-owned definitions |
 | Mode route `actions.ts` | Authenticated server-action pattern, IDs, ownership, safe error mapping |
-| `SceneViewPreview`, public view loader | Role-grouped public rendering with stored order within each group, safe URL filtering and current visitor functionality |
+| `ProfileRenderer`, `profileSections`, public view loader | Role-grouped public rendering with stored order within each group, safe URL filtering and current visitor functionality |
 
 Limits remain 20 items per mode, 5 form definitions per profile and existing profile/mode limits. Preserve rejection of hiding/removing the final visible item of a published profile's default mode. Default-mode deletion remains forbidden. Preserve the existing currently-shown/default fallback behavior.
 

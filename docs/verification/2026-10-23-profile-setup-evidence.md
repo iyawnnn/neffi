@@ -1,4 +1,4 @@
-# Profile layouts and setup implementation evidence ? 2026-10-23
+# Profile layouts and setup implementation evidence - 2026-10-23
 
 This dated summary preserves reported local evidence; it is not a fresh test run or Production physical acceptance. Current implementation status belongs in [roadmap](../roadmap.md), behavior in the [profile/setup spec](../specs/profile-customization-onboarding.md).
 

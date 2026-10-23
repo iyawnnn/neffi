@@ -1,4 +1,4 @@
-# Post-live Production acceptance ? 2026-10-23
+# Post-live Production acceptance - 2026-10-23
 
 This is the successor to the [initial gated infrastructure record](2026-10-23-production-readiness.md). It records later evidence at deployed baseline `7a75627be4f6b1a6917f79732d33eee18ba1adfd`. It is **not full launch acceptance**. Current gate status belongs only in [roadmap](../roadmap.md); operating procedures belong in [operations](../operations.md).
 
