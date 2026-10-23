@@ -97,9 +97,4 @@ These Notion statements disagree with the repository or are stale. Notion is not
 - Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). The optional Showcase cover image ([0015](decisions/0015-showcase-cover-image.md)) is not yet recorded in Notion. Update Notion manually.
 - The hub and the AI Build Handoff refer to `docs/superpowers/plans/2026-10-14-neffi-ui-design-system-overhaul.md`, which exists only on the parked `feat/ui-design-system` branch.
 
-## Remaining repository/source drift
-
-- The public Guide still teaches the old three purposes; the accepted contract is the four Goals in [0014](decisions/0014-guided-setup-and-goal.md). Guide copy needs a separately reviewed source change.
-- `src/modules/profiles/block-options.ts` retains an old global-public-order comment; actual rendering groups by role ([profile spec](specs/profile-customization-onboarding.md#6-rendering-contract)). This documentation cleanup leaves source comments unchanged.
-
 For pending acceptance, use [roadmap.md](roadmap.md), not historical plans.

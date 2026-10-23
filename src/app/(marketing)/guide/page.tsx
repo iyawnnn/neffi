@@ -72,7 +72,7 @@ export default function GuidePage() {
           <div className="guide-chapter-copy">
             <h2 id="profile-heading" className="mp-heading">Add the things you want to share.</h2>
             <div className="mp-copy">
-              <p>In your account, find your card under <strong>Ready to set up</strong>. Choose Network, Get Clients, or Show My Work to get started.</p>
+              <p>In your account, find your card under <strong>Ready to set up</strong>. Choose a goal: Networking / Professional, Freelance / Creative, Business / Sales, or Student / Job Seeking. Not sure yet is fine too. Your goal suggests a starting layout; you can choose any layout and content, and change them later.</p>
               <p>Add your name and the essentials: a short introduction, contact details, and a useful link. Preview your profile, then publish it so people can open it.</p>
               <p>You can add more links, socials, and work from your profile editor later. Start with what someone needs after meeting you.</p>
             </div>
