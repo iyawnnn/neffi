@@ -44,7 +44,7 @@ test.each([["/app", "Home"], ["/app/profiles/x", "Profiles"], ["/app/cards/x", "
 test("the header carries the logo home link and the account menu", () => {
   const html = renderToStaticMarkup(<AppHeader account={ACCOUNT} unread={0} />);
   expect(html).toMatch(/<a [^>]*aria-label="Neffi home"[^>]*href="\/app"|<a [^>]*href="\/app"[^>]*aria-label="Neffi home"/);
-  expect(html).toContain("var(--brand)");
+  expect(html).toContain('fill="#E64A35"');
   expect(html).toContain('aria-label="Account menu for Ian Macabulos"');
   expect(html).toContain(">Ian<");
   expect(html).not.toContain("Macabulos<");

@@ -1,5 +1,5 @@
 import { Mail } from "lucide-react";
-import Image from "next/image";
+import { NeffiLogo } from "@/components/neffi-logo";
 import Link from "next/link";
 import { PLATFORMS } from "@/modules/profiles/platform-registry";
 import { SectionDivider } from "./section-divider";
@@ -90,15 +90,7 @@ export function MarketingFooter() {
 
         <div aria-hidden className="marketing-footer-monument">
           <div className="marketing-footer-wordmark">
-            {/* Crop the approved asset's Snow canvas to the lettering, as in the hero. */}
-            <Image
-              src="/neffi-wordmark-ink.svg"
-              alt=""
-              width={1200}
-              height={500}
-              unoptimized
-              className="marketing-footer-wordmark-image"
-            />
+            <NeffiLogo className="marketing-footer-wordmark-image" />
           </div>
         </div>
       </div>
