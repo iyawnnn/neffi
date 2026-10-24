@@ -77,7 +77,12 @@ export function CodeForm() {
         >
           Activation code
         </label>
-        <div className="relative flex items-center">
+        <div className="relative flex items-center justify-center rounded-xl bg-background">
+          <div aria-hidden data-code-groups className="pointer-events-none absolute grid h-10 w-[calc(9ch+1.8em)] select-none grid-cols-[4fr_1fr_4fr] font-mono text-lg sm:text-xl">
+            <span data-code-group className="rounded-md bg-canvas" />
+            <span />
+            <span data-code-group className="rounded-md bg-canvas" />
+          </div>
           <input
             ref={inputRef}
             id="code"
@@ -93,11 +98,11 @@ export function CodeForm() {
             aria-invalid={Boolean(state?.error)}
             aria-describedby={state?.error ? "code-error" : undefined}
             className={cn(
-              "h-[52px] sm:h-[54px] w-full rounded-xl border border-border bg-background px-4 font-mono text-base tracking-[0.14em] uppercase transition-all duration-150 outline-none sm:text-lg",
-              "placeholder:text-fg-secondary/35 placeholder:tracking-normal placeholder:font-mono placeholder:text-sm sm:placeholder:text-base",
+              "relative h-16 w-full rounded-xl border border-border bg-transparent px-8 text-center font-mono text-lg font-medium tracking-[0.2em] uppercase transition-[border-color,box-shadow] duration-150 outline-none sm:text-xl",
+              "placeholder:text-fg-secondary/60",
               "focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20",
               state?.error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
-              isComplete && !state?.error && "border-brand/40 pr-11"
+              isComplete && !state?.error && "border-brand/40"
             )}
           />
           {isComplete && !state?.error ? (
