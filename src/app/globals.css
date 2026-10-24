@@ -202,10 +202,14 @@
 }
 
 @utility app-shell {
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border-strong);
   border-radius: 16px;
   background: var(--background);
   box-shadow: 0 4px 16px -8px color-mix(in oklab, var(--foreground) 16%, transparent);
+
+  &[data-app-dock] {
+    border-radius: 20px;
+  }
 
   &[data-scrolled="true"] {
     border-color: var(--border-strong);

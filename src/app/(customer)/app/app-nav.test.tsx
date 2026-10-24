@@ -72,10 +72,34 @@ test("desktop uses top navigation and the mobile-only dock grows without a three
   expect(header).toContain('aria-label="Main"');
   expect(header.match(/<nav[^>]*>/)?.[0]).toContain("hidden md:block");
   expect(header).toContain("flex");
-  expect(header).not.toMatch(/grid-cols-3|grid-cols-\[/);
-  expect(dock).toContain("nav-ink-surface");
+  expect(header).toContain("data-app-header-grid");
+  expect(header).toContain("data-app-brand");
+  expect(header).toContain("data-app-tools");
+  expect(dock).not.toContain("nav-ink-surface");
+  expect(dock).toContain("app-shell");
   expect(dock).toContain("auto-cols-fr");
   expect(dock).not.toContain("grid-cols-3");
   expect(dock.match(/<nav[^>]*>/)?.[0]).toContain("md:hidden");
   expect(dock).not.toContain("Get Neffi");
+});
+
+test("stored Google image renders in the account trigger", () => {
+  const html = renderToStaticMarkup(<AppHeader account={{ ...ACCOUNT, image: "https://lh3.googleusercontent.com/a/photo" }} unread={0} />);
+  expect(html).toContain('src="https://lh3.googleusercontent.com/a/photo"');
+  expect(html).toContain('referrerPolicy="no-referrer"');
+});
+
+test.each(["/app", "/app/profiles", "/app/cards"])("mobile dock marks the current destination through icon and label only at %s", path => {
+  m.pathname = path;
+  try {
+    const html = renderToStaticMarkup(<AppNav />);
+    expect(html).toContain("data-app-dock");
+    expect(html).not.toContain("data-app-active-indicator");
+    const active = [...html.matchAll(/<a\b([^>]*)>(.*?)<\/a>/g)].find(([, attrs]) => attrs.includes('aria-current="page"'))!;
+    expect(active[1]).not.toMatch(/bg-subtle|bg-canvas/);
+    expect(active[2]).toContain("text-action-text");
+    expect(active[1]).toContain("font-semibold");
+  } finally {
+    m.pathname = "/app";
+  }
 });

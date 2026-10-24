@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" fill="none">
+  <defs>
+    <filter id="profile-shadow" x="-25%" y="-15%" width="150%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#111113" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <!-- A second identity, partially tucked behind the main profile. -->
+  <g transform="translate(350 109) rotate(9 119 174)">
+    <rect width="238" height="348" rx="22" fill="#F7F8FA" filter="url(#profile-shadow)"/>
+    <rect x=".75" y=".75" width="236.5" height="346.5" rx="21.25" stroke="#DEE0E4" stroke-width="1.5"/>
+    <circle cx="119" cy="72" r="29" fill="#E8EAEE"/>
+    <rect x="76" y="118" width="86" height="8" rx="4" fill="#C7CBD1"/>
+    <rect x="89" y="137" width="60" height="6" rx="3" fill="#DEE0E4"/>
+    <g fill="#FFFFFF" stroke="#E3E5E9" stroke-width="1.5">
+      <rect x="25" y="185" width="188" height="36" rx="8"/>
+      <rect x="25" y="235" width="188" height="36" rx="8"/>
+      <rect x="25" y="285" width="188" height="36" rx="8"/>
+    </g>
+  </g>
+
+  <!-- Digital profile: avatar, identity lines, contact shortcuts and links. -->
+  <g transform="translate(172 58) rotate(-6 151 202)">
+    <rect width="302" height="404" rx="24" fill="#FFFFFF" filter="url(#profile-shadow)"/>
+    <rect x=".75" y=".75" width="300.5" height="402.5" rx="23.25" stroke="#DEE0E4" stroke-width="1.5"/>
+    <rect x="137" y="22" width="28" height="4" rx="2" fill="#E64A35"/>
+    <circle cx="151" cy="88" r="38" fill="#F2F3F5" stroke="#E3E5E9" stroke-width="1.5"/>
+    <circle cx="151" cy="78" r="11" fill="#B7BDC6"/>
+    <path d="M129 109C130 96 140 92 151 92S172 96 173 109" fill="#B7BDC6"/>
+    <rect x="101" y="146" width="100" height="10" rx="5" fill="#62646A"/>
+    <rect x="112" y="168" width="78" height="7" rx="3.5" fill="#D5D7DC"/>
+
+    <g fill="#F7F8FA" stroke="#E3E5E9" stroke-width="1.5">
+      <rect x="85" y="199" width="32" height="32" rx="9"/>
+      <rect x="135" y="199" width="32" height="32" rx="9"/>
+      <rect x="185" y="199" width="32" height="32" rx="9"/>
+    </g>
+    <g stroke="#62646A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="93" y="209" width="16" height="12" rx="2"/>
+      <path d="m94 210 7 5 7-5"/>
+      <circle cx="151" cy="215" r="8"/>
+      <path d="M143 215H159M151 207C146 211 146 219 151 223C156 219 156 211 151 207M198 219 204 213M197 215 195 217A4 4 0 0 0 201 223L203 221M199 209 201 207A4 4 0 0 1 207 213L205 215"/>
+    </g>
+
+    <path d="M30 251H272" stroke="#ECEEF1" stroke-width="1.5"/>
+    <g fill="#F7F8FA" stroke="#E3E5E9" stroke-width="1.5">
+      <rect x="30" y="268" width="242" height="43" rx="10"/>
+      <rect x="30" y="325" width="242" height="43" rx="10"/>
+    </g>
+    <rect x="47" y="283" width="13" height="13" rx="4" fill="#E64A35" fill-opacity=".15"/>
+    <rect x="47" y="340" width="13" height="13" rx="4" fill="#DEE0E4"/>
+    <rect x="74" y="286" width="87" height="7" rx="3.5" fill="#B7BDC6"/>
+    <rect x="74" y="343" width="65" height="7" rx="3.5" fill="#B7BDC6"/>
+    <path d="m246 286 4 4-4 4M246 343l4 4-4 4" stroke="#8B8E95" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

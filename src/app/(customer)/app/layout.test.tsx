@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 const m = vi.hoisted(() => ({ requireAccount: vi.fn(), name: vi.fn(), unread: vi.fn() }));
 vi.mock("@/auth/access", () => ({ requireAccount: m.requireAccount }));
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/modules/accounts/directory", () => ({ accountDisplayName: m.name }));
+vi.mock("@/modules/accounts/directory", () => ({ accountHeaderDetails: m.name }));
 vi.mock("@/modules/forms/submissions", () => ({ unreadCount: m.unread }));
 vi.mock("@/components/session-keep-alive", () => ({ SessionKeepAlive: () => <span data-session-keep-alive="" /> }));
 vi.mock("@/auth/actions", () => ({ signOutAction: vi.fn() }));
@@ -14,7 +14,7 @@ import Layout from "./layout";
 beforeEach(() => {
   vi.clearAllMocks();
   m.requireAccount.mockResolvedValue({ accountId: "test-account", email: "maintainer@example.test" });
-  m.name.mockResolvedValue("Maintainer");
+  m.name.mockResolvedValue({ name: "Maintainer", image: "https://lh3.googleusercontent.com/a/photo" });
   m.unread.mockResolvedValue(2);
 });
 
@@ -25,6 +25,7 @@ test("authenticated layout retains account tools, responsive navigation, content
   expect(html).toContain('aria-label="Main"');
   expect(html).toContain('aria-label="Inbox, 2 unread"');
   expect(html).toContain('aria-label="Account menu for Maintainer"');
+  expect(html).toContain('src="https://lh3.googleusercontent.com/a/photo"');
   expect(html).toContain("data-session-keep-alive");
   expect(html).not.toContain("marketing-footer");
 });

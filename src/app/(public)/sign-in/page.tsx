@@ -30,9 +30,9 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           <picture className="block h-full w-full">
             <source
               media="(min-width: 768px)"
-              srcSet="/images/neffi-signin-hero-profile-preview.png"
-              width={1122}
-              height={1402}
+              srcSet="/images/neffi-signin-hero-desktop.png"
+              width={1440}
+              height={1500}
             />
             <img
               src="/images/neffi-signin-hero-mobile.png"

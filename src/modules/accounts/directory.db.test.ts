@@ -1,11 +1,19 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, expect, test } from "vitest";
-import { authIdentities, profiles } from "@/db/schema";
+import { accounts, authIdentities, profiles } from "@/db/schema";
 import { insertClaimedCard } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
-import { accountDirectoryDetail, listAccounts } from "./directory";
+import { accountDirectoryDetail, accountHeaderDetails, listAccounts } from "./directory";
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
+
+test("header DTO reads the stored account photo without identity secrets", () => rollback(db, async (tx) => {
+  const { owner } = await insertClaimedCard(tx);
+  await tx.update(accounts).set({ name: " Maya Santos ", image: "https://lh3.googleusercontent.com/a/photo" }).where(eq(accounts.id, owner.id));
+  expect(await accountHeaderDetails(tx, owner.id)).toEqual({ name: "Maya Santos", image: "https://lh3.googleusercontent.com/a/photo" });
+  await tx.update(accounts).set({ image: "https://example.test/photo" }).where(eq(accounts.id, owner.id));
+  expect(await accountHeaderDetails(tx, owner.id)).toEqual({ name: "Maya Santos", image: null });
+}));
 test("Account DTO exactly matches A3 and excludes identity secrets/profile content", () => rollback(db, async (tx) => {
   const { owner, card, profile } = await insertClaimedCard(tx);
   await tx.insert(authIdentities).values({ userId: owner.id, providerId: "google", accountId: "PRIVATE_SUBJECT", accessToken: "PRIVATE_TOKEN" });

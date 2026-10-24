@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 682" fill="none">
+  <defs>
+    <filter id="card-shadow" x="-20%" y="-25%" width="140%" height="160%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#111113" flood-opacity=".17"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#111113" flood-opacity=".10"/>
+    </filter>
+    <linearGradient id="front-surface" x1="1250" y1="110" x2="1660" y2="570" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F8FA"/>
+      <stop offset=".55" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7F8FA"/>
+    </linearGradient>
+    <linearGradient id="back-surface" x1="1380" y1="300" x2="1660" y2="635" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECEEF1"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <g id="contactless" stroke="#111113" stroke-width="5" stroke-linecap="round">
+      <path d="M0 18a12 12 0 0 1 0 12M8 12a22 22 0 0 1 0 24M16 6a32 32 0 0 1 0 36M24 0a42 42 0 0 1 0 48"/>
+    </g>
+    <!-- Authentic standalone mark, copied from neffi-mark-ink.svg. -->
+    <g id="neffi-mark">
+      <path d="M320.216 490.306H270V406.731C270 378.372 274.625 357.429 295.747 336.892C325.227 308.225 380.953 301.824 409.391 335.674C423.557 352.535 426.509 372.368 426.509 393.657V431.407C426.509 454.691 450.486 467.35 467.488 453.34C476.433 445.969 476.964 435.979 476.964 425.205V386.28H526.606V426.46C526.606 489.937 436.76 519.536 392.71 466.782C383.716 456.011 377.733 442.083 377.733 427.855V381.935C377.733 338.43 320.216 343.036 320.216 385.669V490.306Z" fill="#111113"/>
+      <circle cx="500.262" cy="335.708" r="29.738" fill="#E64A35"/>
+    </g>
+    <path id="back-face" d="M1328 248 1883 342Q1912 349 1897 369L1712 622Q1699 643 1674 635L1170 466Q1146 458 1160 438Z"/>
+    <path id="front-face" d="M1257 107 1753 200Q1779 205 1771 232L1680 555Q1673 582 1644 574L1131 439Q1105 433 1114 407L1225 127Q1234 103 1257 107Z"/>
+  </defs>
+
+  <!-- Pale looping Neffi motif and radio waves sit behind the product. -->
+  <g id="background-linework" stroke="#CDD0D4" stroke-opacity=".5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M660 682V449C660 326 760 226 883 226S1105 326 1105 449V503C1105 550 1139 588 1180 588S1256 552 1256 508V430H1395V500C1395 630 1298 737 1177 737S963 638 963 510V449C963 404 928 368 883 368S803 404 803 449V682"/>
+    <path d="M1803 20C1877 91 1877 205 1803 277M1882-20C1964 66 1964 225 1882 309" stroke-width="3.5"/>
+  </g>
+
+  <g id="vermilion-accent">
+    <circle cx="1653" cy="159" r="107" fill="#E64A35"/>
+  </g>
+
+  <g id="back-card">
+    <use href="#back-face" fill="url(#back-surface)" filter="url(#card-shadow)"/>
+    <use href="#back-face" stroke="#FFFFFF" stroke-width="2"/>
+    <use href="#contactless" transform="matrix(.9 .2 -.55 .65 1827 348)"/>
+  </g>
+
+  <g id="front-card">
+    <use href="#front-face" fill="url(#front-surface)" filter="url(#card-shadow)"/>
+    <use href="#front-face" stroke="#DEE0E4" stroke-width="1.5"/>
+    <g transform="matrix(.555 .106 -.194 .502 1375 271)">
+      <use href="#neffi-mark" transform="translate(-270 -306)"/>
+    </g>
+    <use href="#contactless" transform="matrix(.9 .18 -.3 .87 1687 225)"/>
+  </g>
+</svg>

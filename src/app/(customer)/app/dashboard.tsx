@@ -9,6 +9,8 @@ import { getOwnedProfile, ownedProfiles, type OwnedProfile } from "@/modules/pro
 import { PUBLISH_GAP_COPY, type PublishGap } from "@/modules/profiles/rules";
 import { cn } from "@/lib/utils";
 
+import { FirstNeffiHome } from "./first-neffi-home";
+
 type ProfileRow = Awaited<ReturnType<typeof ownedProfiles>>[number];
 
 const LIST_LIMIT = 4;
@@ -17,8 +19,6 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const profileName = (name: string | null) => name ?? "Untitled profile";
 
-// Data half of Home; the page checks the session first and streams this behind a skeleton.
-// Unread messages are surfaced by the header's Inbox bell, which the layout loads.
 export async function Dashboard({ accountId, searchParams }: { accountId: string; searchParams: PageProps<"/app">["searchParams"] }) {
   const [params, cards, profiles] = await Promise.all([searchParams, cardSummaries(db, accountId), ownedProfiles(db, accountId)]);
   const waiting = cards.filter((card) => !card.profileId);
@@ -27,10 +27,41 @@ export async function Dashboard({ accountId, searchParams }: { accountId: string
   const draft = !waiting.length && focus?.status === "draft" ? await getOwnedProfile(db, accountId, focus.id) : null;
   const error = authErrorMessage(first(params.error));
   const added = first(params.added) === "1";
+
+  return <DashboardView cards={cards} profiles={profiles} draft={draft} focus={focus} waiting={waiting} error={error} added={added} />;
+}
+
+export function DashboardView({
+  cards,
+  profiles,
+  draft,
+  focus,
+  waiting,
+  error,
+  added,
+}: {
+  cards: CardSummary[];
+  profiles: ProfileRow[];
+  draft: OwnedProfile | null;
+  focus?: ProfileRow;
+  waiting: CardSummary[];
+  error?: string | null;
+  added?: boolean;
+}) {
   const onboarding = !cards.length && !profiles.length;
   const connected = cards.length - waiting.length;
+
+  if (onboarding) {
+    return <FirstNeffiHome error={error} added={added} />;
+  }
+
   return (
     <div className="flex flex-col gap-6 md:gap-8">
+      <header className="flex flex-col gap-1 pb-1">
+        <h1 className="text-title font-semibold tracking-tight text-foreground">Your Neffi</h1>
+        <p className="text-body text-fg-secondary">Manage your profiles, cards and what people see when they tap.</p>
+      </header>
+
       {error || added ? (
         <div className="flex flex-col gap-2">
           {error ? <Notice role="alert">{error}</Notice> : null}
@@ -38,20 +69,18 @@ export async function Dashboard({ accountId, searchParams }: { accountId: string
         </div>
       ) : null}
 
-      {waiting.length ? <SetupCard card={waiting[0]} /> : draft ? <DraftCard profile={draft} cards={cards} /> : focus ? <LiveCard profile={focus} cards={cards} /> : <FirstNeffi />}
+      {waiting.length ? <SetupCard card={waiting[0]} /> : draft ? <DraftCard profile={draft} cards={cards} /> : focus ? <LiveCard profile={focus} cards={cards} /> : null}
 
-      {onboarding ? null : (
-        <section aria-labelledby="quick-actions">
-          <SectionHeader id="quick-actions" title="Quick actions" />
-          {/* One surface: a grouped list on phones, equal cells side by side from md (as many as there are actions).
-              Desktop separators are short centered hairlines via the qa-strip class in globals.css. */}
-          <ul className="qa-strip divide-y overflow-hidden rounded-panel border bg-background md:grid md:auto-cols-[minmax(0,1fr)] md:grid-flow-col md:divide-y-0">
-            <QuickAction href="/activate" icon={Plus} label={cards.length ? "Activate another Neffi" : "Activate a Neffi"} meta="Enter your package code" />
-            {focus ? <QuickAction href={`/app/profiles/${focus.id}/preview`} icon={Eye} label="Preview profile" meta={profileName(focus.fullName)} /> : null}
-            {cards.length ? <QuickAction href="/app/cards" icon={Nfc} label="Manage cards" meta={connected === cards.length ? plural(connected, "connected card") : `${plural(cards.length, "card")}, ${connected} connected`} /> : null}
-          </ul>
-        </section>
-      )}
+      <section aria-labelledby="quick-actions">
+        <SectionHeader id="quick-actions" title="Quick actions" />
+        {/* One surface: a grouped list on phones, equal cells side by side from md (as many as there are actions).
+            Desktop separators are short centered hairlines via the qa-strip class in globals.css. */}
+        <ul className="qa-strip divide-y overflow-hidden rounded-panel border bg-background md:grid md:auto-cols-[minmax(0,1fr)] md:grid-flow-col md:divide-y-0">
+          <QuickAction href="/activate" icon={Plus} label={cards.length ? "Activate another Neffi" : "Activate a Neffi"} meta="Enter your package code" />
+          {focus ? <QuickAction href={`/app/profiles/${focus.id}/preview`} icon={Eye} label="Preview profile" meta={profileName(focus.fullName)} /> : null}
+          {cards.length ? <QuickAction href="/app/cards" icon={Nfc} label="Manage cards" meta={connected === cards.length ? plural(connected, "connected card") : `${plural(cards.length, "card")}, ${connected} connected`} /> : null}
+        </ul>
+      </section>
 
       <div className="grid gap-5 md:grid-cols-2 md:gap-6">
         <ListPanel id="your-profiles" title="Your profiles" count={profiles.length} action={profiles.length ? <SectionLink href="/app/profiles">View all</SectionLink> : null}>
@@ -74,7 +103,7 @@ export async function Dashboard({ accountId, searchParams }: { accountId: string
               icon={Nfc}
               title="No cards activated yet"
               description="Activate a Neffi card to connect it to a profile and start sharing."
-              action={onboarding ? null : <ButtonLink href="/activate" variant="outline">Activate a Neffi</ButtonLink>}
+              action={<ButtonLink href="/activate" variant="outline">Activate a Neffi</ButtonLink>}
             />
           )}
         </ListPanel>
@@ -123,26 +152,6 @@ const CardMark = () => (
   </span>
 );
 
-function FirstNeffi() {
-  const steps = ["Activate it with the code in your package", "Set up the profile people will see", "Tap your card to share it"];
-  return (
-    <NextStep
-      leading={<CardMark />}
-      title="Activate your first Neffi"
-      summary="Add your card to your account, then set up what people see when they tap it."
-      actions={<ButtonLink href="/activate" variant="action">Activate a Neffi</ButtonLink>}
-    >
-      <ol className="grid gap-3 sm:grid-cols-3 sm:gap-6">
-        {steps.map((step, i) => (
-          <li key={step} className="flex items-start gap-3 text-body text-fg-secondary">
-            <span aria-hidden className="text-meta tabular-nums text-foreground">{String(i + 1).padStart(2, "0")}</span>
-            {step}
-          </li>
-        ))}
-      </ol>
-    </NextStep>
-  );
-}
 
 function SetupCard({ card }: { card: CardSummary }) {
   return (

@@ -81,7 +81,9 @@ test("an empty account gets an intentional empty state and starts creation throu
   expect(html).toContain("Create your first profile");
   expect(html).toContain("0 profiles");
   expect([...html.matchAll(/href="\/activate"/g)]).toHaveLength(1);
-  expect(html).toContain("neffi-create-profile-cards.png");
+  expect(html).toContain('src="/neffi-create-profile.svg"');
+  expect(html).not.toContain("neffi-create-profile-cards.svg");
+  expect(html).not.toContain("neffi-create-profile-cards.png");
 });
 
 test("requires the session before reading customer data", async () => {

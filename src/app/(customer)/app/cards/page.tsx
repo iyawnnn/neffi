@@ -74,7 +74,7 @@ export default async function CardsPage() {
       </section>
 
       <section aria-labelledby="activate-card" className="grid items-center gap-2 overflow-hidden rounded-panel border bg-background px-5 py-6 text-center md:px-8 md:py-8">
-        <Image src="/neffi-create-profile-cards.png" alt="" width={1448} height={1086} sizes="240px" className="mx-auto -my-2 h-auto w-[240px] max-w-full" />
+        <Image src="/neffi-create-profile-cards.svg" alt="" width={1448} height={1086} sizes="240px" className="mx-auto -my-2 h-auto w-[240px] max-w-full" />
         <div className="min-w-0">
           <h2 id="activate-card" className="text-[1.375rem] leading-7 font-semibold tracking-[-0.01em] md:text-2xl md:leading-8">
             {cards.length ? "Activate another Neffi" : "Activate your first Neffi"}

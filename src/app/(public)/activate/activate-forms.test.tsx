@@ -76,7 +76,7 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
   await act(async () => {
     changeInput(input, "N8KF42P");
   });
-  expect(input.value).toBe("N8KF42P");
+  expect(input.value).toBe("N8KF-42P");
   expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(true);
 
@@ -84,20 +84,59 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
   await act(async () => {
     changeInput(input, "N8KF42PQ");
   });
-  expect(input.value).toBe("N8KF42PQ");
+  expect(input.value).toBe("N8KF-42PQ");
   expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(false);
   expect(button.className).toContain("bg-action");
 });
 
-test("native edits do not include a separator character", async () => {
+test("native character deletion reformats the remaining code", async () => {
   await act(async () => root.render(<CodeForm />));
   const input = host.querySelector<HTMLInputElement>("input#code")!;
   await act(async () => changeInput(input, "N8KF42PQ"));
   await act(async () => changeInput(input, "N8K42PQ", "deleteContentBackward", 3));
-  expect(input.value).toBe("N8K42PQ");
+  expect(input.value).toBe("N8K4-2PQ");
   await act(async () => changeInput(input, "N8K2PQ", "deleteContentForward", 3));
-  expect(input.value).toBe("N8K2PQ");
+  expect(input.value).toBe("N8K2-PQ");
+});
+
+test.each([
+  ["deleteContentBackward", "N8K4-2PQ", 3],
+  ["deleteContentForward", "N8KF-2PQ", 4],
+] as const)("%s across the automatic hyphen deletes the adjacent character", async (type, expected, caret) => {
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  input.focus();
+  await act(async () => changeInput(input, "N8KF42PQ"));
+  await act(async () => changeInput(input, "N8KF42PQ", type, 4));
+  await new Promise(requestAnimationFrame);
+  expect(input.value).toBe(expected);
+  expect(input.selectionStart).toBe(caret);
+});
+
+test("selection paste preserves surrounding characters, caret and eight-character limit", async () => {
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  input.focus();
+  await act(async () => changeInput(input, "N8KF42PQ"));
+  input.setSelectionRange(3, 7);
+  await act(async () => {
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { getData: () => "a!b" } });
+    input.dispatchEvent(event);
+  });
+  await new Promise(requestAnimationFrame);
+  expect(input.value).toBe("N8KA-BPQ");
+  expect(input.selectionStart).toBe(6);
+  await act(async () => changeInput(input, "ab!?cd123456"));
+  expect(input.value).toBe("ABCD-1234");
+});
+
+test.each(["N", "N8", "N8K", "N8KF", "N8KF-4", "N8KF-42", "N8KF-42P", "N8KF-42PQ"])("formats typed progress %s", async (value) => {
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  await act(async () => changeInput(input, value.replace("-", "")));
+  expect(input.value).toBe(value);
 });
 
 test("CodeForm associates error with aria-invalid and aria-describedby", async () => {
@@ -130,29 +169,34 @@ test("CodeForm associates error with aria-invalid and aria-describedby", async (
   expect((m.checkCode.mock.calls[0][1] as FormData).get("code")).toBe("N8KF42PQ");
 });
 
-test("activation code has eight decorative slots and one native input", async () => {
+test("activation has one labelled product-code input and no OTP slots", async () => {
   await act(async () => root.render(<CodeForm />));
   const input = host.querySelector<HTMLInputElement>("input#code")!;
-  const groups = host.querySelector('[data-code-slots]')!;
   expect(host.querySelectorAll("input")).toHaveLength(1);
-  expect(groups).not.toBeNull();
-  expect(groups.getAttribute("aria-hidden")).toBe("true");
-  expect(groups.children).toHaveLength(8);
-  expect(groups.querySelectorAll("input, button, [tabindex]")).toHaveLength(0);
+  expect(host.querySelector('[data-code-slots]')).toBeNull();
+  expect(input.placeholder).toBe("XXXX-XXXX");
+  expect(input.maxLength).toBe(9);
+  expect(input.labels?.[0].textContent).toBe("Activation code");
   expect(input.getAttribute("name")).toBe("code");
 });
 
-test("pasted input keeps formatting, completion feedback and the existing posted value", async () => {
+test.each(["N8KF42PQ", "N8KF-42PQ", "n8kf42pq", "n8kf-42pq", "  n8kf - 42pq!? extra  "])("pasting %s keeps completion and the existing posted value", async (text) => {
   await act(async () => root.render(<CodeForm />));
   const input = host.querySelector<HTMLInputElement>("input#code")!;
   const form = host.querySelector<HTMLFormElement>("form")!;
-  await act(async () => changeInput(input, "  n8kf-42pq!? extra", "insertFromPaste"));
-  expect(input.value).toBe("N8KF42PQ");
-  expect(new FormData(form).get("code")).toBe("N8KF42PQ");
-  expect(normalizeActivationCode(new FormData(form).get("code") as string)).toBe("N8KF42PQ");
-  expect(host.querySelector('[data-complete="true"]')).not.toBeNull();
-  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  await act(async () => {
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { getData: () => text } });
+    input.dispatchEvent(event);
+  });
+  expect(input.value).toBe("N8KF-42PQ");
   expect(m.checkCode).not.toHaveBeenCalled();
+  await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect((m.checkCode.mock.calls[0][1] as FormData).get("code")).toBe("N8KF42PQ");
+  expect(normalizeActivationCode(new FormData(form).get("code") as string)).toBe("N8KF42PQ");
+  expect(input.dataset.complete).toBe("true");
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  expect(m.checkCode).toHaveBeenCalledTimes(1);
 });
 
 // ----------------------------------------------------

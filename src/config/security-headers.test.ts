@@ -11,7 +11,7 @@ const policy = (dev = false, sentryDsn?: string) => securityHeaders({ dev, sentr
 
 test("production policy is the exact static enforced policy, with nosniff", () => {
   expect(securityHeaders({ dev: false })).toEqual([
-    { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com; font-src 'self'; connect-src 'self' https://api.cloudinary.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" },
+    { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://res.cloudinary.com https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com; font-src 'self'; connect-src 'self' https://api.cloudinary.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" },
     { key: "X-Content-Type-Options", value: "nosniff" },
   ]);
   expect(policy()).not.toMatch(/unsafe-eval|wss?:|\*/);

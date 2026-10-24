@@ -3,11 +3,12 @@ import { asc, count, eq, ilike, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { escapeLike } from "../orders/purchasers";
+import { accountAvatarUrl } from "@/lib/account-avatar";
 
-// Display-only: the Google profile name, when there is one (email-code sign-ups have an empty name).
-export async function accountDisplayName(db: Db, id: string): Promise<string | null> {
-  const [row] = await db.select({ name: schema.accounts.name }).from(schema.accounts).where(eq(schema.accounts.id, id));
-  return row?.name.trim() || null;
+// Display-only chrome from the stored Better Auth user; provider credentials never enter this DTO.
+export async function accountHeaderDetails(db: Db, id: string) {
+  const [row] = await db.select({ name: schema.accounts.name, image: schema.accounts.image }).from(schema.accounts).where(eq(schema.accounts.id, id));
+  return { name: row?.name.trim() || null, image: accountAvatarUrl(row?.image) };
 }
 
 const accountMatch = (query: string) => (query ? ilike(schema.accounts.email, `%${escapeLike(query)}%`) : undefined);
