@@ -21,8 +21,8 @@ export default async function CustomerLayout({ children }: LayoutProps<"/app">) 
   return (
     <div className="app-type flex flex-1 flex-col has-[main[data-canvas]]:bg-canvas has-[main[data-setup]]:bg-canvas">
       <AppHeader account={{ name, email: viewer.email }} unread={unread} />
-      {/* Reserve space for the floating dock and safe area on every screen; focused setup has no dock. */}
-      <div className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+6.625rem)] has-[main[data-setup]]:pb-0">{children}</div>
+      {/* Reserve mobile dock and safe-area clearance; desktop and focused setup have no bottom dock. */}
+      <div className="flex flex-1 flex-col pb-[calc(env(safe-area-inset-bottom)+6.625rem)] md:pb-0 has-[main[data-setup]]:pb-0">{children}</div>
       <AppNav />
       <SessionKeepAlive />
     </div>

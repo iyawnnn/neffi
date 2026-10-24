@@ -18,7 +18,7 @@ beforeEach(() => {
   m.unread.mockResolvedValue(2);
 });
 
-test("authenticated layout retains account tools, dock, content and session maintenance without a public footer", async () => {
+test("authenticated layout retains account tools, responsive navigation, content and session maintenance without a public footer", async () => {
   const html = renderToStaticMarkup(await Layout({ params: Promise.resolve({}), children: <main>Private account content</main> }));
   expect(m.requireAccount).toHaveBeenCalledWith("/app");
   expect(html).toContain("Private account content");

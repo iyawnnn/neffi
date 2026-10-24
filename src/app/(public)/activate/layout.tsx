@@ -1,1 +1,1 @@
-export { PublicUtilityLayout as default } from "@/components/public-site-shell";
+export { FocusedUtilityLayout as default } from "@/components/public-site-shell";
