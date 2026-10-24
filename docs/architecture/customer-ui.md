@@ -60,18 +60,18 @@ Use rounded rectangles, thin neutral borders and minimal shadow. The implemented
 
 Primary customer navigation is **Home, Profiles, Cards**. Account settings and sign out belong in the account control. The bell links to the real Inbox, with a Vermillion dot only for actual unread messages; it is not a separate notification product.
 
-The top header retains a white `app-shell` surface with the Neffi home link, Inbox bell and account menu. It is inset/sticky, 58px high below 768px and 64px from 768px, aligned to the content. Scrolling strengthens its border/shadow without morphing or blur. Primary sections no longer appear in the header.
+The top header retains a white `app-shell` surface with the Neffi home link, Inbox bell and account menu. It is inset/sticky, 58px high below 768px and 64px from 768px, aligned to the content. Scrolling strengthens its border/shadow without morphing or blur. From 768px, primary sections appear between the brand and account tools in a flexible row. Active links use a quiet Snow fill, Ink text and inset hairline; focus remains Vermilion. The list has no fixed item count or column widths.
 
-`AppNav` is a separate floating Ink bottom dock at every breakpoint. It shares the `nav-ink-surface` material (18px corners, white hairline, restrained Ink shadow) with the public desktop dock, while keeping product navigation and a quiet Snow active surface. Mobile shows icons and labels; desktop shows labels. Equal-width implicit grid columns accommodate a fourth primary section without a three-item CSS assumption. Inbox and Account remain in the top header on every screen.
+`AppNav` is a mobile-only floating Ink bottom dock, hidden from 768px when the top primary navigation appears. It shares the `nav-ink-surface` material (18px corners, white hairline, restrained Ink shadow) with the public desktop dock, while keeping product navigation, icons/labels and a quiet Snow active surface. Equal-width implicit grid columns accommodate a fourth primary section without a three-item CSS assumption. Inbox and Account remain in the top header on every screen. Only one primary navigation is visible at a time.
 
 - Below 768px: 66px dock, 12px horizontal/bottom inset plus safe-area bottom, capped at `max-w-md`. Links are at least 48px high; the current icon uses a restrained brand accent.
-- From 768px: 72px dock, 16px plus safe-area inset above the bottom edge, capped at `max-w-lg`.
-- The layout reserves bottom clearance at every breakpoint. The details editor's narrow-screen sticky Save/Cancel footer sits above the dock.
+- From 768px: compact top navigation within the 64px app header; no bottom dock.
+- The layout reserves bottom clearance only below 768px. The details editor's narrow-screen sticky Save/Cancel footer sits above the dock.
 - `/app/setup/**` remains a focused authenticated variant: `SetupHeader`, progress, Back/Continue and Finish later; no normal app dock/account controls. Existing authorization and session maintenance still apply.
 
 Keep account hover/open feedback on one coherent rectangular control, with the existing dropdown items, accessible focus and real sign-out behavior.
 
-The public site uses one Marketing Shell, including authentication/activation/support routes. The app shares its design language, not its acquisition links or footer. Public `/c/{token}` and unavailable card states remain independent profile surfaces.
+The public site uses one MarketingNav. Informational pages and Support retain the full marketing footer; Sign in, Activate and Recovery use focused utility/legal links instead. The app shares its design language, not its acquisition links or footer. Public `/c/{token}` and unavailable card states remain independent profile surfaces.
 
 ## Product objects and reusable composition
 

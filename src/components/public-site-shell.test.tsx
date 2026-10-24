@@ -14,7 +14,8 @@ vi.mock("@/app/(public)/support/recover/recovery-form", () => ({ RecoveryForm: (
 import { PublicSiteShell } from "./public-site-shell";
 import ActivateLayout from "@/app/(public)/activate/layout";
 import SignInLayout from "@/app/(public)/sign-in/layout";
-import SupportLayout from "@/app/(public)/support/layout";
+import RecoverLayout from "@/app/(public)/support/recover/layout";
+
 import Activate from "@/app/(public)/activate/page";
 import SignIn from "@/app/(public)/sign-in/page";
 import Support from "@/app/(public)/support/page";
@@ -27,13 +28,18 @@ const props = { params: Promise.resolve({}), searchParams: Promise.resolve({}) }
 test.each([
   ["/activate", ActivateLayout, () => Activate(props)],
   ["/sign-in", SignInLayout, () => SignIn(props)],
-  ["/support", SupportLayout, () => Support(props)],
-  ["/support/recover", SupportLayout, () => Recover()],
-] as const)("%s shares public navigation and footer without a legacy header", async (path, Layout, page) => {
+  ["/support", ({ children }: { children: React.ReactNode }) => children, () => Support(props)],
+  ["/support/recover", RecoverLayout, () => Recover()],
+] as const)("%s shares public navigation with the appropriate footer and no legacy header", async (path, Layout, page) => {
   m.pathname = path;
   const html = renderToStaticMarkup(<Layout>{await page()}</Layout>);
   expect(html.match(/aria-label="Main"/g)).toHaveLength(2); // desktop and mobile
   expect(html.match(/<footer/g)).toHaveLength(1);
+  expect(html.includes('class="marketing-footer"')).toBe(path === "/support");
+  expect(html.includes('aria-label="Utility links"')).toBe(path !== "/support");
+  if (path !== "/support") {
+    expect(html).toContain(path === "/support/recover" ? "Back to support" : "Need help?");
+  }
   expect(html.match(/aria-label="Neffi home"/g)).toHaveLength(1);
   expect(html).toContain("data-marketing-content");
   expect(html.match(/<header/g)).toHaveLength(1);

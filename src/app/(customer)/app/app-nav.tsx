@@ -29,17 +29,28 @@ function subscribeToScroll(onChange: () => void) {
 const isScrolled = () => window.scrollY > 8;
 const isScrolledOnServer = () => false;
 
-// Keep account tools above the workspace; primary sections live in the floating dock.
+// Desktop sections share the header; mobile keeps the focused bottom tabs.
 export function AppHeader({ account, unread }: { account: HeaderAccount; unread: number }) {
   const pathname = usePathname();
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, isScrolledOnServer);
   if (pathname.startsWith("/app/setup/")) return <SetupHeader />;
   return (
     <header className="sticky top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 mx-auto mt-[calc(env(safe-area-inset-top)+0.75rem)] w-full max-w-6xl bg-inherit px-4 md:top-3 md:mt-3 md:px-6">
-      <div data-scrolled={scrolled} className="app-shell flex h-[58px] w-full items-center justify-between px-3 interact transition-[border-color,box-shadow] md:h-16 md:px-5">
+      <div data-scrolled={scrolled} className="app-shell flex h-[58px] w-full items-center justify-between px-3 interact transition-[border-color,box-shadow] md:h-16 md:gap-6 md:px-5">
         <Link href="/app" aria-label="Neffi home" className="inline-flex min-h-11 cursor-pointer items-center justify-self-start rounded-md interact transition-opacity hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
           <NeffiLogo aria-hidden className="h-6 w-auto text-foreground" />
         </Link>
+        <nav aria-label="Main" className="hidden md:block md:mr-auto">
+          <ul className="flex items-center gap-1">
+            {sections.map(({ label, href }) => (
+              <li key={href}>
+                <Link href={href} aria-current={isCurrent(pathname, href) ? "page" : undefined} className={cn("inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-nav interact transition-[background-color,color,box-shadow] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand", isCurrent(pathname, href) ? "bg-canvas font-semibold text-foreground shadow-[inset_0_0_0_1px_var(--border)]" : "text-fg-secondary hover:bg-canvas hover:text-foreground")}>
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
         <div className="flex min-w-0 max-w-full items-center gap-0.5 justify-self-end">
           <InboxLink unread={unread} current={isCurrent(pathname, "/app/inbox")} />
           <AccountMenu account={account} current={isCurrent(pathname, "/app/account")} />
@@ -110,14 +121,14 @@ export function AppNav() {
   const pathname = usePathname();
   if (pathname.startsWith("/app/setup/")) return null;
   return (
-    <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:bottom-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <ul className="nav-ink-surface mx-auto grid h-[66px] w-full max-w-md auto-cols-fr grid-flow-col gap-1 p-2 md:h-[72px] md:max-w-lg">
+    <nav aria-label="Main" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-40 md:hidden">
+      <ul className="nav-ink-surface mx-auto grid h-[66px] w-full max-w-md auto-cols-fr grid-flow-col gap-1 p-2">
         {sections.map(({ label, href, icon: Icon }) => {
           const current = isCurrent(pathname, href);
           return (
             <li key={href} className="flex">
-              <Link href={href} aria-current={current ? "page" : undefined} className={cn("flex min-h-12 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-label interact transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand md:text-nav", current ? "bg-canvas font-semibold text-foreground shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]" : "text-canvas/80 hover:bg-white/[0.06] hover:text-canvas active:text-canvas")}>
-                <Icon aria-hidden className={cn("size-[1.375rem] interact transition-colors md:hidden", current ? "text-action-text" : "text-canvas/80")} strokeWidth={current ? 2 : 1.6} />
+              <Link href={href} aria-current={current ? "page" : undefined} className={cn("flex min-h-12 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl text-label interact transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand", current ? "bg-canvas font-semibold text-foreground shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]" : "text-canvas/80 hover:bg-white/[0.06] hover:text-canvas active:text-canvas")}>
+                <Icon aria-hidden className={cn("size-[1.375rem] interact transition-colors", current ? "text-action-text" : "text-canvas/80")} strokeWidth={current ? 2 : 1.6} />
                 {label}
               </Link>
             </li>

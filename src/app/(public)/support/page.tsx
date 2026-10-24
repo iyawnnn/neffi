@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ArrowRight, CreditCard, KeyRound, LifeBuoy, LogIn, Mail } from "lucide-react";
 import { z } from "zod";
 import { getViewer } from "@/auth/access";
+import { PublicUtilityLayout } from "@/components/public-site-shell";
 import { categories } from "@/modules/support/domain";
 import { SupportForm } from "./support-form";
 
@@ -151,7 +152,7 @@ export default async function SupportPage({
   const viewer = await getViewer();
 
   return (
-    <div className="flex flex-col bg-canvas">
+    <PublicUtilityLayout><div className="flex flex-col bg-canvas">
       <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-16 gap-5 sm:gap-6 md:gap-7">
 
         {/* Main Content Area */}
@@ -226,6 +227,6 @@ export default async function SupportPage({
           </div>
         </main>
       </div>
-    </div>
+    </div></PublicUtilityLayout>
   );
 }

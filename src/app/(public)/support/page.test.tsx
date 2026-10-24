@@ -1,6 +1,7 @@
 import { renderToReadableStream } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 const getViewer = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ usePathname: () => "/support" }));
 vi.mock("@/auth/access", () => ({ getViewer }));
 vi.mock("./actions", () => ({ submitSupportAction: vi.fn() }));
 import Page from "./page";
