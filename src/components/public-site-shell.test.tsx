@@ -34,6 +34,7 @@ test.each([
   m.pathname = path;
   const html = renderToStaticMarkup(<Layout>{await page()}</Layout>);
   expect(html.match(/aria-label="Main"/g)).toHaveLength(2); // desktop and mobile
+  expect(html.includes("focused-auth")).toBe(path === "/sign-in" || path === "/activate");
   expect(html.match(/<footer/g)).toHaveLength(1);
   expect(html.includes('class="marketing-footer"')).toBe(path === "/support");
   expect(html.includes('aria-label="Utility links"')).toBe(path !== "/support");

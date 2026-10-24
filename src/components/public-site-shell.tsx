@@ -1,3 +1,4 @@
+import "./focused-auth.css";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { MarketingNav } from "@/app/(marketing)/marketing-nav";
@@ -21,12 +22,13 @@ export function PublicUtilityLayout({ children }: { children: ReactNode }) {
 }
 
 export function FocusedUtilityLayout({ children, recovery = false }: { children: ReactNode; recovery?: boolean }) {
-  return (
+  const shell = (
     <PublicSiteShell footer={<FocusedUtilityFooter recovery={recovery} />}>
       <MarketingPageHeader />
       {children}
     </PublicSiteShell>
   );
+  return recovery ? shell : <div className="focused-auth flex flex-1 flex-col">{shell}</div>;
 }
 
 function FocusedUtilityFooter({ recovery }: { recovery: boolean }) {

@@ -11,6 +11,9 @@ export function CodeSlots({
   inputRef,
   label,
   describedBy,
+  length = 6,
+  characterSet = "numeric",
+  autoComplete = "one-time-code",
 }: {
   value: string;
   onChange: (val: string) => void;
@@ -19,61 +22,84 @@ export function CodeSlots({
   inputRef?: React.RefObject<HTMLInputElement | null>;
   label: string;
   describedBy?: string;
+  length?: number;
+  characterSet?: "numeric" | "alphanumeric";
+  autoComplete?: string;
 }) {
   const [isFocused, setIsFocused] = useState(false);
-  const digits = value.split("");
+  const [cursor, setCursor] = useState(value.length);
+  const characters = value.split("");
+  const alphanumeric = characterSet === "alphanumeric";
+  const clean = (text: string) => alphanumeric
+    ? text.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    : text.replace(/\D/g, "");
+  const update = (input: HTMLInputElement, next: string, position: number) => {
+    onChange(next);
+    setCursor(position);
+    requestAnimationFrame(() => {
+      if (document.activeElement === input) input.setSelectionRange(position, position);
+    });
+  };
 
   return (
-    <div className="relative w-full">
+    <div data-complete={value.length === length} className={cn("relative w-full", disabled && "opacity-60")}>
       {/* 1 real semantic input underneath to preserve paste, mobile OTP autofill, accessibility */}
       <input
         ref={inputRef}
         id="code"
         name="code"
         type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9]{6}"
-        maxLength={6}
+        inputMode={alphanumeric ? "text" : "numeric"}
+        autoComplete={autoComplete}
+        autoCapitalize={alphanumeric ? "characters" : undefined}
+        autoCorrect="off"
+        spellCheck={false}
+        pattern={alphanumeric ? `[A-Z0-9]{${length}}` : `[0-9]{${length}}`}
+        maxLength={length}
         required
         disabled={disabled}
         value={value}
         onChange={(e) => {
-          const clean = e.target.value.replace(/\D/g, "").slice(0, 6);
-          onChange(clean);
+          const input = e.currentTarget;
+          const position = clean(input.value.slice(0, input.selectionStart ?? input.value.length)).length;
+          update(input, clean(input.value).slice(0, length), Math.min(position, length));
         }}
         onPaste={(e) => {
           e.preventDefault();
           const input = e.currentTarget;
-          const digits = e.clipboardData.getData("text").replace(/\D/g, "");
           const start = input.selectionStart ?? value.length;
           const end = input.selectionEnd ?? start;
-          const inserted = digits.slice(0, 6 - (value.length - (end - start)));
-          onChange(value.slice(0, start) + inserted + value.slice(end));
+          const inserted = clean(e.clipboardData.getData("text")).slice(0, length - (value.length - (end - start)));
+          update(input, value.slice(0, start) + inserted + value.slice(end), start + inserted.length);
         }}
-        onFocus={() => setIsFocused(true)}
+        onFocus={(e) => { setIsFocused(true); setCursor(e.currentTarget.selectionStart ?? value.length); }}
+        onSelect={(e) => setCursor(e.currentTarget.selectionStart ?? value.length)}
         onBlur={() => setIsFocused(false)}
         aria-label={label}
         aria-invalid={hasError}
         aria-describedby={describedBy}
-        className="absolute inset-0 h-full w-full cursor-text opacity-0 z-10 select-none"
+        className="absolute inset-0 h-full w-full cursor-text opacity-0 z-10"
       />
 
-      {/* 6 clean visual code slots */}
+      {/* Visual slots never receive focus; the native input owns editing and selection. */}
       <div
         aria-hidden="true"
-        className="grid grid-cols-6 gap-2 sm:gap-2.5 w-full select-none"
+        data-code-slots
+        className={cn("grid w-full select-none", length > 6 ? "gap-1 sm:gap-1.5" : "gap-2 sm:gap-2.5")}
+        style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}
       >
-        {Array.from({ length: 6 }).map((_, i) => {
-          const char = digits[i] ?? "";
+        {Array.from({ length }).map((_, i) => {
+          const char = characters[i] ?? "";
           const isActive =
-            isFocused && (digits.length === i || (digits.length === 6 && i === 5));
+            isFocused && !disabled && i === Math.min(cursor, length - 1);
 
           return (
             <div
               key={i}
+              data-active={isActive}
               className={cn(
-                "flex h-[52px] items-center justify-center rounded-[10px] border bg-background font-mono text-xl font-semibold transition-all duration-150 text-foreground",
+                "flex h-[52px] min-w-0 items-center justify-center border bg-background font-mono font-semibold transition-[border-color,background-color,box-shadow] duration-150 text-foreground motion-reduce:transition-none",
+                length > 6 ? "rounded-lg text-base sm:text-lg" : "rounded-[10px] text-xl",
                 hasError
                   ? isActive
                     ? "border-destructive ring-3 ring-destructive/20 bg-destructive/5 text-destructive"
