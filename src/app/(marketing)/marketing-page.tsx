@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { NeffiLogo } from "@/components/neffi-logo";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import "./marketing-pages.css";
@@ -7,7 +7,7 @@ export function MarketingPageHeader() {
   return (
     <header className="mp-header">
       <Link href="/" aria-label="Neffi home" className="mp-home">
-        <span><Image src="/neffi-wordmark-ink.svg" alt="" width={1200} height={500} priority unoptimized /></span>
+        <span><NeffiLogo aria-hidden /></span>
       </Link>
     </header>
   );

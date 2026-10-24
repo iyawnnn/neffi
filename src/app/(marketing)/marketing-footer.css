@@ -198,21 +198,16 @@ a.marketing-footer-link:focus-visible {
 }
 
 .marketing-footer-wordmark {
-  position: relative;
   width: 96%;
   aspect-ratio: 533 / 222;
   margin-inline: auto;
-  overflow: hidden;
   opacity: 0.12;
 }
 
 .marketing-footer-wordmark-image {
-  position: absolute;
-  width: 225.14%;
-  height: 225.23%;
-  max-width: none;
-  left: -62.85%;
-  top: -64.41%;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 @media (min-width: 769px) {

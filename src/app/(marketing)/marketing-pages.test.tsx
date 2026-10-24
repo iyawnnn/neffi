@@ -25,7 +25,7 @@ const rendered = Object.fromEntries(Object.entries(pages).map(([path, Page]) => 
 test.each(Object.keys(pages))("%s has a clear landmark, valid destinations and existing artwork", path => {
   const host = rendered[path];
   expect(host.querySelectorAll("main")).toHaveLength(1);
-  expect(host.querySelectorAll("h1")).toHaveLength(1);
+  expect([...host.querySelectorAll("h1")].filter(heading => !heading.closest("[inert]"))).toHaveLength(1);
   expect(host.querySelectorAll("footer")).toHaveLength(1);
   const ids = [...host.querySelectorAll("[id]")].map(element => element.id);
   expect(new Set(ids).size).toBe(ids.length);

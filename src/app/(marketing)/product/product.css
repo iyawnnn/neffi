@@ -160,22 +160,16 @@
   outline-offset: 4px;
 }
 
-/* The same crop of the wordmark asset's Snow canvas as the homepage hero. */
 .pp-wordmark > span {
-  position: relative;
   display: block;
   aspect-ratio: 533 / 222;
   height: 1.5rem;
-  overflow: hidden;
 }
 
-.pp-wordmark img {
-  position: absolute;
-  width: 225.14%;
-  height: 225.23%;
-  max-width: none;
-  left: -62.85%;
-  top: -64.41%;
+.pp-wordmark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .pp-hero-eyebrow {
@@ -505,109 +499,55 @@
 
 /* ---------------------------------------------------------------- profile evolution */
 
-/* Static: the heading, support and "What can change" list on the left, the updated profile on the right. On small screens the
-   profile sits between the intro and the list, so the result is seen before the changes are read. */
-.pp-change {
+.pp-studio-section.pp-evolution-section { padding-block: clamp(3rem, 4vw, 3.5rem); }
+.pp-evolution-visual {
   display: grid;
-  gap: 2rem;
-}
-
-.pp-change-support {
-  max-width: 28rem;
-  margin-top: 1.25rem;
-  font-size: clamp(1rem, 1.3vw, 1.0625rem);
-  line-height: 1.6;
-  color: var(--fg-secondary);
-  text-wrap: pretty;
-}
-
-.pp-change-profile {
-  display: grid;
+  grid-template-areas: "card" "connector" "preview";
   justify-items: center;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 56rem;
+  margin-inline: auto;
 }
-
-.pp-change-profile .pe-digital-profile {
-  width: min(328px, 100%);
+.pp-evolution-card { grid-area: card; width: min(17.5rem, 100%); text-align: center; }
+.pp-evolution-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 3.7%;
+  transform: rotate(-5deg);
+  filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--foreground) 12%, transparent));
 }
-
-.pp-change-list h3 {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
-/* Small screens: one compact list, each change a tight label-and-value pair, separated by faint rules so nothing floats. */
-.pp-change-list dl {
-  margin-top: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.pp-change-list dl > div {
-  padding-block: 0.625rem;
-  border-top: 1px solid var(--border);
-}
-
-.pp-change-list dd {
+.pp-evolution-label { color: var(--fg-secondary); font-size: 0.75rem; line-height: 1.5; text-align: center; }
+.pp-evolution-card .pp-evolution-label { margin-top: 1.5rem; }
+.pp-studio-preview.pp-evolution-profile { gap: 0.75rem; }
+.pp-evolution-connector { grid-area: connector; display: flex; flex-direction: column; align-items: center; color: var(--fg-secondary); }
+.pp-evolution-connector::before { content: ""; width: 1px; height: 1.5rem; background: var(--border-strong); }
+.pp-evolution-arrow-right { display: none; }
+.pp-change-summary { display: grid; gap: 0.75rem; margin-top: 2rem; }
+.pp-change-summary > div { min-width: 0; padding: 1rem 1.125rem; border: 1px solid var(--border); border-radius: 0.625rem; background: var(--background); }
+.pp-change-summary dd {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.5rem;
-  margin-top: 0.25rem;
-  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
-  line-height: 1.35;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
   font-weight: 500;
-  letter-spacing: -0.01em;
   color: var(--foreground);
 }
-
-.pp-change-list dd svg {
-  flex-shrink: 0;
-  color: var(--fg-faint);
-}
-
-.pp-change-before {
-  color: var(--fg-faint);
-}
-
-.pp-change-added {
-  color: var(--brand);
-}
+.pp-change-summary dd svg { flex-shrink: 0; color: var(--fg-secondary); }
+.pp-change-before { color: var(--fg-secondary); font-weight: 400; }
+.pp-change-added { color: var(--brand); }
 
 @media (min-width: 900px) {
-  .pp-change {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    grid-template-areas:
-      "intro profile"
-      "list profile";
-    align-items: start;
-    gap: 2.5rem clamp(2.5rem, 5vw, 4rem);
-  }
-
-  .pp-change-intro { grid-area: intro; }
-  .pp-change-list { grid-area: list; }
-
-  .pp-change-profile {
-    grid-area: profile;
-    align-self: center;
-  }
-
-  /* About 7% larger: the 328px profile renders near 351px, scaled whole so its proportions hold. */
-  .pp-change-profile [inert] {
-    zoom: 1.07;
-  }
-
-  /* Wide screens: whitespace alone separates the rows. */
-  .pp-change-list dl {
-    display: grid;
-    gap: 1.5rem;
-    margin-top: 1.25rem;
-    border: 0;
-  }
-
-  .pp-change-list dl > div {
-    padding: 0;
-    border: 0;
-  }
+  .pp-evolution-visual { grid-template-areas: "card connector preview"; grid-template-columns: minmax(0, 1fr) 5rem minmax(0, 1fr); gap: 2rem; }
+  .pp-evolution-card { width: min(21.25rem, 100%); }
+  .pp-evolution-connector { flex-direction: row; width: 100%; }
+  .pp-evolution-connector::before { width: auto; height: 1px; flex: 1; }
+  .pp-evolution-arrow-right { display: block; }
+  .pp-evolution-arrow-down { display: none; }
+  .pp-change-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ---------------------------------------------------------------- what's in your hand */
@@ -789,247 +729,132 @@
 /* A profile studio on the Snow canvas: an open editor beside the live profile. Rules organise only the editor's header and rows;
    the profile card is the one surface. */
 .pp-studio-section {
-  padding-block: clamp(4.5rem, 7.5vw, 6.5rem);
+  padding-block: clamp(3.5rem, 6vw, 5rem);
   background: var(--canvas);
 }
 
-/* One statement on two set lines. Each line holds together from 600px, so the break never falls mid-phrase; narrower phones may
-   wrap naturally. The heading takes its own width, and the support copy beside it shrinks if it must. */
-.pp-studio-heading > span {
-  display: block;
-}
-
-@media (min-width: 600px) {
-  .pp-studio-heading > span {
-    white-space: nowrap;
-  }
-}
-
-@media (min-width: 900px) {
-  .pp-section-head .pp-studio-heading {
-    max-width: none;
-  }
-}
+.pp-studio-section .pp-container { max-width: 66rem; }
+.pp-studio-section .pp-section-head { margin-bottom: clamp(1.5rem, 2.5vw, 2rem); }
+.pp-studio-heading > span { display: block; }
+.pp-studio-section .pp-support { max-width: 25rem; }
 
 .pp-studio {
   display: grid;
-  gap: 2.25rem;
+  grid-template-areas: "preview" "editor";
+  gap: 1.5rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--subtle);
 }
 
-/* Small screens put the tabs above "Edit profile"; wider ones set them on one row, tabs to the right. */
+.pp-studio-editor {
+  grid-area: editor;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+}
+
 .pp-studio-head {
   display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.125rem 1.25rem 0.75rem;
 }
+.pp-studio-title > p { font-size: 1rem; font-weight: 600; letter-spacing: -0.02em; }
+.pp-studio-title > span { display: block; margin-top: 0.25rem; color: var(--fg-secondary); font-size: 0.8125rem; }
+.pp-studio-saved { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--fg-secondary); font-size: 0.6875rem; white-space: nowrap; }
 
-.pp-studio-head > p {
-  padding-block: 0.75rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
-.pp-studio-tabs {
-  display: flex;
-  gap: 1.5rem;
-}
-
+.pp-studio-tabs { display: flex; gap: 1.5rem; padding-inline: 1.25rem; border-bottom: 1px solid var(--border); }
 .pp-studio-tabs > button {
   position: relative;
-  height: 2.75rem;
-  font-size: 0.875rem;
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
   transition: color 200ms var(--pp-ease);
 }
+.pp-studio-tabs > button::after { content: ""; position: absolute; inset: auto 0 -1px; height: 2px; background: var(--brand); opacity: 0; transition: opacity 200ms var(--pp-ease); }
+.pp-studio-tabs > button[aria-pressed="true"] { color: var(--foreground); }
+.pp-studio-tabs > button[aria-pressed="true"]::after { opacity: 1; }
+.pp-studio-tabs > button:hover { color: var(--foreground); }
+.pp-studio-tabs > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 0.25rem; }
 
-/* A short Vermilion underline under the selected tab. */
-.pp-studio-tabs > button::after {
-  content: "";
-  position: absolute;
-  bottom: 0.25rem;
-  left: 50%;
-  width: 1.25rem;
-  height: 2px;
-  background: var(--brand);
-  translate: -50% 0;
-  opacity: 0;
-  transition: opacity 200ms var(--pp-ease);
-}
+.pp-studio-rows { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 1.25rem; }
+.pp-studio-row { display: grid; gap: 0.375rem; }
+.pp-studio-field-label { font-size: 0.75rem; font-weight: 500; }
+.pp-studio-value { display: flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.625rem 0.875rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--canvas); font-size: 0.875rem; }
+.pp-studio-value > svg { flex-shrink: 0; color: var(--fg-secondary); }
+.pp-studio-photo-row { display: flex; align-items: center; gap: 0.875rem; margin-bottom: 0.25rem; }
+.pp-studio-photo-row strong { font-size: 0.8125rem; font-weight: 500; }
+.pp-studio-hint { display: block; margin-top: 0.25rem; font-size: 0.75rem; line-height: 1.4; color: var(--fg-secondary); }
+.pp-studio-photo { width: 3.5rem; height: 3.5rem; flex-shrink: 0; overflow: hidden; border-radius: 50%; }
+.pp-studio-photo img { width: 100%; height: 100%; object-fit: cover; }
+.pp-studio-photo-change { display: inline-flex; align-items: center; gap: 0.375rem; margin-left: auto; padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.75rem; }
+.pp-studio-inline { display: flex; align-items: center; gap: 0.875rem; padding: 0.625rem 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+.pp-studio-link-name { font-size: 0.8125rem; font-weight: 500; }
+.pp-studio-aside { margin-left: auto; flex-shrink: 0; color: var(--fg-secondary); }
+.pp-studio-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2rem; height: 2rem; border-radius: 0.5rem; background: var(--subtle); }
+.pp-studio-icon svg { width: 1rem; height: 1rem; }
+.pp-studio-switch { position: relative; flex-shrink: 0; width: 2rem; height: 1.125rem; margin-left: auto; border-radius: 999px; background: var(--foreground); }
+.pp-studio-switch::after { content: ""; position: absolute; top: 2px; right: 2px; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: var(--background); }
+.pp-studio-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); color: var(--fg-secondary); font-size: 0.75rem; }
 
-.pp-studio-tabs > button[aria-pressed="true"] {
-  color: var(--foreground);
-}
-
-.pp-studio-tabs > button[aria-pressed="true"]::after {
+.pp-studio-preview { grid-area: preview; display: grid; align-content: start; gap: 0.5rem; min-width: 0; width: 100%; max-width: 19.5rem; margin-inline: auto; }
+/* Scale the complete production profile at a fixed phone width; its own styles stay authoritative. */
+.pp-studio-profile-frame { container-type: inline-size; overflow: hidden; border-radius: 0.875rem; box-shadow: 0 12px 32px -16px color-mix(in srgb, var(--foreground) 24%, transparent); }
+.pp-studio-profile-scale { width: 360px; zoom: calc(100cqw / 360px); }
+.pp-studio-profile-frame button[data-filled="true"]:disabled {
+  background: var(--action);
+  border-color: var(--action);
+  color: white;
   opacity: 1;
 }
-
-.pp-studio-tabs > button:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 0.25rem;
-}
-
-/* Fixed height so switching tabs never moves the page. */
-.pp-studio-rows {
-  min-height: 22rem;
-}
-
-.pp-studio-rows > li {
-  border-bottom: 1px solid var(--border);
-}
-
-.pp-studio-row {
-  display: grid;
-  gap: 0.375rem;
-  padding-block: 0.9375rem;
-}
-
-.pp-studio-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding-block: 0.75rem;
-}
-
-.pp-studio-value {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1rem;
-  color: var(--foreground);
-}
-
-.pp-studio-inline .pp-studio-value {
-  display: block;
-}
-
-.pp-studio-hint {
-  display: block;
-  margin-top: 0.125rem;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-}
-
-.pp-studio-photo {
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--border);
-}
-
-.pp-studio-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.pp-studio-aside {
-  margin-left: auto;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-}
-
-.pp-studio-icon {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
-}
-
-.pp-studio-icon svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-/* An "on" switch in Ink; Vermilion stays for the primary action and the tab indicator. */
-.pp-studio-switch {
-  position: relative;
-  flex-shrink: 0;
-  width: 2.25rem;
-  height: 1.25rem;
-  margin-left: auto;
-  border-radius: 999px;
-  background: var(--foreground);
-}
-
-.pp-studio-switch::after {
+/* Lucide ContactRound decorates only the inert marketing sample. */
+.pp-studio-profile-frame button[data-filled="true"]:disabled::before {
   content: "";
-  position: absolute;
-  top: 2px;
-  right: 2px;
+  flex-shrink: 0;
   width: 1rem;
   height: 1rem;
-  border-radius: 50%;
-  background: #fff;
+  margin-right: 0.375rem;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M16%202v2%22%2F%3E%3Cpath%20d%3D%22M17.915%2021a6%206%200%2010-12%200%22%2F%3E%3Cpath%20d%3D%22M8%202v2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2211%22%20r%3D%224%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+/* The sample has location-only metadata; use the same Lucide MapPin as the editor. */
+.pp-studio-profile-frame .pf-metadata::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.375em;
+  vertical-align: -0.125em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-/* The real profile card straight on the canvas, sized for the viewport: about 280px on phones, up to 352px on wide desktops. */
-.pp-studio-preview {
-  display: grid;
-  justify-items: center;
-  gap: 0.875rem;
-}
-
-.pp-studio-preview .pe-digital-profile {
-  width: min(100%, clamp(17.5rem, 26vw, 22rem));
-}
-
-/* The selected tab marks its part of the profile with a faint Vermilion tint or edge. Nothing else changes, so the profile
-   always reads complete. */
-.pp-studio-preview .pe-digital-profile :is(header, .pe-save-action, .pe-quick-actions > button, .pe-profile-links > button) {
-  transition: background-color 220ms var(--pp-ease), box-shadow 220ms var(--pp-ease), border-color 220ms var(--pp-ease);
-}
-
-.pp-studio-preview[data-focus="identity"] .pe-digital-profile header {
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--brand) 5%, transparent);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand) 5%, transparent);
-}
-
-.pp-studio-preview[data-focus="links"] .pe-quick-actions > button {
-  background: color-mix(in srgb, var(--brand) 7%, transparent);
-  color: var(--foreground);
-}
-
-.pp-studio-preview[data-focus="links"] .pe-profile-links > button:not(:last-child),
-.pp-studio-preview[data-focus="contact"] .pe-profile-links > button:last-child {
-  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
-}
-
-.pp-studio-preview[data-focus="contact"] .pe-save-action {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
-}
-
-@media (max-width: 380px) {
-  .pp-studio-tabs { gap: 1.125rem; }
-  .pp-studio-tabs > button { font-size: 0.8125rem; }
-}
-
-@media (min-width: 600px) {
-  .pp-studio-head {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  /* On one row the underline sits on the header rule, like a tab indicator. */
-  .pp-studio-tabs > button::after {
-    bottom: -1px;
-  }
+@media (max-width: 599px) {
+  .pp-studio-section { padding-inline: 1rem; }
+  .pp-studio { padding: 0.5rem; }
+  .pp-studio-preview { max-width: 20rem; }
+  .pp-studio-head { padding: 1rem 1rem 0.75rem; }
+  .pp-studio-saved { display: none; }
+  .pp-studio-tabs { padding-inline: 1rem; }
+  .pp-studio-rows { padding-inline: 1rem; }
+  .pp-studio-photo-row > span:nth-child(2) { flex: 1; min-width: 0; }
+  .pp-studio-photo-change { flex-shrink: 0; padding: 0.5rem; }
+  .pp-studio-photo-change > span { display: none; }
+  .pp-studio-footer { padding-inline: 1rem; font-size: 0.6875rem; }
 }
 
 @media (min-width: 900px) {
-  .pp-studio {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    align-items: center;
-    gap: 2.5rem clamp(2.5rem, 5vw, 4.5rem);
-  }
+  .pp-section-head .pp-studio-heading { max-width: 60%; }
+  .pp-studio-preview { max-width: 17.375rem; }
+  .pp-studio:has([aria-label="links settings"]) .pp-studio-preview { max-width: 16.875rem; }
+  .pp-studio { grid-template-areas: "editor preview"; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; gap: 2rem; }
 }
 
 /* ---------------------------------------------------------------- what you can share */
@@ -1495,7 +1320,6 @@
   .pp-stack-leader,
   .pp-studio-tabs > button,
   .pp-studio-tabs > button::after,
-  .pp-studio-preview .pe-digital-profile :is(header, .pe-save-action, .pe-quick-actions > button, .pe-profile-links > button),
   .pp-share-items > li,
   .pp-share-items > li > span,
   .pp-facts-icon {

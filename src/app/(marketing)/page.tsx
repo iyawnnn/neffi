@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { NeffiLogo } from "@/components/neffi-logo";
 import Link from "next/link";
 import { HeroCard } from "./hero-card";
 import { IdentitySection } from "./identity-section";
@@ -7,14 +7,6 @@ import { ProfileExperienceSection } from "./profile-experience-section";
 import { UseCasesSection } from "./use-cases-section";
 import { SetupJourneySection } from "./setup-journey-section";
 import { FinalCtaSection } from "./final-cta-section";
-
-// The wordmark file is a 1200x500 Snow canvas with the mark off-centre; this crops it to the lettering (533x222 including a little air).
-const WORDMARK = {
-  width: "225.14%",
-  height: "225.23%",
-  left: "-62.85%",
-  top: "-64.41%",
-};
 
 // The hero is one composed opening screen on a continuous Snow canvas. It spans the whole small viewport (svh, so mobile browser
 // chrome never makes it jump) and keeps the dock's clearance inside itself as bottom padding, so its content stops above the dock
@@ -31,22 +23,8 @@ export default function Home() {
           aria-label="Neffi home"
           className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
         >
-          <span className="relative block aspect-[533/222] h-6 overflow-hidden">
-            <Image
-              src="/neffi-wordmark-ink.svg"
-              alt=""
-              width={1200}
-              height={500}
-              priority
-              unoptimized
-              className="absolute max-w-none"
-              style={{
-                width: WORDMARK.width,
-                height: WORDMARK.height,
-                left: WORDMARK.left,
-                top: WORDMARK.top,
-              }}
-            />
+          <span className="block aspect-[533/222] h-6">
+            <NeffiLogo aria-hidden className="block h-full w-full text-foreground" />
           </span>
         </Link>
 
