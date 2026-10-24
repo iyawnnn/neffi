@@ -23,7 +23,7 @@ export function PublicUtilityLayout({ children }: { children: ReactNode }) {
 
 export function FocusedUtilityLayout({ children, recovery = false }: { children: ReactNode; recovery?: boolean }) {
   const shell = (
-    <PublicSiteShell footer={<FocusedUtilityFooter recovery={recovery} />}>
+    <PublicSiteShell footer={recovery ? <RecoveryUtilityFooter /> : null}>
       <MarketingPageHeader />
       {children}
     </PublicSiteShell>
@@ -31,9 +31,9 @@ export function FocusedUtilityLayout({ children, recovery = false }: { children:
   return recovery ? shell : <div className="focused-auth flex flex-1 flex-col">{shell}</div>;
 }
 
-function FocusedUtilityFooter({ recovery }: { recovery: boolean }) {
+function RecoveryUtilityFooter() {
   const links = [
-    { href: "/support", label: recovery ? "Back to support" : "Need help?" },
+    { href: "/support", label: "Back to support" },
     { href: "/privacy", label: "Privacy" },
     { href: "/terms", label: "Terms" },
   ];
