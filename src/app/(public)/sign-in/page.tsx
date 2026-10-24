@@ -22,10 +22,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   if (await getViewer() && next !== "/app/account") redirect(next);
 
   return (
-    <div className="flex flex-col items-center px-4 pt-6 pb-10 sm:px-6 sm:pt-8 md:pb-14">
-      <main className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xs md:grid md:grid-cols-[48%_52%] md:max-w-[1080px] md:min-h-[640px]">
+    <div data-auth-page className="flex flex-col items-center px-4 pt-6 pb-10 sm:px-6 sm:pt-8 md:pb-14">
+      <main data-auth-card className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xs md:grid md:grid-cols-[48%_52%] md:max-w-[1080px]">
         {/* HERO REGION (mobile banner / desktop left panel) */}
-        <div className="relative w-full overflow-hidden bg-[#FAF9F5] border-b border-border/50 aspect-[16/9] min-h-[185px] max-h-[225px] md:aspect-auto md:h-full md:min-h-[640px] md:max-h-none md:border-b-0 md:border-r md:border-border/60">
+        <div data-auth-hero className="relative w-full overflow-hidden bg-[#FAF9F5] border-b border-border/50 aspect-[16/9] min-h-[185px] max-h-[225px] md:aspect-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-border/60">
           {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
           <picture className="block h-full w-full">
             <source
@@ -45,12 +45,12 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         </div>
 
         {/* AUTH REGION */}
-        <div className="flex flex-col justify-center px-5 py-7 sm:px-6 sm:py-8 md:px-8 md:py-10 lg:px-14">
+        <div data-auth-body className="flex flex-col justify-center px-5 py-7 sm:px-6 sm:py-8 md:px-8 md:py-10 lg:px-14">
           <div className="w-full max-w-[420px] mx-auto flex flex-col">
             <SignInForm next={next} notice={authErrorMessage(error)} />
 
             {/* Centered Support Link beneath CTA */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5 text-center">
+            <div data-auth-help className="mt-6 flex flex-wrap items-center justify-center gap-1.5 text-center">
               <CircleHelp aria-hidden className="size-3.5 shrink-0 text-fg-secondary" />
               <Link
                 href="/support#account-recovery"

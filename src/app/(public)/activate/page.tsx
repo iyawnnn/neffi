@@ -72,7 +72,7 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
     description =
       "Sign in or create your account to add this Neffi. No password needed.";
     body = (
-      <div className="mt-5 flex flex-col gap-4 sm:mt-6">
+      <div data-auth-fields className="mt-5 flex flex-col gap-4 sm:mt-6">
         <SignInForm next="/activate" embedded />
         <StartOverButton />
       </div>
@@ -82,7 +82,7 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
     description =
       "Your Neffi is ready. This card will be added to:";
     body = (
-      <div className="mt-5 flex flex-col gap-5 sm:mt-6">
+      <div data-auth-fields className="mt-5 flex flex-col gap-5 sm:mt-6">
         <AccountContextRow email={viewer.email} />
         <div className="flex flex-col gap-3">
           <ClaimForm />
@@ -97,7 +97,7 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
     description =
       "Enter the activation code inside your package to add this card to your account.";
     body = (
-      <div className="mt-5 flex flex-col gap-5 sm:mt-6">
+      <div data-auth-fields className="mt-5 flex flex-col gap-5 sm:mt-6">
         {viewer ? <AccountContextRow email={viewer.email} /> : null}
         <CodeForm />
       </div>
@@ -105,15 +105,15 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
   }
 
   return (
-    <div className="flex flex-col bg-canvas">
-      <div className="mx-auto flex w-full max-w-[440px] md:max-w-[1080px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-14 gap-4 sm:gap-5 md:gap-6">
+    <div data-auth-page className="flex flex-col bg-canvas">
+      <div data-auth-container className="mx-auto flex w-full max-w-[440px] md:max-w-[1080px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-14 gap-4 sm:gap-5 md:gap-6">
 
         {/* Activation Surface */}
         <main className="w-full">
-          <div className="relative flex w-full flex-col rounded-2xl border border-border/80 bg-card shadow-xs md:grid md:grid-cols-[48%_52%] md:min-h-[580px] md:overflow-hidden">
+          <div data-auth-card className="relative flex w-full flex-col rounded-2xl border border-border/80 bg-card shadow-xs md:grid md:grid-cols-[48%_52%] md:overflow-hidden">
             {/* HERO REGION (mobile top feature panel with rounded corners / desktop left split panel) */}
             <div className="w-full p-3.5 sm:p-4 pb-0 md:p-0 md:h-full">
-              <div className="relative w-full overflow-hidden rounded-xl border border-border/70 bg-[#FAF9F5] aspect-[4/3] min-h-[220px] max-h-[340px] md:aspect-auto md:h-full md:min-h-[580px] md:max-h-none md:rounded-none md:border-0 md:border-r md:border-border/60">
+              <div data-auth-hero className="relative w-full overflow-hidden rounded-xl border border-border/70 bg-[#FAF9F5] aspect-[4/3] min-h-[220px] max-h-[340px] md:aspect-auto md:h-full md:max-h-none md:rounded-none md:border-0 md:border-r md:border-border/60">
                 {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
                 <picture className="block h-full w-full">
                   <source
@@ -134,7 +134,7 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
             </div>
 
             {/* FORM & ONBOARDING REGION (right panel on desktop) */}
-            <div className="relative flex flex-col justify-center px-5 pt-5 pb-7 sm:px-6 sm:pt-6 sm:pb-8 md:px-8 md:py-10 lg:px-14">
+            <div data-auth-body className="relative flex flex-col justify-center px-5 pt-5 pb-7 sm:px-6 sm:pt-6 sm:pb-8 md:px-8 md:py-10 lg:px-14">
               <div className="w-full max-w-[420px] mx-auto flex flex-col">
                 {/* Intro heading & supporting text */}
                 <div className="flex flex-col items-center text-center gap-2">
@@ -163,12 +163,12 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
                 {/* Body content */}
                 {body}
 
-                <Link href={viewer ? "/app" : "/sign-in?next=/activate"} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md text-meta font-medium text-foreground hover:text-action-text focus-visible:outline-2 focus-visible:outline-brand">
+                <Link data-auth-return href={viewer ? "/app" : "/sign-in?next=/activate"} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md text-meta font-medium text-foreground hover:text-action-text focus-visible:outline-2 focus-visible:outline-brand">
                   {viewer ? "My Neffi" : "Sign in"}
                 </Link>
 
                 {/* Help UX: compact tertiary row beneath Continue */}
-                <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-1.5 text-center">
+                <div data-auth-help className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-1.5 text-center">
                   <CircleHelp aria-hidden className="size-3.5 shrink-0 text-fg-secondary" />
                   <span className="text-meta text-fg-secondary">
                     Having trouble with your code?

@@ -1,72 +1,17 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { AlertCircle, ArrowRight, Check, LoaderCircle } from "lucide-react";
+import { useActionState, useState } from "react";
+import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
+import { CodeSlots } from "@/components/code-slots";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { checkCodeAction, claimAction, startOverAction, switchAccountAction } from "./actions";
-
-export function formatCodeInput(value: string): string {
-  const clean = value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 8);
-  if (!clean) return "";
-  const parts = clean.match(/.{1,4}/g);
-  return parts ? parts.join("-") : clean;
-}
 
 // The typed code lives only in this component's memory; it is posted, never stored or put in the URL.
 export function CodeForm() {
   const [state, formAction, pending] = useActionState(checkCodeAction, undefined);
   const [code, setCode] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const rawChars = code.replace(/[^0-9A-Z]/gi, "");
-  const isComplete = rawChars.length === 8;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target;
-    let rawValue = input.value;
-    let cursor = input.selectionStart ?? rawValue.length;
-    const inputType = (e.nativeEvent as InputEvent).inputType;
-    if (rawValue === code.replace("-", "") && (inputType === "deleteContentBackward" || inputType === "deleteContentForward")) {
-      const index = inputType === "deleteContentBackward" ? cursor - 1 : cursor;
-      if (index >= 0) {
-        rawValue = rawValue.slice(0, index) + rawValue.slice(index + 1);
-        cursor = index;
-      }
-    }
-
-    // Count non-hyphen chars before cursor
-    const rawCharsBeforeCursor = rawValue.slice(0, cursor).replace(/[^0-9A-Z]/gi, "").length;
-
-    const formatted = formatCodeInput(rawValue);
-    setCode(formatted);
-
-    // Calculate new cursor position in formatted string
-    let targetCursor = 0;
-    let rawCount = 0;
-    for (let i = 0; i < formatted.length; i++) {
-      if (rawCount === rawCharsBeforeCursor) {
-        targetCursor = i;
-        break;
-      }
-      if (formatted[i] !== "-") {
-        rawCount++;
-      }
-      if (rawCount === rawCharsBeforeCursor) {
-        targetCursor = i + 1;
-        break;
-      }
-    }
-    if (rawCharsBeforeCursor > rawCount) {
-      targetCursor = formatted.length;
-    }
-
-    requestAnimationFrame(() => {
-      if (inputRef.current) {
-        inputRef.current.setSelectionRange(targetCursor, targetCursor);
-      }
-    });
-  };
+  const isComplete = code.length === 8;
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-3">
@@ -77,43 +22,17 @@ export function CodeForm() {
         >
           Activation code
         </label>
-        <div className="relative flex items-center justify-center rounded-xl bg-background">
-          <div aria-hidden data-code-groups className="pointer-events-none absolute grid h-10 w-[calc(9ch+1.8em)] select-none grid-cols-[4fr_1fr_4fr] font-mono text-lg sm:text-xl">
-            <span data-code-group className="rounded-md bg-canvas" />
-            <span />
-            <span data-code-group className="rounded-md bg-canvas" />
-          </div>
-          <input
-            ref={inputRef}
-            id="code"
-            name="code"
-            required
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            placeholder="XXXX-XXXX"
-            value={code}
-            onChange={handleChange}
-            aria-invalid={Boolean(state?.error)}
-            aria-describedby={state?.error ? "code-error" : undefined}
-            className={cn(
-              "relative h-16 w-full rounded-xl border border-border bg-transparent px-8 text-center font-mono text-lg font-medium tracking-[0.2em] uppercase transition-[border-color,box-shadow] duration-150 outline-none sm:text-xl",
-              "placeholder:text-fg-secondary/60",
-              "focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20",
-              state?.error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
-              isComplete && !state?.error && "border-brand/40"
-            )}
-          />
-          {isComplete && !state?.error ? (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute right-4 flex items-center justify-center text-brand"
-            >
-              <Check className="size-4.5 stroke-[2.5]" />
-            </div>
-          ) : null}
-        </div>
+        <CodeSlots
+          label="Activation code"
+          length={8}
+          characterSet="alphanumeric"
+          autoComplete="off"
+          value={code}
+          onChange={setCode}
+          disabled={pending}
+          hasError={Boolean(state?.error)}
+          describedBy={state?.error ? "code-error" : undefined}
+        />
 
         {state?.error ? (
           <div

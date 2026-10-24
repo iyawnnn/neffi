@@ -20,7 +20,6 @@ vi.mock("./actions", () => ({
 import {
   ClaimForm,
   CodeForm,
-  formatCodeInput,
   StartOverButton,
   SwitchAccountButton,
 } from "./activate-forms";
@@ -54,32 +53,6 @@ afterEach(async () => {
 });
 
 // ----------------------------------------------------
-// 1. AUTO-FORMATTER LOGIC
-// ----------------------------------------------------
-
-test("formatCodeInput converts lowercase to uppercase and inserts one hyphen", () => {
-  expect(formatCodeInput("n8kf42pq")).toBe("N8KF-42PQ");
-  expect(formatCodeInput("abcd")).toBe("ABCD");
-  expect(formatCodeInput("abcde")).toBe("ABCD-E");
-  expect(formatCodeInput("abcd1234e")).toBe("ABCD-1234");
-});
-
-test("formatCodeInput strips separators and punctuation on paste", () => {
-  expect(formatCodeInput("n8kf-42pq")).toBe("N8KF-42PQ");
-  expect(formatCodeInput("n8kf 42pq")).toBe("N8KF-42PQ");
-  expect(formatCodeInput("  n8kf – 42pq  ")).toBe("N8KF-42PQ");
-});
-
-test("formatCodeInput caps at 8 meaningful characters", () => {
-  expect(formatCodeInput("123456789extra")).toBe("1234-5678");
-  expect(formatCodeInput("")).toBe("");
-});
-
-test("client display output normalizes to the canonical server value", () => {
-  expect(normalizeActivationCode(formatCodeInput("n8kf – 42pq"))).toBe("N8KF42PQ");
-});
-
-// ----------------------------------------------------
 // 2. CODE FORM INTERACTION & ACCESSIBILITY
 // ----------------------------------------------------
 
@@ -103,7 +76,7 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
   await act(async () => {
     changeInput(input, "N8KF42P");
   });
-  expect(input.value).toBe("N8KF-42P");
+  expect(input.value).toBe("N8KF42P");
   expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(true);
 
@@ -111,32 +84,20 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
   await act(async () => {
     changeInput(input, "N8KF42PQ");
   });
-  expect(input.value).toBe("N8KF-42PQ");
+  expect(input.value).toBe("N8KF42PQ");
   expect(host.querySelector('button[type="submit"]')).toBe(button);
   expect(button.disabled).toBe(false);
   expect(button.className).toContain("bg-action");
 });
 
-test("inputType deletion across the separator removes the adjacent character", async () => {
-  await act(async () => {
-    root.render(<CodeForm />);
-  });
-
+test("native edits do not include a separator character", async () => {
+  await act(async () => root.render(<CodeForm />));
   const input = host.querySelector<HTMLInputElement>("input#code")!;
-  await act(async () => {
-    changeInput(input, "N8KF4", "deleteContentBackward");
-  });
-  expect(input.value).toBe("N8KF-4");
-
-  // Browser removed the separator before React receives the Android-safe input event.
-  await act(async () => {
-    changeInput(input, "N8KF4", "deleteContentBackward", 4);
-  });
-  expect(input.value).toBe("N8K4");
-
-  await act(async () => { changeInput(input, "N8KF4"); });
-  await act(async () => { changeInput(input, "N8KF4", "deleteContentForward", 4); });
-  expect(input.value).toBe("N8KF");
+  await act(async () => changeInput(input, "N8KF42PQ"));
+  await act(async () => changeInput(input, "N8K42PQ", "deleteContentBackward", 3));
+  expect(input.value).toBe("N8K42PQ");
+  await act(async () => changeInput(input, "N8K2PQ", "deleteContentForward", 3));
+  expect(input.value).toBe("N8K2PQ");
 });
 
 test("CodeForm associates error with aria-invalid and aria-describedby", async () => {
@@ -166,19 +127,18 @@ test("CodeForm associates error with aria-invalid and aria-describedby", async (
   expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(input.getAttribute("aria-describedby")).toBe("code-error");
   expect(m.checkCode).toHaveBeenCalledTimes(1);
-  expect((m.checkCode.mock.calls[0][1] as FormData).get("code")).toBe("N8KF-42PQ");
+  expect((m.checkCode.mock.calls[0][1] as FormData).get("code")).toBe("N8KF42PQ");
 });
 
-test("activation code has two decorative groups and one native input", async () => {
+test("activation code has eight decorative slots and one native input", async () => {
   await act(async () => root.render(<CodeForm />));
   const input = host.querySelector<HTMLInputElement>("input#code")!;
-  const groups = host.querySelector('[data-code-groups]')!;
+  const groups = host.querySelector('[data-code-slots]')!;
   expect(host.querySelectorAll("input")).toHaveLength(1);
   expect(groups).not.toBeNull();
   expect(groups.getAttribute("aria-hidden")).toBe("true");
-  expect(groups.querySelectorAll("[data-code-group]")).toHaveLength(2);
+  expect(groups.children).toHaveLength(8);
   expect(groups.querySelectorAll("input, button, [tabindex]")).toHaveLength(0);
-  expect(input.className).toContain("text-center");
   expect(input.getAttribute("name")).toBe("code");
 });
 
@@ -187,10 +147,10 @@ test("pasted input keeps formatting, completion feedback and the existing posted
   const input = host.querySelector<HTMLInputElement>("input#code")!;
   const form = host.querySelector<HTMLFormElement>("form")!;
   await act(async () => changeInput(input, "  n8kf-42pq!? extra", "insertFromPaste"));
-  expect(input.value).toBe("N8KF-42PQ");
-  expect(new FormData(form).get("code")).toBe("N8KF-42PQ");
+  expect(input.value).toBe("N8KF42PQ");
+  expect(new FormData(form).get("code")).toBe("N8KF42PQ");
   expect(normalizeActivationCode(new FormData(form).get("code") as string)).toBe("N8KF42PQ");
-  expect(host.querySelector("svg.lucide-check")).not.toBeNull();
+  expect(host.querySelector('[data-complete="true"]')).not.toBeNull();
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
   expect(m.checkCode).not.toHaveBeenCalled();
 });
@@ -225,4 +185,18 @@ test("StartOverButton renders Enter a different code button", async () => {
   const button = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   expect(button).not.toBeNull();
   expect(button.textContent).toBe("Enter a different code");
+});
+
+test("activation disables input and Continue while the existing action is pending", async () => {
+  let finish!: (state: { error: string }) => void;
+  m.checkCode.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  await act(async () => changeInput(input, "N8KF42PQ"));
+  await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(input.disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+  await act(async () => finish({ error: "Try again." }));
+  expect(input.disabled).toBe(false);
+  expect(input.getAttribute("aria-invalid")).toBe("true");
 });

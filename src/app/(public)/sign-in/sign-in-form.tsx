@@ -114,7 +114,7 @@ export function SignInForm({
   }
 
   return (
-    <div className="flex w-full flex-col">
+    <div data-sign-in-form data-embedded={embedded} className="flex w-full flex-col">
       {/* Centered intro block */}
       {!embedded ? (
         <div className="flex flex-col items-center text-center gap-2.5 sm:gap-3">
@@ -158,7 +158,7 @@ export function SignInForm({
       ) : null}
 
       {step === "email" ? (
-        <div className="mt-7 flex flex-col sm:mt-8">
+        <div data-sign-in-options className="mt-7 flex flex-col sm:mt-8">
           {/* Google Sign-in action */}
           <Button
             type="button"
@@ -173,14 +173,14 @@ export function SignInForm({
           </Button>
 
           {/* Minimal divider (24px above & below) */}
-          <div className="mt-6 flex items-center gap-3">
+          <div data-auth-divider className="mt-6 flex items-center gap-3">
             <span className="h-px flex-1 bg-border/80" />
             <span className="text-xs text-fg-secondary select-none">or</span>
             <span className="h-px flex-1 bg-border/80" />
           </div>
 
           {/* Email form (24px below divider) */}
-          <form onSubmit={requestCode} className="mt-6 flex flex-col">
+          <form data-email-entry onSubmit={requestCode} className="mt-6 flex flex-col">
             <div className="flex flex-col text-left">
               <label
                 htmlFor="email"

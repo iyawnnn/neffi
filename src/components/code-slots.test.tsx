@@ -6,9 +6,9 @@ import { CodeSlots } from "./code-slots";
 
 let host: HTMLDivElement;
 let root: Root;
-function Example() {
+function Example({ activation = false }: { activation?: boolean }) {
   const [value, setValue] = useState("");
-  return <CodeSlots value={value} onChange={setValue} label="Test code" hasError describedBy="code-help" />;
+  return <CodeSlots value={value} onChange={setValue} label="Test code" length={activation ? 8 : 6} characterSet={activation ? "alphanumeric" : "numeric"} autoComplete={activation ? "off" : "one-time-code"} hasError describedBy="code-help" />;
 }
 function change(input: HTMLInputElement, value: string) {
   Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, value);
@@ -41,9 +41,9 @@ test("one semantic input, six decorative fluid cells, accessible error and nativ
   expect(input.autocomplete).toBe("one-time-code");
   expect(input.pattern).toBe("[0-9]{6}");
   expect(input.maxLength).toBe(6);
-  const cells = host.querySelector('[aria-hidden="true"]')!;
+  const cells = host.querySelector<HTMLDivElement>('[aria-hidden="true"]')!;
   expect(cells.children).toHaveLength(6);
-  expect(cells.className).toContain("grid-cols-6");
+  expect(cells.style.gridTemplateColumns).toBe("repeat(6, minmax(0, 1fr))");
   await act(async () => input.focus());
   expect(cells.children[0].className).toContain("ring-destructive/20");
   await act(async () => paste(input, "12-34 56 78"));
@@ -66,4 +66,29 @@ test("one semantic input, six decorative fluid cells, accessible error and nativ
   input.setSelectionRange(2, 2);
   await act(async () => paste(input, "00"));
   expect(input.value).toBe("129856");
+});
+
+test("activation uses eight uppercase alphanumeric slots, whole-code paste and cursor-aware editing", async () => {
+  await act(async () => root.render(<Example activation />));
+  const input = host.querySelector("input")!;
+  const slots = host.querySelector('[aria-hidden="true"]')!;
+  expect(host.querySelectorAll("input")).toHaveLength(1);
+  expect(slots.children).toHaveLength(8);
+  expect(input.inputMode).toBe("text");
+  expect(input.autocomplete).toBe("off");
+  expect(input.maxLength).toBe(8);
+  await act(async () => { input.focus(); paste(input, "n8kf-42pq!? extra"); });
+  expect(input.value).toBe("N8KF42PQ");
+  expect(slots.textContent).toBe("N8KF42PQ");
+  input.setSelectionRange(2, 4);
+  await act(async () => paste(input, "xy"));
+  expect(input.value).toBe("N8XY42PQ");
+  await act(async () => {
+    input.setSelectionRange(2, 2);
+    document.dispatchEvent(new Event("selectionchange", { bubbles: true }));
+  });
+  expect(slots.querySelector('[data-active="true"]')).toBe(slots.children[2]);
+  expect(slots.querySelectorAll('[data-active="true"]')).toHaveLength(1);
+  await act(async () => change(input, "ab!?cd12345"));
+  expect(input.value).toBe("ABCD1234");
 });
