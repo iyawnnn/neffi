@@ -165,6 +165,34 @@ test("CodeForm associates error with aria-invalid and aria-describedby", async (
   expect(alert.textContent).toContain("We couldn't find that code");
   expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(input.getAttribute("aria-describedby")).toBe("code-error");
+  expect(m.checkCode).toHaveBeenCalledTimes(1);
+  expect((m.checkCode.mock.calls[0][1] as FormData).get("code")).toBe("N8KF-42PQ");
+});
+
+test("activation code has two decorative groups and one native input", async () => {
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  const groups = host.querySelector('[data-code-groups]')!;
+  expect(host.querySelectorAll("input")).toHaveLength(1);
+  expect(groups).not.toBeNull();
+  expect(groups.getAttribute("aria-hidden")).toBe("true");
+  expect(groups.querySelectorAll("[data-code-group]")).toHaveLength(2);
+  expect(groups.querySelectorAll("input, button, [tabindex]")).toHaveLength(0);
+  expect(input.className).toContain("text-center");
+  expect(input.getAttribute("name")).toBe("code");
+});
+
+test("pasted input keeps formatting, completion feedback and the existing posted value", async () => {
+  await act(async () => root.render(<CodeForm />));
+  const input = host.querySelector<HTMLInputElement>("input#code")!;
+  const form = host.querySelector<HTMLFormElement>("form")!;
+  await act(async () => changeInput(input, "  n8kf-42pq!? extra", "insertFromPaste"));
+  expect(input.value).toBe("N8KF-42PQ");
+  expect(new FormData(form).get("code")).toBe("N8KF-42PQ");
+  expect(normalizeActivationCode(new FormData(form).get("code") as string)).toBe("N8KF42PQ");
+  expect(host.querySelector("svg.lucide-check")).not.toBeNull();
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  expect(m.checkCode).not.toHaveBeenCalled();
 });
 
 // ----------------------------------------------------
