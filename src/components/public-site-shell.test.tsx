@@ -35,17 +35,22 @@ test.each([
   const html = renderToStaticMarkup(<Layout>{await page()}</Layout>);
   expect(html.match(/aria-label="Main"/g)).toHaveLength(2); // desktop and mobile
   expect(html.includes("focused-auth")).toBe(path === "/sign-in" || path === "/activate");
-  expect(html.match(/<footer/g)).toHaveLength(1);
+  const authPage = path === "/sign-in" || path === "/activate";
+  expect(html.match(/<footer/g) ?? []).toHaveLength(authPage ? 0 : 1);
   expect(html.includes('class="marketing-footer"')).toBe(path === "/support");
-  expect(html.includes('aria-label="Utility links"')).toBe(path !== "/support");
-  if (path !== "/support") {
-    expect(html).toContain(path === "/support/recover" ? "Back to support" : "Need help?");
+  expect(html.includes('aria-label="Utility links"')).toBe(path === "/support/recover");
+  if (path === "/support/recover") {
+    expect(html).toContain("Back to support");
+  }
+  if (authPage) {
+    expect(html).not.toContain("Need help?");
+    expect(html).toContain(path === "/sign-in" ? "Lost access to your email?" : "Get activation help");
   }
   expect(html.match(/aria-label="Neffi home"/g)).toHaveLength(1);
   expect(html).toContain("data-marketing-content");
   expect(html.match(/<header/g)).toHaveLength(1);
-  expect(html).toContain('href="/privacy"');
-  expect(html).toContain('href="/terms"');
+  expect(html.includes('href="/privacy"')).toBe(!authPage);
+  expect(html.includes('href="/terms"')).toBe(!authPage);
   expect(html).toMatch(/aria-current="page"[^>]*data-active="true"/);
 });
 

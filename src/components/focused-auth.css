@@ -1,9 +1,8 @@
 @media (min-width: 1024px) {
-  .focused-auth { min-height: 100dvh; }
-  .focused-auth .mp-header { flex-shrink: 0; padding-top: 0.5rem; }
-  .focused-auth [data-auth-page] { flex: 1; justify-content: center; padding-block: 0.5rem; }
+  .focused-auth .mp-header { padding-top: clamp(1rem, 2.5dvh, 1.5rem); }
+  .focused-auth [data-auth-page] { padding-top: clamp(1.5rem, 3.5dvh, 2rem); padding-bottom: calc(env(safe-area-inset-bottom) + 8rem); }
   .focused-auth [data-auth-container] { padding-block: 0; }
-  .focused-auth [data-auth-card] { min-height: clamp(28rem, 62dvh, 40rem); }
+  .focused-auth [data-auth-card] { min-height: clamp(28rem, 60dvh, 32rem); }
   .focused-auth [data-auth-hero] { height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; }
   .focused-auth [data-auth-hero] picture { position: absolute; inset: 0; }
   .focused-auth [data-auth-body] { padding-block: 0.75rem; }
@@ -13,5 +12,8 @@
   .focused-auth [data-sign-in-options] { margin-top: 1rem; }
   .focused-auth [data-embedded="true"] [data-sign-in-options] { margin-top: 0; }
   .focused-auth [data-auth-divider], .focused-auth [data-email-entry] { margin-top: 0.75rem; }
-  .focused-auth footer[aria-label="Utility links"] { flex-shrink: 0; margin-top: 0; padding-top: 0; padding-bottom: calc(env(safe-area-inset-bottom) + 7rem); }
+}
+
+@media (max-width: 1023px) {
+  .focused-auth [data-marketing-content] { padding-bottom: calc(env(safe-area-inset-bottom) + 8rem); }
 }
