@@ -12,7 +12,7 @@ const NOTIFICATIONS_PER_PROFILE_DAY = 50;
 export function submissionEmail(input: { profileName: string | null; formTitle: string; answers: Answer[]; submissionId: string; canReply: boolean }): EmailMessage {
   return {
     subject: "New message from your Neffi",
-    preheader: "Someone used your contact form.",
+    preheader: "Someone used your contact form. Open your Neffi inbox to read the message.",
     heading: "New message from your Neffi",
     paragraphs: [`Someone sent a message through "${input.formTitle}" on ${input.profileName ?? "your Neffi"}.`],
     details: input.answers.map(({ label, value }) => ({ label, value })),
