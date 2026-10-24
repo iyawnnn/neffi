@@ -53,9 +53,9 @@ export function SectionLink({ href, children }: { href: string; children: ReactN
 }
 
 // A list that is one object: heading row (title, count, link) inside a single panel, rows below it.
-export function ListPanel({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
+export function ListPanel({ id, title, count, action, children, className }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section aria-labelledby={id} className="overflow-hidden rounded-panel border bg-background">
+    <section aria-labelledby={id} className={cn("overflow-hidden rounded-panel border bg-background", className)}>
       <div className="flex h-14 items-center justify-between gap-4 px-5 md:px-6">
         <h2 id={id} className="flex items-baseline gap-2 text-section">
           {title}
@@ -89,9 +89,9 @@ export function Row({ href, leading, title, meta, status, trailing }: { href: st
   );
 }
 
-export function EmptyState({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description: string; action?: ReactNode }) {
+export function EmptyState({ icon: Icon, title, description, action, className }: { icon: LucideIcon; title: string; description: string; action?: ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 px-6 py-9 text-center">
+    <div className={cn("flex flex-col items-center gap-1 px-6 py-9 text-center", className)}>
       <span aria-hidden className="mb-3 inline-flex size-10 items-center justify-center rounded-full border bg-canvas">
         <Icon className="size-[1.125rem] text-fg-secondary" strokeWidth={1.6} />
       </span>

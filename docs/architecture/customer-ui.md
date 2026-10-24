@@ -54,24 +54,24 @@ Vermillion primarily marks primary CTAs, progress/completion, focus, real unread
 
 The dashboard canvas belongs to the outer customer layout, selected by `main[data-canvas]`, so the area around the inset header matches the content. The sticky wrapper inherits that background; the shell stays white. Preserve this canvas/panel hierarchy.
 
-Use rounded rectangles, thin neutral borders and minimal shadow. The implemented radii are 12px for panels, 16px for `app-shell`, 10px for button links and object tiles, 12px for the account control, 18px for the Ink dock and 12px for its navigation items. Avoid excessive nested cards and `rounded-full` on large application shells. Circular account avatars, small icon containers and compact status badges do not define the shell silhouette.
+Use rounded rectangles, neutral borders and minimal shadow. The implemented radii are 12px for panels, 16px for `app-shell`, 10px for button links and object tiles, 12px for the account control and 20px for the light mobile dock. Header and dock shells use a 1.5px stronger neutral outline. Avoid excessive nested cards and `rounded-full` on large application shells. Circular account avatars, small icon containers and compact status badges do not define the shell silhouette.
 
 ## Shared chrome and navigation
 
 Primary customer navigation is **Home, Profiles, Cards**. Account settings and sign out belong in the account control. The bell links to the real Inbox, with a Vermillion dot only for actual unread messages; it is not a separate notification product.
 
-The top header retains a white `app-shell` surface with the Neffi home link, Inbox bell and account menu. It is inset/sticky, 58px high below 768px and 64px from 768px, aligned to the content. Scrolling strengthens its border/shadow without morphing or blur. From 768px, primary sections appear between the brand and account tools in a flexible row. Active links use a quiet Snow fill, Ink text and inset hairline; focus remains Vermilion. The list has no fixed item count or column widths.
+The top header retains a white `app-shell` surface with the Neffi home link, Inbox bell and account menu. It is inset/sticky, 58px high below 768px and 64px from 768px, aligned to the content. Scrolling strengthens its shadow without morphing or blur. From 768px, primary sections are centered between equal flexible brand/account columns. Active desktop links use a quiet Snow fill, Ink text and inset hairline; focus remains Vermilion. The list has no fixed item count or column widths.
 
-`AppNav` is a mobile-only floating Ink bottom dock, hidden from 768px when the top primary navigation appears. It shares the `nav-ink-surface` material (18px corners, white hairline, restrained Ink shadow) with the public desktop dock, while keeping product navigation, icons/labels and a quiet Snow active surface. Equal-width implicit grid columns accommodate a fourth primary section without a three-item CSS assumption. Inbox and Account remain in the top header on every screen. Only one primary navigation is visible at a time.
+`AppNav` is a mobile-only floating white bottom dock, hidden from 768px when the top primary navigation appears. It uses the light `app-shell` material with a neutral outline and restrained shadow. Items remain transparent: the active icon is Vermilion with an Ink semibold label, without a pill, underline or other marker; inactive items are muted. Equal-width implicit grid columns accommodate a fourth primary section without a three-item CSS assumption. Inbox and Account remain in the top header on every screen. Only one primary navigation is visible at a time.
 
 - Below 768px: 66px dock, 12px horizontal/bottom inset plus safe-area bottom, capped at `max-w-md`. Links are at least 48px high; the current icon uses a restrained brand accent.
 - From 768px: compact top navigation within the 64px app header; no bottom dock.
 - The layout reserves bottom clearance only below 768px. The details editor's narrow-screen sticky Save/Cancel footer sits above the dock.
 - `/app/setup/**` remains a focused authenticated variant: `SetupHeader`, progress, Back/Continue and Finish later; no normal app dock/account controls. Existing authorization and session maintenance still apply.
 
-Keep account hover/open feedback on one coherent rectangular control, with the existing dropdown items, accessible focus and real sign-out behavior.
+Keep account hover/open feedback on one coherent rectangular control, with the existing dropdown items, accessible focus and real sign-out behavior. Stored provider photos use validated HTTPS Google/Cloudinary origins and fall back to the account initial on absent, rejected or failed images. The 32px trigger and 36px menu avatars have one neutral 1px outer border, with no image ring; keyboard focus belongs to the account button.
 
-The public site uses one MarketingNav. Informational pages and Support retain the full marketing footer; Sign in, Activate and Recovery use focused utility/legal links instead. The app shares its design language, not its acquisition links or footer. Public `/c/{token}` and unavailable card states remain independent profile surfaces.
+The public site uses one MarketingNav. Informational pages and Support retain the full marketing footer; Sign in and Activate have no footer, while Recovery retains focused utility/legal links. The app shares its design language, not its acquisition links or footer. Public `/c/{token}` and unavailable card states remain independent profile surfaces.
 
 ## Product objects and reusable composition
 
@@ -79,7 +79,9 @@ Profiles and Cards are product objects. Use `ProfileGlyph` (neutral rounded-squa
 
 Reuse `ListPanel`, `RowList`, `Row`, `SectionHeader`, `SectionLink`, `ProfileStatus` and `ButtonLink` where their roles fit. Button links retain matching geometry across variants: 48px on phones, 44px from `sm`, with a 10px radius. Use `action` for the purposeful primary CTA and `outline` for secondary actions. Completed-draft actions show Edit profile before Preview and publish on mobile, and Edit left / Preview and publish right on desktop.
 
-The Home title is **Your Neffi**. Its locked subtitle is **Manage your cards and what people see when they tap.** Keep the existing [hero artwork](../../public/neffi-dashboard-hero.png).
+The Home title is **Your Neffi**. With no cards and no profiles, the subtitle is **Activate your card, build your profile and you're ready to share.** The [vector hero artwork](../../public/neffi-dashboard-hero.svg) stays crisp, with a mobile-only edge mask fading into the canvas. Below it, **Get your Neffi ready** contains the single **Activate my Neffi** CTA with a decorative Plus icon and the Activate / Set up / Ready journey. Compact Profiles and Cards empty panels follow, side by side from 768px. There is no additional explanatory section or Quick actions in this state. Populated states retain setup/draft/live guidance, Quick actions and object panels with the management subtitle.
+
+The Profiles lower CTA uses the [digital-profile illustration](../../public/neffi-create-profile.svg); Cards uses the [physical-card illustration](../../public/neffi-create-profile-cards.svg). Both retain the compact 240px artwork footprint.
 
 ## Interactions and responsive behavior
 

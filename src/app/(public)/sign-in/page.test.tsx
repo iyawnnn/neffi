@@ -23,7 +23,7 @@ test("sign-in help reaches public support without an auth next parameter", async
 test("renders responsive hero artwork with desktop and mobile assets", async () => {
   m.getViewer.mockResolvedValue(null);
   const html = renderToStaticMarkup(await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }));
-  expect(html).toContain("neffi-signin-hero-profile-preview.png");
+  expect(html).toContain("neffi-signin-hero-desktop.png");
   expect(html).toContain("neffi-signin-hero-mobile.png");
   expect(html).toContain("<picture");
   expect(html).toContain("data-sign-in");

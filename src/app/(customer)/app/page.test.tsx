@@ -24,10 +24,8 @@ beforeEach(() => {
   m.cardSummaries.mockResolvedValue([]);
 });
 
-test("the page checks the session, then renders the header before the dashboard data", async () => {
+test("the page checks the session, then renders the dashboard stream behind a skeleton", async () => {
   const html = renderToStaticMarkup(await CustomerHome({ params: Promise.resolve({}), searchParams: Promise.resolve({}) } as Parameters<typeof CustomerHome>[0]));
-  expect(html).toContain("Your Neffi");
-  expect(html.replace(/<[^>]+>/g, "")).toContain("Manage your cards and what people see when they tap.");
   expect(html).toContain('aria-label="Loading your Neffi"');
   expect(m.requireAccount).toHaveBeenCalledWith("/app");
 });
@@ -191,14 +189,32 @@ test("leads with owned cards waiting for setup without exposing the full card ad
   expect(m.getOwnedProfile).not.toHaveBeenCalled();
 });
 
-test("with nothing yet, onboards to activation with intentional empty sections", async () => {
+test("with nothing yet, onboards to activation with dedicated zero-state experience", async () => {
   const html = await render();
-  expect(html).toContain("Activate your first Neffi");
+  expect([...html.matchAll(/<h[12]\b[^>]*>(.*?)<\/h[12]>/g)].map(([, title]) => title)).toEqual([
+    "Your Neffi",
+    "Get your Neffi ready",
+    "Your profiles",
+    "Your cards",
+  ]);
+  expect(html).toContain('src="/neffi-dashboard-hero.svg"');
+  expect(html).not.toContain("neffi-dashboard-hero.png");
+  expect(html).toContain("Your Neffi");
+  expect(html).toContain("Get your Neffi ready");
+  expect(html).toContain("Activate my Neffi");
+  expect(html).toContain("Activate");
+  expect(html).toContain("Set up");
+  expect(html).toContain("Ready");
+  expect(html).toContain("Your profiles");
   expect(html).toContain("No profiles yet");
+  expect(html).toContain("Your cards");
   expect(html).toContain("No cards activated yet");
+  expect(html).not.toContain("What happens next");
+  expect(html).not.toContain("Build your profile");
+  expect(html).not.toContain("Make it yours");
+  expect(html).not.toContain("Tap and share");
   expect(html).not.toContain("Quick actions");
   expect([...html.matchAll(/href="\/activate"/g)]).toHaveLength(1);
-  expect(html).toContain("Activate a Neffi");
 });
 
 test.each([false, true])("activation navigation has a 44px touch target (owns cards: %s)", async (ownsCards) => {
@@ -206,5 +222,5 @@ test.each([false, true])("activation navigation has a 44px touch target (owns ca
   const html = await render();
   const links = [...html.matchAll(/<a\b[^>]*>/g)].map(([tag]) => tag).filter((tag) => tag.includes('href="/activate"'));
   expect(links.length).toBeGreaterThan(0);
-  for (const link of links) expect(link).toMatch(/\b(min-h-11|h-11)\b/);
+  for (const link of links) expect(link).toMatch(/\b(min-h-11|h-11|h-12)\b/);
 });
