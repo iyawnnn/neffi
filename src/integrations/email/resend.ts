@@ -34,21 +34,23 @@ export function createResendSender({ apiKey, from, origin }: ResendConfig): Emai
 export function authCodeEmail(code: string, lifetimeMinutes: number): EmailMessage {
   return {
     subject: "Your Neffi sign-in code",
-    preheader: `Use it within ${lifetimeMinutes} minutes to continue.`,
+    preheader: `Expires in ${lifetimeMinutes} minutes. If you didn't request this sign-in, you can ignore this email.`,
     heading: "Your sign-in code",
     paragraphs: ["Use this code to continue to Neffi."],
     code,
-    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`, "If you didn't request it, you can ignore this email."],
+    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`],
+    securityNotes: ["If you didn't request it, you can ignore this email."],
   };
 }
 
 export function changeEmailCodeEmail(code: string, lifetimeMinutes: number): EmailMessage {
   return {
     subject: "Confirm your new Neffi email",
-    preheader: `Use this code within ${lifetimeMinutes} minutes to finish the change.`,
+    preheader: `Expires in ${lifetimeMinutes} minutes. If you didn't request this, ignore this email. Your account won't change.`,
     heading: "Confirm your new email",
     paragraphs: ["Enter this code in Neffi to start signing in with this address."],
     code,
-    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`, "If you didn't request this, ignore this email. Your account won't change."],
+    notes: [`This code expires in ${lifetimeMinutes} minutes and works once.`],
+    securityNotes: ["If you didn't request this, ignore this email. Your account won't change."],
   };
 }
