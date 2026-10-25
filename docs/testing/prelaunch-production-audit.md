@@ -159,6 +159,12 @@ None was performed by this audit.
 - **Responsive smoke:** 85 page/width combinations.
 - **Other gates:** build, bundle scan, `db:check`/`db:generate`/Drizzle diff and `git diff --check` all clean.
 
+## Addendum: owner operations (2026-10-25)
+
+The E2E above did **not** exercise the owner UI. Its cards came from `pnpm dev:activation-fixture`, which inserts Released DBC rows directly into the disposable database and issues codes through `issueActivationCredential`. The claimable fixtures have no NFC or package-match record. `/admin/inventory` was never opened as an owner. The Package QR was never scanned: the browser navigated straight to `/activate`.
+
+A follow-up owner audit found that `/admin/inventory/cards/{id}` showed the NFC URL but **no Sharing QR**, so the card-back sticker could only be produced after a customer claim. It now shows a Sharing QR, built by the same `qrSvgDataUri(cardUrl(…))` the customer page uses, with **Download QR (SVG)** and **Copy URL**. It is hidden for retired cards and is covered by `src/app/sharing-qr-parity.test.tsx` (admin QR = customer QR = QR of the NFC URL). The human walkthrough is [prelaunch-human-operations-acceptance.md](prelaunch-human-operations-acceptance.md).
+
 ## Launch blockers
 
 No automated/software launch blockers found.
