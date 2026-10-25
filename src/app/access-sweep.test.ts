@@ -54,6 +54,8 @@ vi.mock("@/config/env", async () => {
   "RESEND_API_KEY": "re_ci_dummy_resend_key_0123456789",
   "AUTH_EMAIL_FROM": "Neffi <ci@example.invalid>",
   "ACTIVATION_CODE_SECRET": "ci-dummy-activation-code-secret-0123456789abcdef",
+  "ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID": "ci-test-v1",
+  "ACTIVATION_CODE_ENCRYPTION_KEYS": JSON.stringify({ "ci-test-v1": Buffer.alloc(32, 75).toString("base64") }),
   "CARD_URL_ORIGIN": "http://localhost:3000",
   "CLOUDINARY_CLOUD_NAME": "ci-dummy-cloud",
   "CLOUDINARY_API_KEY": "ci-dummy-cloudinary-key-0123456789",

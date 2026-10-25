@@ -11,6 +11,7 @@ const SECRET_VARS = [
   "GOOGLE_CLIENT_SECRET",
   "RESEND_API_KEY",
   "ACTIVATION_CODE_SECRET",
+  "ACTIVATION_CODE_ENCRYPTION_KEYS",
   "CLOUDINARY_API_SECRET",
 ];
 const PUBLIC_OUTPUTS = [
@@ -29,6 +30,17 @@ for (const name of SECRET_VARS) {
   // Values embedded in JSON/RSC payloads appear escaped when they contain quotes or backslashes.
   const escaped = JSON.stringify(value).slice(1, -1);
   if (escaped !== value) needles.push({ name: `${name} (JSON-escaped)`, value: escaped });
+  if (name === "ACTIVATION_CODE_ENCRYPTION_KEYS") {
+    try {
+      for (const encoded of Object.values(JSON.parse(value))) {
+        if (typeof encoded !== "string") continue;
+        needles.push({ name: `${name} (individual key)`, value: encoded });
+        const decoded = Buffer.from(encoded, "base64");
+        const textual = decoded.toString("utf8");
+        if (Buffer.from(textual).equals(decoded)) needles.push({ name: `${name} (decoded key)`, value: textual });
+      }
+    } catch {}
+  }
   // A bundle could embed just the password of a connection string.
   try {
     const password = decodeURIComponent(new URL(value).password);

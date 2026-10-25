@@ -13,6 +13,8 @@ const base = {
   RESEND_API_KEY: "re_synthetic_key_not_real",
   AUTH_EMAIL_FROM: "Neffi <auth@example.test>",
   ACTIVATION_CODE_SECRET: "a".repeat(40),
+  ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID: "test-v1",
+  ACTIVATION_CODE_ENCRYPTION_KEYS: JSON.stringify({ "test-v1": Buffer.alloc(32, 7).toString("base64") }),
   CARD_URL_ORIGIN: "http://localhost:3000",
   CLOUDINARY_CLOUD_NAME: "demo",
   CLOUDINARY_API_KEY: "synthetic-cloudinary-key",
@@ -54,6 +56,8 @@ describe("parseServerEnv", () => {
       authEmailFrom: base.AUTH_EMAIL_FROM,
       supportReplyTo: undefined,
       activationCodeSecret: "a".repeat(40),
+      activationCodeEncryptionActiveKeyId: "test-v1",
+      activationCodeEncryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
       cardUrlOrigin: "http://localhost:3000",
       cloudinaryCloudName: base.CLOUDINARY_CLOUD_NAME,
       cloudinaryApiKey: base.CLOUDINARY_API_KEY,
@@ -66,6 +70,26 @@ describe("parseServerEnv", () => {
       const message = errorMessage(() => parseServerEnv({ ...base, ACTIVATION_CODE_SECRET: value }));
       expect(message).toContain("ACTIVATION_CODE_SECRET");
       expect(message).not.toContain("short-secret");
+    }
+  });
+
+  test("requires an active encryption key independent of the HMAC secret", () => {
+    for (const value of [undefined, "", "missing"]) {
+      expect(errorMessage(() => parseServerEnv({ ...base, ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID: value })))
+        .toContain("ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID");
+    }
+    expect(parseServerEnv(base).activationCodeEncryptionKeys.get("test-v1")).toEqual(Buffer.alloc(32, 7));
+  });
+
+  test("rejects duplicate, escaped, malformed and wrongly sized encryption keys without echoing values", () => {
+    const valid = Buffer.alloc(32, 7).toString("base64");
+    const invalid = ["{}", `{"test-v1":"${valid}","test-v1":"${valid}"}`, `{"test\\u002dv1":"${valid}"}`,
+      JSON.stringify({ "test-v1": "short" }), JSON.stringify({ "test-v1": Buffer.alloc(31).toString("base64") }),
+      JSON.stringify({ "bad.id": valid }), `{"test-v1":"${valid}",}`];
+    for (const value of invalid) {
+      const message = errorMessage(() => parseServerEnv({ ...base, ACTIVATION_CODE_ENCRYPTION_KEYS: value }));
+      expect(message).toContain("ACTIVATION_CODE_ENCRYPTION_KEYS");
+      expect(message).not.toContain(valid);
     }
   });
 
