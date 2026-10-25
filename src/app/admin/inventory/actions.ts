@@ -7,6 +7,7 @@ import { env } from "@/config/env";
 import { db } from "@/db";
 import { formatActivationCode } from "@/modules/activation/code";
 import { ActivationCredentialError } from "@/modules/activation/credentials";
+import { revealActivationCode, saveExistingActivationCode } from "@/modules/activation/retrieval";
 import { CardError, recordNfcCheck, retireCard, type CardErrorCode } from "@/modules/cards/card";
 import { matchPackage, provisionDbc, replaceProvisioningCredential } from "@/modules/cards/dbc";
 import { reserveGrc } from "@/modules/cards/grc";
@@ -17,7 +18,7 @@ import { parsePesos } from "@/lib/money";
 import { OrderError } from "@/modules/orders/errors";
 
 // Every action is a public endpoint: authorize as OWNER first, then validate, then call the domain service.
-// A raw activation code appears only in the `reveal` of the response that issued it.
+// A raw activation code appears only in an explicit issuing or retrieval action response.
 export type ActionState = { error?: string; ok?: string; href?: string; reveal?: { code: string; url?: string; instructions?: string } };
 
 const MESSAGES: Record<CardErrorCode, string> = {
@@ -158,6 +159,32 @@ export async function replaceCredentialAction(_previous: ActionState | undefined
     },
     cardPage,
   );
+}
+
+export async function revealActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ cardId: id, credentialId: id }), data, async ({ cardId, credentialId }, actorId) => {
+    const unavailable = { error: "The activation code could not be shown. Reload the card and try again." };
+    try {
+      const result = await revealActivationCode(db, { actorId, cardId, credentialId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+      if (result.status === "available") return { reveal: { code: formatActivationCode(result.code) } };
+      if (result.status === "legacy_code_needed") return { error: "This older credential needs its existing package code saved before it can be shown." };
+      if (result.status === "key_unavailable") return { error: "The activation code key is unavailable. Restore the configured key and try again." };
+    } catch {
+      return unavailable;
+    }
+    return unavailable;
+  });
+}
+
+export async function saveExistingActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ cardId: id, credentialId: id, code: text(64).min(1) }), data, async ({ cardId, credentialId, code }, actorId) => {
+    try {
+      await saveExistingActivationCode(db, { actorId, cardId, credentialId, code, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+      return { ok: "Existing activation code saved." };
+    } catch {
+      return { error: "That code could not be saved for this card. Reload and check the package." };
+    }
+  }, cardPage);
 }
 
 export async function reserveGrcAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

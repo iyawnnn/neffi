@@ -11,6 +11,8 @@ const { authorize, revalidatePath, services } = vi.hoisted(() => ({
     recordNfcCheck: vi.fn(),
     matchPackage: vi.fn(),
     replaceProvisioningCredential: vi.fn(),
+    revealActivationCode: vi.fn(),
+    saveExistingActivationCode: vi.fn(),
     reserveGrc: vi.fn(),
     retireCard: vi.fn(),
   },
@@ -27,6 +29,7 @@ vi.mock("@/modules/cards/dbc", () => ({
   matchPackage: services.matchPackage,
   replaceProvisioningCredential: services.replaceProvisioningCredential,
 }));
+vi.mock("@/modules/activation/retrieval", () => ({ revealActivationCode: services.revealActivationCode, saveExistingActivationCode: services.saveExistingActivationCode }));
 vi.mock("@/modules/cards/grc", () => ({ reserveGrc: services.reserveGrc }));
 vi.mock("@/modules/cards/card", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/modules/cards/card")>()),
@@ -172,4 +175,37 @@ test("issuance actions pass lookup and encryption secrets to the service", async
       lookupSecret: "s".repeat(40), activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
     } }));
   }
+});
+
+test("explicit reveal authorizes first, passes server secrets, and returns only the audited code", async () => {
+  const fields = { cardId: CARD, credentialId: ITEM };
+  authorize.mockResolvedValueOnce({ ok: false, denial: { status: 403, error: "forbidden" } });
+  expect((await actions.revealActivationCodeAction(undefined, form(fields))).error).toBeTruthy();
+  expect(services.revealActivationCode).not.toHaveBeenCalled();
+  services.revealActivationCode.mockResolvedValue({ status: "available", credentialId: ITEM, code: "N8KF42PQ" });
+  expect(await actions.revealActivationCodeAction(undefined, form(fields))).toEqual({ reveal: { code: "N8KF-42PQ" } });
+  expect(services.revealActivationCode).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorId: OWNER.viewer.accountId, ...fields, secrets: {
+    lookupSecret: "s".repeat(40), activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
+  } }));
+  expect(await actions.revealActivationCodeAction(undefined, form({ ...fields, credentialId: "invalid" }))).not.toHaveProperty("reveal");
+});
+
+test("legacy adoption sends the submitted code only to the authorized service", async () => {
+  const fields = { cardId: CARD, credentialId: ITEM, code: "N8KF-42PQ" };
+  authorize.mockResolvedValueOnce({ ok: false, denial: { status: 401, error: "unauthenticated" } });
+  expect((await actions.saveExistingActivationCodeAction(undefined, form(fields))).error).toBeTruthy();
+  expect(services.saveExistingActivationCode).not.toHaveBeenCalled();
+  expect(await actions.saveExistingActivationCodeAction(undefined, form(fields))).toEqual({ ok: "Existing activation code saved." });
+  expect(services.saveExistingActivationCode).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ actorId: OWNER.viewer.accountId, ...fields }));
+  expect(await actions.saveExistingActivationCodeAction(undefined, form({ ...fields, code: "" }))).not.toHaveProperty("ok");
+});
+
+test("failed reveal or unavailable key never returns a code", async () => {
+  const fields = form({ cardId: CARD, credentialId: ITEM });
+  for (const status of ["unavailable", "legacy_code_needed", "key_unavailable"]) {
+    services.revealActivationCode.mockResolvedValueOnce({ status });
+    expect(await actions.revealActivationCodeAction(undefined, fields)).not.toHaveProperty("reveal");
+  }
+  services.revealActivationCode.mockRejectedValueOnce(new Error("audit failed"));
+  expect(await actions.revealActivationCodeAction(undefined, fields)).toEqual({ error: "The activation code could not be shown. Reload the card and try again." });
 });

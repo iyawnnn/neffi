@@ -43,6 +43,7 @@ const SERVER_ONLY_ENTRYPOINTS = [
   "src/modules/accounts/set-role.ts",
   "src/modules/activation/credentials.ts",
   "src/modules/activation/encryption.ts",
+  "src/modules/activation/retrieval.ts",
   "src/modules/activation/claim.ts",
   "src/modules/cards/owned.ts",
   "src/modules/profiles/profiles.ts",

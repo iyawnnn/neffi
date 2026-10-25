@@ -144,6 +144,8 @@ const classifiedExports: Record<string, readonly string[]> = {
     "recordNfcCheckAction",
     "matchPackageAction",
     "replaceCredentialAction",
+    "revealActivationCodeAction",
+    "saveExistingActivationCodeAction",
     "reserveGrcAction",
     "retireCardAction"
   ],
