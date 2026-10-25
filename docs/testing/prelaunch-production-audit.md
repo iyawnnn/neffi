@@ -23,7 +23,7 @@ Note: a pre-existing development server (not started by this audit) was listenin
 
 ## Automated verification
 
-Fresh runs on this tree. "Final" is the audit branch after fixes.
+Fresh runs from the first audit pass. "Final" below is commit `9ae92d7`, before the owner-operations follow-up. The shipping verification below records the complete branch.
 
 | Command | Baseline (`5491fe3`) | Final (audit branch) |
 |---|---|---|
@@ -139,7 +139,7 @@ None was performed by this audit.
 8. **LOW:** a `metadataBase` build warning (no Open Graph tags are emitted); the Preview Cloudinary key is flagged `readable-secret`.
 9. **Not exercised in the browser:** the Booking block, owner-initiated recovery, every layout × mode × accent combination, rate-limit exhaustion and an actual expired-OTP wait (all covered by unit or DB tests).
 
-## Exact files changed
+## Exact files changed in the first audit pass
 
 - `scripts/check-profile-concurrency.mts` (Bug 1)
 - `src/app/(public)/support/page.tsx` (Bug 2 fix)
@@ -148,7 +148,7 @@ None was performed by this audit.
 - `docs/testing/prelaunch-physical-acceptance.md` (new)
 - `docs/testing/prelaunch-production-audit.md` (this report)
 
-## Final test totals
+## First-pass test totals
 
 - **Tests:** 239 files / 2,536 tests passed.
 - **Lint:** 0 errors, 17 warnings.
@@ -164,6 +164,21 @@ None was performed by this audit.
 The E2E above did **not** exercise the owner UI. Its cards came from `pnpm dev:activation-fixture`, which inserts Released DBC rows directly into the disposable database and issues codes through `issueActivationCredential`. The claimable fixtures have no NFC or package-match record. `/admin/inventory` was never opened as an owner. The Package QR was never scanned: the browser navigated straight to `/activate`.
 
 A follow-up owner audit found that `/admin/inventory/cards/{id}` showed the NFC URL but **no Sharing QR**, so the card-back sticker could only be produced after a customer claim. It now shows a Sharing QR, built by the same `qrSvgDataUri(cardUrl(…))` the customer page uses, with **Download QR (SVG)** and **Copy URL**. It is hidden for retired cards and is covered by `src/app/sharing-qr-parity.test.tsx` (admin QR = customer QR = QR of the NFC URL). The human walkthrough is [prelaunch-human-operations-acceptance.md](prelaunch-human-operations-acceptance.md).
+
+The owner-operations follow-up also changes:
+
+- `src/app/admin/inventory/cards/[cardId]/page.tsx`
+- `src/app/admin/inventory/cards/[cardId]/page.test.tsx`
+- `src/app/sharing-qr-parity.test.tsx`
+- `docs/testing/prelaunch-human-operations-acceptance.md`
+
+Together with the six first-pass files above, these are the complete ten-file release batch.
+
+## Shipping verification (2026-10-25)
+
+Fresh full-suite verification of `a870c17` passed **240 files / 2,538 tests**. Full lint passed with 0 errors and the same 17 existing warnings; TypeScript and schema/journal checks passed with no generated migration changes. All six concurrency suites passed **58/58 scenarios** against a newly created disposable loopback PostgreSQL cluster, including all seven profile checks and all four claim races. This is fresh software evidence, not a manual owner-UI or physical-card acceptance result.
+
+The production build, 1,642-locality snapshot check and 419-file public-bundle secret scan also passed. The canonical `scripts/check-public-http.mts` gate passed against the production build and a separate fresh loopback diagnostic database. Five additional Support GETs returned HTTP 200 with no streamed error fallback and five distinct request keys; the local server emitted no crypto/prerender error. The OWNER/customer/NFC QR parity test passed again independently. No real email, production database mutation, production card provisioning or physical acceptance was performed during shipping verification.
 
 ## Launch blockers
 
