@@ -91,7 +91,7 @@ try {
     profileId = results[0].profileId;
     const { rows: [profile] } = await admin.query("SELECT default_scene_id FROM profiles WHERE id=$1", [profileId]);
     sceneId = profile.default_scene_id;
-    await addBlock(dbA, { accountId: customer, profileId, sceneId, type: "form", content: {}, preset: "contact" });
+    await addBlock(dbA, { accountId: customer, profileId, sceneId, type: "form", content: {}, preset: "connect" });
     for (let i = 0; i < 3; i++) await addBlock(dbA, { accountId: customer, profileId, sceneId, type: "link", content: { kind: "custom", label: `Initial ${i}`, url: "https://example.test/" } });
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM profiles WHERE account_id=$1", [customer])).rows[0].n, 1);
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM activity_events WHERE card_id=$1 AND type='card_profile_changed'", [cardId])).rows[0].n, 1);

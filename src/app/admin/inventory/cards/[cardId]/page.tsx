@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import { Circle, CircleCheck, LifeBuoy, Minus } from "lucide-react";
+import { Circle, CircleCheck, Download, LifeBuoy, Minus } from "lucide-react";
 import { z } from "zod";
 import { requireOwner } from "@/auth/access";
+import { buttonVariants } from "@/components/ui/button";
 import { env } from "@/config/env";
 import { db } from "@/db";
 import { eligibleGrcItems } from "@/modules/cards/grc";
+import { qrSvgDataUri } from "@/modules/cards/qr";
 import { cardUrl } from "@/modules/cards/token";
+import { CardUrl } from "../../card-url";
 import { getCardDetail } from "@/modules/inventory/queries";
 import { adminPage, cardTone, DangerZone, DetailList, inlineLink, LinkButton, NextStep, PageHeader, Panel, Section, Status } from "../../../ui";
 import { MatchPackageForm, NfcCheckForm, ProvisionForm, ReplaceForm, ReserveForm, RetireForm } from "../../forms";
@@ -34,6 +37,9 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
   const retirable = blank || card.state === "ready" || reservedGrc;
   const eligibleItems = canReserve ? await eligibleGrcItems(db) : [];
   const provisioning = blank && Boolean(card.publicToken);
+  // The card-back sticker: the same customer-side QR helper over the exact URL written to NFC. A retired card's URL
+  // is permanently unavailable, so there is nothing to print.
+  const sharingQr = isDbc && dbcUri && card.state !== "retired" ? qrSvgDataUri(dbcUri) : null;
 
   return (
     <main data-admin-section="inventory" className={adminPage}>
@@ -122,6 +128,19 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
                 dbcUri ? ["Card URL", <span key="url" className="font-mono text-meta break-all">{dbcUri}</span>] : null,
               ]}
             />
+            {sharingQr && dbcUri ? (
+              <div className="flex flex-col gap-3 border-t pt-5">
+                <h3 className="text-body font-medium">Sharing QR</h3>
+                <p className="text-meta text-fg-secondary">Print this on the sticker for the back of the card. It opens the same URL as the NFC tag, never the activation page.</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sharingQr} alt="Sharing QR for this card" width={160} height={160} className="size-40 self-start rounded-lg border bg-white p-2" />
+                <a href={sharingQr} download={`neffi-sharing-qr-${card.publicToken}.svg`} className={`${buttonVariants({ variant: "outline", size: "touch" })} gap-2 self-start md:h-9`}>
+                  <Download aria-hidden className="size-4" />
+                  Download QR (SVG)
+                </a>
+                <CardUrl url={dbcUri} />
+              </div>
+            ) : null}
             {card.purchaser || card.owningAccount || card.orderContext ? (
               <div className="border-t pt-5">
                 <DetailList

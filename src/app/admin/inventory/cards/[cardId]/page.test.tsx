@@ -67,6 +67,14 @@ test("retired card has no recovery or mutation controls", async () => {
   expect(html).not.toContain("<button>");
 });
 
+test("the card-back Sharing QR is available while provisioning, before any customer claim, and never for a retired card", async () => {
+  const blank = await render();
+  expect(blank).toContain('alt="Sharing QR for this card"');
+  expect(blank).toContain(`download="neffi-sharing-qr-${card.publicToken}.svg"`);
+  getCardDetail.mockResolvedValue({ ...card, state: "retired", usableCredentialId: null });
+  expect(await render()).not.toContain("Sharing QR");
+});
+
 test("OWNER denial stops before reading inventory", async () => {
   requireOwner.mockRejectedValueOnce(new Error("denied"));
   await expect(render()).rejects.toThrow("denied");
