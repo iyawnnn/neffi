@@ -45,19 +45,22 @@ test("0019-0021 preserve legacy commercial, shipping and credential history", as
         ('00000000-0000-4000-8000-000000000004', 'Historical courier', 'pending');
       INSERT INTO activity_events (type, card_id) VALUES ('card_provisioned', '00000000-0000-4000-8000-000000000009');
     `);
+    const cardHistory = "SELECT id, stock_purchase_id, product_id, kind, state, order_item_id, public_token, owner_account_id, profile_id, disabled_at, nfc_verified_at, package_matched_at, created_at, updated_at FROM cards ORDER BY id";
     const before = {
       orderItems: (await client.query("SELECT unit_price, agreed_total FROM order_items ORDER BY id")).rows,
       payments: (await client.query("SELECT order_id, amount, method, paid_on FROM payments ORDER BY id")).rows,
-      shipments: (await client.query("SELECT order_id, courier, status FROM shipments ORDER BY id")).rows,
+      shipments: (await client.query("SELECT id, order_id, courier, status FROM shipments ORDER BY id")).rows,
       credentials: (await client.query("SELECT id, card_id, lookup_hmac, used_at, revoked_at FROM activation_credentials ORDER BY id")).rows,
       orders: (await client.query("SELECT id, status, delivery_method, shipping_fee FROM orders ORDER BY id")).rows,
+      cards: (await client.query(cardHistory)).rows,
     };
     await migrate(db, { migrationsFolder: "drizzle" });
     expect((await client.query("SELECT unit_price, agreed_total FROM order_items ORDER BY id")).rows).toEqual(before.orderItems);
     expect((await client.query("SELECT order_id, amount, method, paid_on FROM payments ORDER BY id")).rows).toEqual(before.payments);
-    expect((await client.query("SELECT order_id, courier, status FROM shipments ORDER BY id")).rows).toEqual(before.shipments);
+    expect((await client.query("SELECT id, order_id, courier, status FROM shipments ORDER BY id")).rows).toEqual(before.shipments);
     expect((await client.query("SELECT id, card_id, lookup_hmac, used_at, revoked_at FROM activation_credentials ORDER BY id")).rows).toEqual(before.credentials);
     expect((await client.query("SELECT id, status, delivery_method, shipping_fee FROM orders ORDER BY id")).rows).toEqual(before.orders);
+    expect((await client.query(cardHistory)).rows).toEqual(before.cards);
     const cards = (await client.query<{ inventory_number: number }>("SELECT inventory_number FROM cards ORDER BY created_at, id")).rows;
     expect(cards.map(card => card.inventory_number)).toEqual([1, 2, 3]);
     const [newCard] = (await client.query<{ inventory_number: number }>("INSERT INTO cards (stock_purchase_id) VALUES ('00000000-0000-4000-8000-000000000008') RETURNING inventory_number")).rows;

@@ -59,6 +59,7 @@ test("credential envelopes clear on use and terminal history stays frozen", () =
   const [revoked] = await tx.insert(activationCredentials).values({ cardId: other.id, lookupHmac: syntheticLookup(954), encryptedCode: "synthetic-envelope", revokedAt: new Date() }).returning();
   expect(revoked.encryptedCode).toBeNull();
   await expectPgError(tx, s => s.update(activationCredentials).set({ encryptedCode: "restored" }).where(eq(activationCredentials.id, revoked.id)), "P0001");
+  await expectPgError(tx, s => s.update(activationCredentials).set({ createdAt: new Date(0) }).where(eq(activationCredentials.id, revoked.id)), "P0001");
 }));
 
 test("activity credential references use a real FK and remain append-only", () => rollback(db, async tx => {
