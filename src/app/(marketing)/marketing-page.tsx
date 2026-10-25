@@ -7,7 +7,7 @@ export function MarketingPageHeader() {
   return (
     <header className="mp-header">
       <Link href="/" aria-label="Neffi home" className="mp-home">
-        <span><NeffiLogo aria-hidden /></span>
+        <span><NeffiLogo aria-hidden className="text-foreground" /></span>
       </Link>
     </header>
   );

@@ -1,48 +1,47 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { MarketingPageHeader } from "./marketing-page";
 import "./legal.css";
 
-export type LegalSection = { id: string; title: string; requiredCopy: string };
+export type LegalSection = { id: string; title: string; body: ReactNode };
 
-export function LegalPage({ title, introduction, sections }: {
-  title: string; introduction: string; sections: LegalSection[];
+export function LegalPage({ title, introduction, updated, sections }: {
+  title: string; introduction: string; updated: { label: string; iso: string }; sections: LegalSection[];
 }) {
   return (
     <main className="mp-page legal-page">
       <MarketingPageHeader />
-      <header className="mp-section legal-header">
-        <div className="mp-container">
-          <h1 className="mp-title">{title}</h1>
-          <p className="mp-lead">{introduction}</p>
-          <div className="legal-status" role="note">
-            <h2>Not yet published</h2>
-            <p>This is a review template. Neffi’s approved {title} has not been added. The outline below is not a statement of legal terms or data practices.</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="mp-section legal-body">
-        <div className="mp-container legal-columns">
-          <nav aria-label={`${title} contents`} className="legal-contents">
-            <p>On this page</p>
-            <ul>{sections.map(({ id, title: sectionTitle }) => <li key={id}><a href={`#${id}`}>{sectionTitle}</a></li>)}</ul>
-          </nav>
-          <div className="legal-reading">
-            {sections.map(({ id, title: sectionTitle, requiredCopy }) => (
-              <section id={id} key={id} aria-labelledby={`${id}-heading`}>
-                <h2 id={`${id}-heading`}>{sectionTitle}</h2>
-                <p className="legal-pending">Approved copy required</p>
-                <p>{requiredCopy}</p>
-              </section>
-            ))}
-            <aside className="legal-help">
-              <h2>Need help with Neffi?</h2>
-              <p>For help with a card or account, use the existing support page.</p>
-              <Link href="/support" className="mp-text-link">Contact support <span aria-hidden>→</span></Link>
-            </aside>
-          </div>
-        </div>
-      </div>
+      <article className="legal-document">
+        <header className="legal-header">
+          <p className="legal-eyebrow">Legal</p>
+          <h1 className="legal-title">{title}</h1>
+          <p className="legal-lead">{introduction}</p>
+          <p className="legal-updated">Last updated <time dateTime={updated.iso}>{updated.label}</time></p>
+        </header>
+        {sections.map(({ id, title: sectionTitle, body }, index) => (
+          <section id={id} key={id} aria-labelledby={`${id}-heading`} className="legal-section">
+            <p className="legal-number" aria-hidden>{String(index + 1).padStart(2, "0")}</p>
+            <h2 id={`${id}-heading`}>{sectionTitle}</h2>
+            <div className="legal-prose">{body}</div>
+          </section>
+        ))}
+        <aside className="legal-help">
+          <h2>Questions about this page?</h2>
+          <p>Email <MailLink address="support@getneffi.com" /> for help with your account, card or order, or <MailLink address="privacy@getneffi.com" /> for privacy requests.</p>
+          <Link href="/support" className="mp-text-link">Contact support <span aria-hidden>→</span></Link>
+        </aside>
+      </article>
     </main>
   );
 }
+
+export function LegalCallout({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <aside className="legal-callout">
+      <p className="legal-callout-title">{title}</p>
+      {children}
+    </aside>
+  );
+}
+
+export const MailLink = ({ address }: { address: string }) => <a href={`mailto:${address}`}>{address}</a>;

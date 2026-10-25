@@ -1,0 +1,26 @@
+.mp-page .mp-section.guide-buying { padding-block: clamp(2.5rem, 4vw, 3.5rem); padding-inline: 1.5rem; }
+.mp-page .guide-buying .mp-container { max-width: 68rem; }
+.mp-page .guide-buying .mp-heading { font-size: clamp(1.875rem, 3vw, 2.5rem); }
+.guide-buying-head { display: grid; gap: 0.75rem; margin-bottom: 2rem; max-width: 44rem; }
+.guide-buying-lead { color: var(--fg-secondary); font-size: 0.9375rem; line-height: 1.6; }
+.guide-buying-journey { display: grid; margin: 0; padding: 0; list-style: none; }
+.guide-buying-step { position: relative; min-width: 0; padding-block: 1.25rem; border-bottom: 1px solid var(--border); }
+.guide-buying-step::before { content: ""; display: none; position: absolute; inset: 0 auto 0 -0.75rem; border-left: 1px solid var(--border); pointer-events: none; }
+.guide-buying-step:first-child { padding-top: 0; }
+.guide-buying-step:last-child { padding-bottom: 0; border-bottom: 0; }
+.guide-buying-number { display: block; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; letter-spacing: 0.04em; color: var(--action-text); }
+.guide-step-title { font-size: 1rem; font-weight: 600; line-height: 1.5; letter-spacing: -0.01em; color: var(--foreground); }
+.guide-step-copy { max-width: 28rem; margin-top: 0.75rem; font-size: 0.9375rem; line-height: 1.6; color: var(--fg-secondary); }
+@media (max-width: 599px) {
+  .mp-page .mp-section.guide-buying { padding-inline: 1rem; }
+}
+@media (min-width: 640px) {
+  .guide-buying-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1.5rem; }
+  .guide-buying-step { padding-block: 0; border-bottom: 0; }
+  .guide-buying-step:nth-child(even)::before { display: block; }
+  .guide-step-copy { max-width: 24ch; }
+}
+@media (min-width: 900px) {
+  .guide-buying-journey { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .guide-buying-step + .guide-buying-step::before { display: block; }
+}

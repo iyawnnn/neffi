@@ -3,8 +3,9 @@ import Image from "next/image";
 // Placed around the card in product.css; each leader runs only the last short distance to the card's nearest edge.
 const callouts = [
   { id: "link", label: "Permanent link", title: "Set up once", copy: "The link on your card stays the same." },
-  { id: "nfc", label: "NFC", title: "Tap to open", copy: "Hold the card near a compatible phone to open your profile." },
   { id: "activation", label: "Activation", title: "Yours from the box", copy: "Use the activation code inside your Neffi package to connect the card to your profile." },
+  { id: "nfc", label: "NFC", title: "Tap to open", copy: "Hold the card near a compatible phone to open your profile." },
+  { id: "sharing", label: "Sharing QR", title: "Scan to open", copy: "The Sharing QR on the back opens your profile when tapping isn’t available." },
 ];
 
 // The page's one physical-card moment: the real artwork, front-facing, on a set-back edge plate that reads as card stock.
@@ -32,7 +33,6 @@ export function ProductAnatomy() {
             </div>
           ))}
         </div>
-        <p className="pp-anatomy-note">No card with you? Your profile also has a QR code you can show from your phone.</p>
       </div>
     </section>
   );

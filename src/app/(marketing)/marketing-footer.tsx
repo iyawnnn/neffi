@@ -1,8 +1,8 @@
-import { Mail } from "lucide-react";
 import { NeffiLogo } from "@/components/neffi-logo";
 import Link from "next/link";
 import { PLATFORMS } from "@/modules/profiles/platform-registry";
 import { SectionDivider } from "./section-divider";
+import { FACEBOOK_ORDER_URL } from "./order-link";
 import "./marketing-footer.css";
 
 type FooterItem = { label: string; href?: string };
@@ -26,10 +26,9 @@ const navigationGroups: { title: string; id: string; items: FooterItem[] }[] = [
 ];
 
 const socials = [
-  { label: "Instagram", path: PLATFORMS.instagram.brand!.path },
-  { label: "TikTok", path: PLATFORMS.tiktok.brand!.path },
-  { label: "Facebook", path: PLATFORMS.facebook.brand!.path },
-  { label: "Email", path: undefined },
+  { label: "Facebook", href: FACEBOOK_ORDER_URL, path: PLATFORMS.facebook.brand!.path },
+  { label: "Instagram", href: "https://www.instagram.com/neffi.ph", path: PLATFORMS.instagram.brand!.path },
+  { label: "TikTok", href: "https://www.tiktok.com/@neffi.ph", path: PLATFORMS.tiktok.brand!.path },
 ];
 
 export function MarketingFooter() {
@@ -55,27 +54,15 @@ export function MarketingFooter() {
             </nav>
           ))}
 
-          <section aria-labelledby="footer-newsletter">
-            <h2 id="footer-newsletter" className="marketing-footer-heading">Stay in the loop</h2>
-            <p className="marketing-footer-newsletter-copy">Updates from Neffi, only when there’s something worth sharing.</p>
-            {/* Visual preview until subscription infrastructure exists; no form or submission action. */}
-            <div role="group" aria-label="Newsletter preview" aria-describedby="footer-newsletter-preview" className="marketing-footer-newsletter">
-              <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
-              <input id="footer-newsletter-email" type="email" placeholder="Email address" readOnly />
-              <button type="button" disabled>Subscribe</button>
-            </div>
-            <p id="footer-newsletter-preview" className="sr-only">Newsletter preview. Subscriptions are not available yet.</p>
-            {/* No official accounts yet, so the icons are labelled but not links. */}
+          <section aria-labelledby="footer-follow">
+            <h2 id="footer-follow" className="marketing-footer-heading">Follow Neffi</h2>
+            <p className="marketing-footer-follow-copy">See what we’re building and what’s next.</p>
             <ul className="marketing-footer-socials">
-              {socials.map(({ label, path }) => (
+              {socials.map(({ label, href, path }) => (
                 <li key={label}>
-                  <span role="img" aria-label={label} title={label} className="marketing-footer-social">
-                    {path ? (
-                      <svg aria-hidden viewBox="0 0 24 24" fill="currentColor"><path d={path} /></svg>
-                    ) : (
-                      <Mail aria-hidden strokeWidth={1.7} />
-                    )}
-                  </span>
+                  <a href={href} aria-label={label} title={label} target="_blank" rel="noopener noreferrer" className="marketing-footer-social">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d={path} /></svg>
+                  </a>
                 </li>
               ))}
             </ul>
