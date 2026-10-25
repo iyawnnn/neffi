@@ -3,7 +3,7 @@ import { Check, IdCard, QrCode, X } from "lucide-react";
 import { NeffiMark } from "./neffi-mark";
 
 // Three approaches, as defined by their names: a printed card alone, a QR-linked profile with no card, and Neffi. Neffi's row only
-// claims what PRODUCT.md and decisions 0001 and 0004 support (NFC tap, editable profile, on-screen Sharing QR). Every value is a
+// claims what PRODUCT.md and decisions 0001 and 0004 support (NFC tap, editable profile, printed and on-screen Sharing QR). Every value is a
 // check or an X; a paper card's printed space can't carry multiple links in the way a profile can.
 type Mark = "yes" | "no";
 

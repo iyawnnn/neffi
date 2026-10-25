@@ -59,6 +59,10 @@ test("marketing layout delegates to the same shell and retains the active Produc
   const html = renderToStaticMarkup(<PublicSiteShell><main>Product</main></PublicSiteShell>);
   expect([...html.matchAll(/<a\b[^>]*>/g)].some(([tag]) => tag.includes('href="/product"') && tag.includes('aria-current="page"'))).toBe(true);
   expect(html.match(/<footer/g)).toHaveLength(1);
+  const purchaseLinks = [...html.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].map(([anchor]) => anchor)
+    .filter(anchor => anchor.includes('aria-label="Get Neffi"') || anchor.includes(">Get Neffi</span>"));
+  expect(purchaseLinks).toHaveLength(2);
+  for (const link of purchaseLinks) expect(link).toContain('href="/pricing"');
   expect(readFileSync("src/app/(marketing)/layout.tsx", "utf8")).toContain("PublicSiteShell");
 });
 

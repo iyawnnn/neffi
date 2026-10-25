@@ -111,11 +111,11 @@ Implementation: [`page.tsx`](../../src/app/(marketing)/page.tsx) places `UseCase
 | `/` Home | Story, first impression, strongest benefits, digital-experience teaser, use cases, setup teaser, final CTA | Yes |
 | `/product` | Deeper features, physical/digital relationship, editable profile, NFC and QR behaviour, profile capabilities, detailed product exploration | Yes ([`product/`](../../src/app/(marketing)/product/page.tsx)) |
 | `/guide` | Activation, setup, package contents, first use, QR/NFC guidance, publishing, later updates and setup FAQ | Yes |
-| `/pricing` | One physical/digital product offer, inclusions and buying enquiry; approved price/order destination still required | Yes; no invented price or checkout |
+| `/pricing` | ₱799 physical/digital offer, inclusions and Facebook ordering with payment/J&T delivery steps; setup and FAQs live in Guide/Help | Yes; manual ordering, no website checkout |
 | `/help` | FAQs, troubleshooting, compatibility, account, support and recovery | Yes |
-| `/privacy`, `/terms` | Legal reading layouts linked from the footer; approved legal content required | Review templates only; noindex |
+| `/privacy`, `/terms` | Legal reading layouts linked from the footer; approved legal content required | Policy drafts awaiting owner/legal review; noindex, follow |
 
-See [Supporting marketing pages](marketing-pages.md) for page architecture, implementation files, content sources and pricing/legal publication gaps. These routes do not change Home Sections 1–6 or Product.
+See [Supporting marketing pages](marketing-pages.md) for page architecture, implementation files, buying destinations and remaining legal publication gaps. These routes do not change Home Sections 1–6 or Product.
 
 Existing customer routes linked from the dock's More: `/activate`, `/sign-in`, `/support`. Home never takes content that belongs to another page; no prices, setup steps or FAQs on Home.
 

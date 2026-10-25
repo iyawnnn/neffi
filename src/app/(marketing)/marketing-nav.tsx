@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-// Ordering runs through Messenger and has no page yet; point the Get Neffi action at its real destination here.
+// Buyers see the offer before continuing to Facebook from Pricing.
 const GET_NEFFI_HREF = "/pricing";
 
 type NavLink = { label: string; href: string; icon: LucideIcon };

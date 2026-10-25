@@ -49,7 +49,7 @@ Concurrent claims: one winner, the other gets *unavailable*. A failed claim leav
 
 ## Non-goals (current)
 
-No customer transfer or unclaim button; no GRC activation; no printed per-card QR; no customer-visible case status.
+No customer transfer or unclaim button; no GRC activation; no customer-visible case status. The Sharing QR sticker on the card back uses the existing permanent card URL ([0004](../decisions/0004-two-qr-codes.md)).
 
 ## Owner corrections after release (M9A)
 

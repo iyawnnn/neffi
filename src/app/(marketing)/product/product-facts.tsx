@@ -6,7 +6,7 @@ import { AppWindow, KeyRound, Link2, Nfc, PencilLine } from "lucide-react";
 const facts: { icon: ReactNode; title: string; detail: string; lead?: boolean }[] = [
   { icon: <AppWindow />, title: "No app required", detail: "Your profile opens directly in the browser.", lead: true },
   { icon: <Link2 />, title: "One permanent link", detail: "Your Neffi card keeps the same link as your profile changes.", lead: true },
-  { icon: <Nfc />, title: "Tap or scan", detail: "Share by NFC or your profile QR code." },
+  { icon: <Nfc />, title: "Tap or scan", detail: "Share with NFC, or use the Sharing QR printed on the back of your Neffi card." },
   { icon: <PencilLine />, title: "Editable anytime", detail: "Change your details, links, and work whenever you need to." },
   { icon: <KeyRound />, title: "Simple activation", detail: "Connect your card using the code inside your package." },
 ];

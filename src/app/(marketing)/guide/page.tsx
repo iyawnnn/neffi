@@ -8,7 +8,9 @@ import { MarketingPageHeader } from "../marketing-page";
 import { PackageContents } from "./package-contents";
 import { SectionDivider } from "../section-divider";
 import { FinalCtaSection } from "../final-cta-section";
+import { OrderLink } from "../order-link";
 import { HERO_PRIMARY_CLASS, HERO_SECONDARY_CLASS, PRIMARY_CTA_REFLECTIONS } from "../hero-cta-styles";
+import { BuyingJourneySection } from "../buying-journey-section";
 import "./guide.css";
 
 export const metadata: Metadata = {
@@ -16,25 +18,6 @@ export const metadata: Metadata = {
   description: "How to order Neffi for ₱799, pay, track your J&T delivery, activate your card, build your profile and start sharing.",
 };
 
-// TODO: Set the verified official Facebook ordering URL before publishing.
-const FACEBOOK_ORDER_URL: string | null = null;
-
-function OrderLink() {
-  const content = <>
-    {PRIMARY_CTA_REFLECTIONS}
-    <span className="relative">Order on Facebook</span>
-  </>;
-  return FACEBOOK_ORDER_URL
-    ? <a href={FACEBOOK_ORDER_URL} className={HERO_PRIMARY_CLASS}>{content}</a>
-    : <button type="button" disabled className={HERO_PRIMARY_CLASS}>{content}</button>;
-}
-
-const buyingSteps = [
-  { title: "Message us", copy: "Message us on Facebook to start your Neffi order." },
-  { title: "Confirm and pay", copy: "We’ll confirm your order and send the payment details." },
-  { title: "We pack and ship", copy: "Once confirmed, we’ll prepare your Neffi and ship it through J&T." },
-  { title: "Track your order", copy: "We’ll send your J&T tracking number for delivery updates." },
-];
 const activationSteps = [
   { title: "Scan your package", copy: "Scan the QR on the back of your Neffi package to open activation." },
   { title: "Enter your code", copy: "Your private activation code is printed inside the package." },
@@ -58,23 +41,7 @@ export default function GuidePage() {
         </div>
       </section>
       <SectionDivider />
-      <section id="buying" className="mp-section guide-buying" aria-labelledby="buying-heading">
-        <div className="mp-container">
-          <div className="guide-buying-head">
-            <h2 id="buying-heading" className="mp-heading">Getting your Neffi is simple.</h2>
-            <p className="guide-buying-lead">Order through a conversation. We’ll take it from there.</p>
-          </div>
-          <ol className="guide-journey guide-buying-journey">
-            {buyingSteps.map(({ title, copy }, index) => (
-              <li key={title} className="guide-buying-step">
-                <span className="guide-buying-number" aria-hidden="true">0{index + 1}</span>
-                <h3 className="guide-step-title">{title}</h3>
-                <p className="guide-step-copy">{copy}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <BuyingJourneySection id="buying" />
       <SectionDivider />
       <section id="in-the-package" className="mp-section guide-arrival" aria-labelledby="package-heading">
         <div className="mp-container">
@@ -135,11 +102,11 @@ export default function GuidePage() {
               <dl>
                 <div>
                   <dt><Nfc size={24} strokeWidth={1.5} aria-hidden="true" />Tap</dt>
-                  <dd>Hold your Neffi near a phone’s NFC reader. Open the notification to view your profile.</dd>
+                  <dd>Hold your Neffi near a compatible phone’s NFC reading area to open your profile.</dd>
                 </div>
                 <div>
                   <dt><QrCode size={24} strokeWidth={1.5} aria-hidden="true" />Scan</dt>
-                  <dd>Show your Sharing QR from your Neffi account. Let the other person scan it to view your profile.</dd>
+                  <dd>Flip your Neffi over and scan the Sharing QR on the back to open your profile.</dd>
                 </div>
               </dl>
               <div className="guide-sharing-footer">

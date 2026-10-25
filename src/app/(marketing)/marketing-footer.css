@@ -30,7 +30,7 @@
   column-gap: 1rem;
 }
 
-/* Pulled left by the targets' padding so the first glyph lines up with the newsletter field. */
+/* Pulled left by the targets' padding so the first icon lines up with the column text. */
 .marketing-footer-socials {
   display: flex;
   gap: 0.25rem;
@@ -55,8 +55,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   color: var(--fg-secondary);
   transition: color 180ms ease-out;
 }
@@ -70,70 +70,17 @@ a.marketing-footer-link {
   cursor: pointer;
 }
 
-a.marketing-footer-link:focus-visible {
+a.marketing-footer-link:focus-visible,
+.marketing-footer-social:focus-visible {
   color: var(--action-text);
   outline: 2px solid var(--brand);
   outline-offset: 4px;
 }
 
-.marketing-footer-newsletter-copy {
+.marketing-footer-follow-copy {
   color: var(--fg-secondary);
   font-size: 0.8125rem;
   line-height: 1.6;
-}
-
-.marketing-footer-newsletter {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.marketing-footer-newsletter > input {
-  width: 100%;
-  min-width: 0;
-  height: 3rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 0.6875rem;
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 1rem;
-}
-
-.marketing-footer-newsletter > input::placeholder {
-  color: var(--fg-secondary);
-}
-
-.marketing-footer-newsletter > input:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 3px;
-}
-
-.marketing-footer-newsletter > button {
-  position: relative;
-  isolation: isolate;
-  min-width: 0;
-  height: 3rem;
-  padding: 0.75rem 1rem;
-  overflow: hidden;
-  border-radius: 0.6875rem;
-  color: var(--canvas);
-  background: var(--action);
-  font-size: 0.875rem;
-  font-weight: 500;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--foreground) 14%, transparent);
-  transition: background-color 180ms ease-out;
-}
-
-.marketing-footer-newsletter > button::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, white 12%, transparent) 50%, transparent 75%);
-  background-size: 180% 100%;
-  background-position: 80% 0;
-  transition: background-position 180ms ease-out;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -141,14 +88,6 @@ a.marketing-footer-link:focus-visible {
   .marketing-footer-legal-link:hover,
   .marketing-footer-social:hover {
     color: var(--action-text);
-  }
-
-  .marketing-footer-newsletter > button:hover {
-    background-color: var(--action-hover);
-  }
-
-  .marketing-footer-newsletter > button:hover::before {
-    background-position: 20% 0;
   }
 }
 
@@ -217,10 +156,6 @@ a.marketing-footer-link:focus-visible {
     padding-top: 4.25rem;
   }
 
-  .marketing-footer-newsletter {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
   .marketing-footer-links {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -230,7 +165,7 @@ a.marketing-footer-link:focus-visible {
     font-size: 1.125rem;
   }
 
-  .marketing-footer-newsletter-copy {
+  .marketing-footer-follow-copy {
     font-size: 0.875rem;
   }
 
@@ -257,9 +192,7 @@ a.marketing-footer-link:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .marketing-footer-link,
-  .marketing-footer-social,
-  .marketing-footer-newsletter > button,
-  .marketing-footer-newsletter > button::before {
+  .marketing-footer-social {
     transition: none;
   }
 }

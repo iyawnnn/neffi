@@ -39,23 +39,28 @@ test("explains the manual purchase and tracked delivery journey", () => {
   const divider = buying.nextElementSibling;
   expect(divider?.isEqualNode(dividerHost.firstElementChild)).toBe(true);
   expect(divider?.nextElementSibling?.id).toBe("in-the-package");
-  const order = [...host.querySelectorAll("button")].find(button => button.textContent?.includes("Order on Facebook"));
-  expect(order?.disabled).toBe(true);
-  expect(host.querySelector('a[href*="facebook.com"], a[href*="m.me"], form')).toBeNull();
+  const order = [...host.querySelectorAll("a")].find(link => link.textContent?.includes("Order on Facebook"));
+  expect(order?.textContent).toBe("Order on Facebook");
+  expect(order?.hasAttribute("disabled")).toBe(false);
+  expect(order?.querySelector("br")).toBeNull();
+  expect(order?.getAttribute("href")).toBe("https://www.facebook.com/p/Neffi-61595507571192/");
+  expect(order?.getAttribute("target")).toBe("_blank");
+  expect(order?.getAttribute("rel")).toBe("noopener noreferrer");
 });
 
-test("explains the three package essentials beneath the authentic card", () => {
+test("explains the four package essentials beneath the authentic card", () => {
   const section = render().querySelector("#in-the-package")!;
   expect(section.querySelector("h2")?.textContent).toBe("Your Neffi has everythingyou need to get started.");
   expect(section.querySelector("figure img")?.getAttribute("src")).toBe("/neffi-card-front-preview.svg");
   expect(section.querySelector("figcaption")).toBeNull();
   expect([...section.querySelector("dl")!.querySelectorAll("dt")].map(term => term.textContent)).toEqual([
-    "01Neffi card", "02Activation QR", "03Private activation code",
+    "01Neffi card", "02Activation QR", "03Private activation code", "04Sharing QR",
   ]);
   expect([...section.querySelector("dl")!.querySelectorAll("dd")].map(description => description.textContent)).toEqual([
-    "Tap the NFC card to share your digital profile.",
+    "Tap the card with NFC to open your digital profile.",
     "Scan the package QR to open Neffi activation.",
-    "Enter the private code to connect your Neffi.",
+    "Enter the private code to connect your Neffi to your account.",
+    "Scan the QR on the back of your card to open your profile.",
   ]);
 });
 
@@ -115,8 +120,8 @@ test("connects profile setup with two compact sharing methods", () => {
   expect(sharing.querySelector("h2")?.textContent).toBe("Ready to share.");
   expect([...sharing.querySelectorAll("dt")].map(item => item.textContent)).toEqual(["Tap", "Scan"]);
   expect([...sharing.querySelectorAll("dd")].map(item => item.textContent)).toEqual([
-    "Hold your Neffi near a phone’s NFC reader. Open the notification to view your profile.",
-    "Show your Sharing QR from your Neffi account. Let the other person scan it to view your profile.",
+    "Hold your Neffi near a compatible phone’s NFC reading area to open your profile.",
+    "Flip your Neffi over and scan the Sharing QR on the back to open your profile.",
   ]);
   expect(section.textContent).not.toContain("They don’t need a Neffi account or a separate app.");
   expect(sharing.querySelector('a[href="/help#sharing"]')?.textContent).toBe("Get help with sharing");

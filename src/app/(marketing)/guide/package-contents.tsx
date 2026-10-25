@@ -13,7 +13,7 @@ export function PackageContents() {
       <dl className="guide-contents">
         <div>
           <dt><span className="guide-content-number" aria-hidden="true">01</span><span>Neffi card</span></dt>
-          <dd>Tap the NFC card to share your digital profile.</dd>
+          <dd>Tap the card with NFC to open your digital profile.</dd>
         </div>
         <div>
           <dt><span className="guide-content-number" aria-hidden="true">02</span><span>Activation QR</span></dt>
@@ -21,7 +21,11 @@ export function PackageContents() {
         </div>
         <div>
           <dt><span className="guide-content-number" aria-hidden="true">03</span><span>Private activation code</span></dt>
-          <dd>Enter the private code to connect your Neffi.</dd>
+          <dd>Enter the private code to connect your Neffi to your account.</dd>
+        </div>
+        <div>
+          <dt><span className="guide-content-number" aria-hidden="true">04</span><span>Sharing QR</span></dt>
+          <dd>Scan the QR on the back of your card to open your profile.</dd>
         </div>
       </dl>
     </div>

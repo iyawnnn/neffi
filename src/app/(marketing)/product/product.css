@@ -633,13 +633,6 @@
   color: var(--fg-secondary);
 }
 
-.pp-anatomy-note {
-  margin-top: 2.5rem;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  text-align: center;
-}
-
 /* Callouts sit either side of the card with room to breathe. Each leader starts 1.5rem clear of its text and runs the last
    ~72px to the card's nearest edge, ending in a small Vermilion point on that edge. Leaders are horizontal, so they never cross
    each other or the card. */
@@ -716,11 +709,16 @@
     margin-top: 2.25rem;
   }
 
-  .pp-callout-nfc::before { left: calc(-1 * var(--pp-gap)); }
-  .pp-callout-nfc::after { left: calc(-1 * var(--pp-gap) - 2.5px); }
+  .pp-callout-nfc::before,
+  .pp-callout-sharing::before { left: calc(-1 * var(--pp-gap)); }
+  .pp-callout-nfc::after,
+  .pp-callout-sharing::after { left: calc(-1 * var(--pp-gap) - 2.5px); }
 
-  .pp-anatomy-note {
-    margin-top: 3rem;
+  .pp-callout-sharing {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: end;
+    margin-bottom: 1.5rem;
   }
 }
 

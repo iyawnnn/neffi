@@ -134,6 +134,11 @@
   transition: background-position 180ms ease-out;
 }
 
+.final-cta-action[target="_blank"] {
+  width: auto;
+  min-width: 11.25rem;
+}
+
 .final-cta-action > svg {
   flex-shrink: 0;
   transition: transform 180ms ease-out;
@@ -176,6 +181,16 @@
   box-shadow:
     0 1px 1px color-mix(in srgb, var(--canvas) 30%, transparent),
     0 10px 20px -8px color-mix(in srgb, var(--foreground) 32%, transparent);
+}
+
+.final-cta-section[data-variant="support"] .final-cta-action {
+  width: auto;
+  min-width: 11.25rem;
+  color: var(--foreground);
+}
+
+.final-cta-section[data-variant="support"] .final-cta-action:is(:hover, :focus-visible) > svg {
+  transform: rotate(-45deg);
 }
 
 @media (min-width: 769px) {
@@ -228,7 +243,8 @@
     transition: none;
   }
 
-  .final-cta-action:is(:hover, :focus-visible) > svg {
+  .final-cta-action:is(:hover, :focus-visible) > svg,
+  .final-cta-section[data-variant="support"] .final-cta-action:is(:hover, :focus-visible) > svg {
     transform: none;
   }
 }

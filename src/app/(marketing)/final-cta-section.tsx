@@ -1,25 +1,30 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import "./final-cta.css";
 
-export function FinalCtaSection() {
+export function FinalCtaSection({ title, description, href = "/pricing", label = "Get Neffi", external = false, variant }: {
+  title?: string;
+  description?: string;
+  href?: string;
+  label?: string;
+  external?: boolean;
+  variant?: "support";
+} = {}) {
   return (
-    <section aria-labelledby="final-cta-heading" className="final-cta-section">
+    <section aria-labelledby="final-cta-heading" className="final-cta-section" data-variant={variant}>
       <div className="final-cta-container">
         <div className="final-cta-panel">
           <div className="final-cta-copy">
             <h2 id="final-cta-heading" className="final-cta-heading">
-              <span>Turn one tap into</span>{" "}
-              <span>a connection.</span>
+              {title ?? <><span>Turn one tap into</span>{" "}<span>a connection.</span></>}
             </h2>
             <p className="final-cta-support">
-              Share your profile, work, and ways to reach you with one Neffi card.
+              {description ?? "Share your profile, work, and ways to reach you with one Neffi card."}
             </p>
-            {/* Same destination as the dock's GET_NEFFI_HREF. */}
-            <Link href="/pricing" className="final-cta-action">
-              <span>Get Neffi</span>
-              <ArrowUpRight aria-hidden="true" size={18} strokeWidth={2.25} />
+            <Link href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="final-cta-action">
+              <span>{label}</span>
+              {variant === "support" ? <ArrowRight aria-hidden="true" size={18} strokeWidth={2.25} /> : <ArrowUpRight aria-hidden="true" size={18} strokeWidth={2.25} />}
             </Link>
           </div>
           <Image
