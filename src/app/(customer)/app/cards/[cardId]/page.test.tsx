@@ -224,6 +224,19 @@ test("unconfigured card offers setup and hides the QR and Connected badge", asyn
   expect(html).not.toContain("Connected");
 });
 
+test("the Sharing QR shown and downloaded is the symbol of exactly this card's permanent URL, never /activate", async () => {
+  const { qrSvgDataUri } = await vi.importActual<typeof import("@/modules/cards/qr")>("@/modules/cards/qr");
+  const html = await renderStatic();
+  const unescape = (value: string) => value.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+  const shown = unescape(html.match(/<img[^>]*alt="QR code for your Neffi link"[^>]*>/)![0].match(/src="([^"]*)"/)![1]);
+  const downloaded = unescape(html.match(/<a[^>]*download="neffi-qr\.svg"[^>]*>/)![0].match(/href="([^"]*)"/)![1]);
+  // uqr is deterministic, so an identical symbol means an identical encoded value.
+  expect(shown).toBe(qrSvgDataUri(`https://tap.example.test/c/${token}`));
+  expect(downloaded).toBe(shown);
+  expect(shown).not.toBe(qrSvgDataUri("https://tap.example.test/activate"));
+  expect(shown).not.toBe(qrSvgDataUri(`https://tap.example.test/c/${"B".repeat(26)}`));
+});
+
 test("unknown card is not found", async () => {
   m.card.mockResolvedValue(null);
   await expect(

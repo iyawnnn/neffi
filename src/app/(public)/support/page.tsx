@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ArrowRight, CreditCard, KeyRound, LifeBuoy, LogIn, Mail } from "lucide-react";
 import { z } from "zod";
@@ -136,6 +137,8 @@ async function RequestForm({
     typeof params.cardId === "string" && z.uuid().safeParse(params.cardId).success
       ? params.cardId
       : undefined;
+  // The dedupe key must be unique per visitor, so it is generated at request time.
+  await connection();
   return (
     <SupportForm
       email={viewer?.email}
