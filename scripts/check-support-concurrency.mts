@@ -30,6 +30,7 @@ assert(["postgres:", "postgresql:"].includes(url.protocol));
 assert(![...url.searchParams.keys()].some((key) => ["host", "hostaddr", "port"].includes(key)));
 const clients: pg.Client[] = [], pools: pg.Pool[] = [], failures: string[] = [];
 const secret = randomBytes(32).toString("hex");
+const secrets = { lookupSecret: secret, activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]) };
 const errorCode = (error: unknown) => (error as { cause?: { code?: string }; code?: string } | undefined)?.cause?.code ?? (error as { code?: string } | undefined)?.code;
 async function connect() {
   const client = new pg.Client({ connectionString: url.href, connectionTimeoutMillis: 5000 });
@@ -71,7 +72,7 @@ try {
   async function ready() {
     const cardId = randomUUID();
     await admin.query("INSERT INTO cards(id,stock_purchase_id,product_id,kind,public_token) VALUES($1,$2,$3,'dbc',$4)", [cardId, stock, product, randomCrockford(26)]);
-    const { credentialId } = await issueActivationCredential(dbA, cardId, secret);
+    const { credentialId } = await issueActivationCredential(dbA, cardId, secrets);
     await admin.query("UPDATE cards SET state='ready',nfc_verified_at=now(),package_matched_at=now() WHERE id=$1", [cardId]);
     return { cardId, credentialId };
   }
@@ -161,7 +162,7 @@ try {
   });
   await check("R7 reissue vs old-code claim never leaves reusable history", async () => {
     const f = await fixture();
-    const errors = await lockedScenario("cards", f.cardId, [() => reissueActivationCode(dbA, { ...f, verificationNote: "Synthetic purchase verified", activationSecret: secret }), async () => {
+    const errors = await lockedScenario("cards", f.cardId, [() => reissueActivationCode(dbA, { ...f, verificationNote: "Synthetic purchase verified", secrets }), async () => {
       const result = await claimCard(dbB, { credentialId: f.credentialId, accountId: customer });
       if (result.status !== "claimed") throw Object.assign(new Error("unavailable"), { code: "unavailable" });
     }]);
@@ -174,7 +175,7 @@ try {
     const f = await fixture();
     await claimCard(dbA, { credentialId: f.credentialId, accountId: customer });
     const { rows: [profile] } = await admin.query("INSERT INTO profiles(account_id) VALUES($1) RETURNING id", [customer]);
-    const errors = await lockedScenario("cards", f.cardId, [() => resetCardOwnership(dbA, { ...f, verificationNote: "Synthetic purchase verified", activationSecret: secret }), () => action === "connect" ? connectCardToProfile(dbB, { accountId: customer, cardId: f.cardId, profileId: profile.id }) : setCardDisabled(dbB, { accountId: customer, cardId: f.cardId, disabled: true })]);
+    const errors = await lockedScenario("cards", f.cardId, [() => resetCardOwnership(dbA, { ...f, verificationNote: "Synthetic purchase verified", secrets }), () => action === "connect" ? connectCardToProfile(dbB, { accountId: customer, cardId: f.cardId, profileId: profile.id }) : setCardDisabled(dbB, { accountId: customer, cardId: f.cardId, disabled: true })]);
     assert(!errors[0]);
     if (errors[1]) assert.equal(errorCode(errors[1]), "not_found");
     const { rows: [card] } = await admin.query("SELECT owner_account_id,profile_id,disabled_at FROM cards WHERE id=$1", [f.cardId]);
@@ -191,7 +192,7 @@ try {
   });
   for (const action of ["reset", "retire"] as const) {
     const correct = (tx: Db, f: Awaited<ReturnType<typeof fixture>>) => action === "reset"
-      ? resetCardOwnership(tx, { ...f, verificationNote: "Synthetic purchase verified", activationSecret: secret })
+      ? resetCardOwnership(tx, { ...f, verificationNote: "Synthetic purchase verified", secrets })
       : retireAffectedCard(tx, f);
     for (const first of ["setup", "support"] as const) await check(`R10 setup vs ${action}, ${first} first, has no deadlock`, async () => {
       const f = await fixture();
@@ -225,7 +226,7 @@ try {
       const newOwner = randomUUID();
       await admin.query("INSERT INTO accounts(id,name,email,role) VALUES($1,'Synthetic rightful customer',$2,'customer')", [newOwner, `${newOwner}@example.test`]);
       const errors = await lockedScenario("cards", f.cardId, [() => correct(dbB, f)], undefined, async (holder) => {
-        const fresh = await resetCardOwnership(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", activationSecret: secret });
+        const fresh = await resetCardOwnership(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", secrets });
         assert.equal((await claimCard(holder, { accountId: newOwner, credentialId: fresh.credentialId })).status, "claimed");
       });
       assert.equal(errorCode(errors[0]), "card_unavailable");
@@ -238,7 +239,7 @@ try {
     const f = await fixture();
     const other = await openCase(dbA, { actorId: owner, type: "activation_issue", summary: "Synthetic concurrent reissue", cardId: f.cardId });
     const errors = await lockedScenario("cards", f.cardId, [() => retireAffectedCard(dbB, f)], undefined, async (holder) => {
-      await reissueActivationCode(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", activationSecret: secret });
+      await reissueActivationCode(holder, { ...f, caseId: other.caseId, verificationNote: "Synthetic purchase verified", secrets });
     });
     assert(!errors[0], `Retirement must finish after reissue (${errorCode(errors[0])})`);
     assert.deepEqual((await admin.query("SELECT state,owner_account_id,profile_id FROM cards WHERE id=$1", [f.cardId])).rows[0], { state: "retired", owner_account_id: null, profile_id: null });
@@ -298,7 +299,7 @@ try {
   });
   await check("R18 recovery vs owner Card reset serializes without inversion", async () => {
     const f = await recoveryFixture(), card = await fixture(); await claimCard(dbA, { credentialId: card.credentialId, accountId: f.accountId }); let recovered = false;
-    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => resetCardOwnership(dbB, { ...card, verificationNote: "Synthetic purchase verified", activationSecret: secret })]);
+    const errors = await lockedScenario("accounts", f.accountId, [() => finish(dbA, f).then(r => { recovered = r.ok; }), () => resetCardOwnership(dbB, { ...card, verificationNote: "Synthetic purchase verified", secrets })]);
     assert(errors.every(e => !e)); assert(recovered);
     assert.deepEqual((await admin.query("SELECT owner_account_id,profile_id FROM cards WHERE id=$1", [card.cardId])).rows[0], { owner_account_id: null, profile_id: null });
   });

@@ -124,7 +124,7 @@ export const cards = pgTable(
   ],
 );
 
-// One-time claim credential for a DBC. Only a keyed-hash lookup value is stored, never the code. State is
+// One-time claim credential for a DBC. The lookup HMAC and encrypted current code are stored, never plaintext. State is
 // derived: usable while both timestamps are NULL; used and revoked are final (activation_credentials_guard).
 export const activationCredentials = pgTable(
   "activation_credentials",

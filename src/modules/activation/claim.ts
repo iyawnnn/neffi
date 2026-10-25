@@ -50,7 +50,7 @@ export async function claimCard(db: Db, input: { credentialId: string; accountId
     if (card.kind !== "dbc" || card.state !== "released" || card.ownerAccountId) return { status: "unavailable" };
     const [used] = await tx
       .update(schema.activationCredentials)
-      .set({ usedAt: new Date() })
+      .set({ usedAt: new Date(), encryptedCode: null })
       .where(and(eq(schema.activationCredentials.id, input.credentialId), isNull(schema.activationCredentials.usedAt), isNull(schema.activationCredentials.revokedAt)))
       .returning({ id: schema.activationCredentials.id });
     if (!used) return { status: "unavailable" };

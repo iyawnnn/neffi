@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { activationLookup, normalizeActivationCode, sameLookup } from "../activation/code";
 import { issueActivationCredential, revokeUsableCredential, usableCredential } from "../activation/credentials";
+import type { CredentialSecrets } from "../activation/encryption";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { activeProductId, CardError, lockCard } from "./card";
@@ -14,7 +15,7 @@ type Actor = { actorId: string; cardId: string };
 // instead of issuing another, and a lost response is recovered through replaceProvisioningCredential.
 export async function provisionDbc(
   db: Db,
-  input: Actor & { activationSecret: string },
+  input: Actor & { secrets: CredentialSecrets },
 ): Promise<{ publicToken: string; credentialId: string; activationCode: string }> {
   return db.transaction(async (tx) => {
     const card = await lockCard(tx, input.cardId);
@@ -24,7 +25,7 @@ export async function provisionDbc(
     const publicToken = generateCardToken();
     const productId = card.productId ?? (await activeProductId(tx, "dbc"));
     await tx.update(schema.cards).set({ productId, kind: "dbc", publicToken }).where(eq(schema.cards.id, card.id));
-    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.activationSecret);
+    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.secrets);
     await recordActivity(tx, { type: "card_provisioned", actorAccountId: input.actorId, cardId: card.id, note: `token ${publicToken}` });
     return { publicToken, credentialId, activationCode: code };
   });
@@ -51,7 +52,7 @@ export async function matchPackage(db: Db, input: Actor & { activationCode: stri
 // recorded package match), the seen credential is revoked, a new one is issued and the package must be matched again.
 export async function replaceProvisioningCredential(
   db: Db,
-  input: Actor & { credentialId: string; reason: string; activationSecret: string },
+  input: Actor & { credentialId: string; reason: string; secrets: CredentialSecrets },
 ): Promise<{ credentialId: string; activationCode: string }> {
   return db.transaction(async (tx) => {
     const card = await lockCard(tx, input.cardId);
@@ -61,7 +62,7 @@ export async function replaceProvisioningCredential(
       await tx.update(schema.cards).set({ state: "blank", packageMatchedAt: null }).where(eq(schema.cards.id, card.id));
     }
     if (!(await revokeUsableCredential(tx, card.id, input.credentialId))) throw new CardError("credential_changed");
-    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.activationSecret);
+    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.secrets);
     await recordActivity(tx, {
       type: "activation_credential_replaced",
       actorAccountId: input.actorId,

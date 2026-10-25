@@ -9,7 +9,7 @@ vi.mock("@/integrations/email/sender", () => ({ sendEmail: vi.fn() }));
 vi.mock("next/server", () => ({ after: email.after }));
 vi.mock("@/auth/access", () => ({ authorize }));
 vi.mock("@/db", () => ({ db: {} }));
-vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "synthetic" } }));
+vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "synthetic", activationCodeEncryptionActiveKeyId: "test-v1", activationCodeEncryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]) } }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/modules/support/case", async (original) => ({ ...await original<object>(), openCase, addCaseNote, setCaseStatus }));
@@ -91,6 +91,9 @@ test("a verified reissue returns a one-time reveal and only record paths are rev
   expect(result.reveal?.instructions).toContain("Copy it now");
   expect(revalidatePath.mock.calls.map(([path]) => path)).toEqual(["/admin", "/admin/support", "/admin/orders", "/admin/inventory", "/admin/expenses", `/admin/support/${id}`, "/admin/orders/[orderId]", `/admin/inventory/cards/${id}`]);
   expect(result.href).toBeUndefined();
+  expect(reissueActivationCode).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ secrets: {
+    lookupSecret: "synthetic", activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
+  } }));
 });
 
 test("collision exhaustion returns a controlled retry error", async () => {

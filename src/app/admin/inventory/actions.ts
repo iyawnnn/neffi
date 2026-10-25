@@ -100,7 +100,7 @@ export async function provisionDbcAction(_previous: ActionState | undefined, dat
     z.object({ cardId: id }),
     data,
     async ({ cardId }, actorId) => {
-      const { publicToken, activationCode } = await provisionDbc(db, { actorId, cardId, activationSecret: env.activationCodeSecret });
+      const { publicToken, activationCode } = await provisionDbc(db, { actorId, cardId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { reveal: { url: cardUrl(env.cardUrlOrigin, publicToken), code: formatActivationCode(activationCode) } };
     },
     cardPage,
@@ -153,7 +153,7 @@ export async function replaceCredentialAction(_previous: ActionState | undefined
     z.object({ cardId: id, credentialId: id, reason, confirm: checked }),
     data,
     async ({ cardId, credentialId, reason }, actorId) => {
-      const { activationCode } = await replaceProvisioningCredential(db, { actorId, cardId, credentialId, reason, activationSecret: env.activationCodeSecret });
+      const { activationCode } = await replaceProvisioningCredential(db, { actorId, cardId, credentialId, reason, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { reveal: { code: formatActivationCode(activationCode) } };
     },
     cardPage,

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { activationCredentials, activityEvents, cards, orderItems, orders } from "@/db/schema";
-import { insertOrderItem, insertProduct, insertStockPurchase, syntheticLookup } from "@/db/test-fixtures";
+import { insertOrderItem, insertProduct, insertStockPurchase, syntheticCredentialSecrets, syntheticLookup } from "@/db/test-fixtures";
 import { createTestDb, expectPgError, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { recordNfcCheck } from "./card";
 import { provisionDbc } from "./dbc";
@@ -82,7 +82,7 @@ describe("reserveGrc", () => {
 
       const provisioning = await blank();
       await tx.update(cards).set({ productId: dbc.id, kind: "dbc" }).where(eq(cards.id, provisioning.id));
-      const provisioned = await provisionDbc(tx, { actorId, cardId: provisioning.id, activationSecret: "s".repeat(40) });
+      const provisioned = await provisionDbc(tx, { actorId, cardId: provisioning.id, secrets: syntheticCredentialSecrets("s".repeat(40)) });
       expect(provisioned.publicToken).toBeTruthy();
       await expect(reserveGrc(tx, { actorId, cardId: provisioning.id, orderItemId: item.id })).rejects.toMatchObject({ code: "wrong_state" });
 

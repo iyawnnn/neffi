@@ -16,6 +16,7 @@ assert(["postgres:", "postgresql:"].includes(url.protocol));
 assert(![...url.searchParams.keys()].some((key) => ["host", "hostaddr", "port"].includes(key)));
 
 const SECRET = "c".repeat(40);
+const secrets = { lookupSecret: SECRET, activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]) };
 const clients: pg.Client[] = [];
 const pools: pg.Pool[] = [];
 const failures: string[] = [];
@@ -75,7 +76,7 @@ try {
       "INSERT INTO cards(id,stock_purchase_id,product_id,kind,state,order_item_id,public_token) VALUES ($1,$2,$3,'dbc','released',$4,$5)",
       [cardId, stock, product, item, token],
     );
-    const { credentialId } = await issueActivationCredential(dbA, cardId, SECRET);
+    const { credentialId } = await issueActivationCredential(dbA, cardId, secrets);
     return { cardId, credentialId };
   };
   const ownerOf = async (cardId: string) => (await admin.query("SELECT owner_account_id AS o FROM cards WHERE id=$1", [cardId])).rows[0].o;

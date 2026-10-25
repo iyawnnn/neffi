@@ -1,3 +1,4 @@
+import { syntheticCredentialSecrets } from "@/db/test-fixtures";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { asc, eq } from "drizzle-orm";
@@ -42,7 +43,7 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     expect(received).toHaveLength(2);
     const provisioned = [];
     for (const card of received) {
-      const output = await provisionDbc(db, { actorId: owner.id, cardId: card.id, activationSecret: secret });
+      const output = await provisionDbc(db, { actorId: owner.id, cardId: card.id, secrets: syntheticCredentialSecrets(secret) });
       // These are synthetic attestations, not physical NFC evidence.
       await recordNfcCheck(db, { actorId: owner.id, cardId: card.id, cardUrlOrigin: origin, readBackUri: cardUrl(origin, output.publicToken), readBackMatched: true, phoneOpenedUri: true, tagLeftWritable: true, device: "Synthetic journey fixture" });
       await matchPackage(db, { actorId: owner.id, cardId: card.id, activationCode: output.activationCode, activationSecret: secret });

@@ -18,7 +18,7 @@ const { authorize, revalidatePath, services } = vi.hoisted(() => ({
 
 vi.mock("@/auth/access", () => ({ authorize }));
 vi.mock("@/db", () => ({ db: { sentinel: true } }));
-vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "s".repeat(40), cardUrlOrigin: "https://tap.example.test" } }));
+vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "s".repeat(40), activationCodeEncryptionActiveKeyId: "test-v1", activationCodeEncryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]), cardUrlOrigin: "https://tap.example.test" } }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/modules/inventory/stock-intake", () => ({ receiveStock: services.receiveStock }));
 vi.mock("@/modules/inventory/stock-purchases", () => ({ updateStockPurchase: services.updateStockPurchase }));
@@ -162,4 +162,14 @@ test("a revealed code is never logged", async () => {
   const spies = (["log", "info", "warn", "error", "debug"] as const).map((level) => vi.spyOn(console, level).mockImplementation(() => {}));
   await actions.provisionDbcAction(undefined, form({ cardId: CARD }));
   for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+});
+
+test("issuance actions pass lookup and encryption secrets to the service", async () => {
+  await actions.provisionDbcAction(undefined, form({ cardId: CARD }));
+  await actions.replaceCredentialAction(undefined, form({ cardId: CARD, credentialId: ITEM, reason: "Package lost", confirm: "on" }));
+  for (const service of [services.provisionDbc, services.replaceProvisioningCredential]) {
+    expect(service).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ secrets: {
+      lookupSecret: "s".repeat(40), activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
+    } }));
+  }
 });

@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, expect, test, vi } from "vitest";
 import * as s from "@/db/schema";
-import { insertAccount, insertReleasedDbc, insertProvisioningDbc, insertProfile, insertProduct, insertStockPurchase } from "@/db/test-fixtures";
+import { insertAccount, insertReleasedDbc, insertProvisioningDbc, insertProfile, insertProduct, insertStockPurchase, syntheticCredentialSecrets } from "@/db/test-fixtures";
 import { createTestDb, expectPgError, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { issueActivationCredential } from "../activation/credentials";
 import { claimCard, checkActivationCode } from "../activation/claim";
 import { activationLookup } from "../activation/code";
+import { decryptActivationCode } from "../activation/encryption";
 import { resolveCard } from "../cards/resolve";
 import { loadOrderFacts } from "../orders/order";
 import { openCase, linkCaseCard } from "./case";
@@ -15,13 +16,14 @@ vi.mock("@/config/env", () => ({ env: { cloudinaryCloudName: "synthetic" } }));
 
 let db: TestDb;
 const SECRET = "s".repeat(40);
+const SECRETS = syntheticCredentialSecrets(SECRET);
 beforeAll(async () => { db = await createTestDb(); });
 
 async function fixture(tx: TestTx) {
   const { card, item, product } = await insertReleasedDbc(tx);
   const [order] = await tx.select().from(s.orders).where(eq(s.orders.id, item.orderId));
   const actorId = order.createdByAccountId;
-  const credential = await issueActivationCredential(tx, card.id, SECRET);
+  const credential = await issueActivationCredential(tx, card.id, SECRETS);
   const { caseId } = await openCase(tx, { actorId, type: "defective_card", summary: "Defect", orderId: order.id });
   return { card, item, product, order, credential, caseId, actorId };
 }
@@ -29,7 +31,7 @@ async function fixture(tx: TestTx) {
 async function ready(tx: TestTx, productId: string) {
   const stock = await insertStockPurchase(tx);
   const [card] = await tx.insert(s.cards).values({ stockPurchaseId: stock.id, productId, kind: "dbc", publicToken: `R${crypto.randomUUID().replaceAll("-", "")}` }).returning();
-  const credential = await issueActivationCredential(tx, card.id, SECRET);
+  const credential = await issueActivationCredential(tx, card.id, SECRETS);
   await tx.update(s.cards).set({ state: "ready", nfcVerifiedAt: new Date(), packageMatchedAt: new Date() }).where(eq(s.cards.id, card.id));
   return { card, credential };
 }
@@ -50,6 +52,7 @@ test.each([false, true])("retire claimed=%s clears routing, revokes only usable 
   expect((await tx.select().from(s.cards).where(eq(s.cards.id, f.card.id)))[0]).toMatchObject({ state: "retired", ownerAccountId: null, profileId: null, disabledAt: null, publicToken: f.card.publicToken });
   const [credential] = await tx.select().from(s.activationCredentials).where(eq(s.activationCredentials.id, f.credential.credentialId));
   expect(claimed ? credential.usedAt : credential.revokedAt).toBeInstanceOf(Date);
+  expect(credential.encryptedCode).toBeNull();
   expect(await resolveCard(tx, f.card.publicToken!)).toMatchObject({ status: "unavailable", ownerAccountId: null });
   await releaseReplacementCard(tx, { ...base, orderItemId: f.item.id, cardId: replacement.card.id });
   expect((await loadOrderFacts(tx, f.order.id)).totals).toEqual(before.totals);
@@ -72,7 +75,7 @@ test.each([false, true])("verified code recovery reset=%s keeps the URL and old 
     await claimCard(tx, { accountId: a.id, credentialId: f.credential.credentialId });
     await tx.update(s.cards).set({ profileId: profile.id, disabledAt: new Date() }).where(eq(s.cards.id, f.card.id));
   }
-  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Verified invoice and requester claim", activationSecret: SECRET };
+  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Verified invoice and requester claim", secrets: SECRETS };
   const recover = reset ? resetCardOwnership : reissueActivationCode;
   await expect(recover(tx, base)).rejects.toMatchObject({ code: "card_not_linked" });
   await linkCaseCard(tx, { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id });
@@ -85,9 +88,12 @@ test.each([false, true])("verified code recovery reset=%s keeps the URL and old 
   expect(credentials.filter((c) => !c.usedAt && !c.revokedAt)).toHaveLength(1);
   const old = credentials.find((c) => c.id === f.credential.credentialId)!;
   expect(reset ? old.usedAt : old.revokedAt).toBeInstanceOf(Date);
+  expect(old.encryptedCode).toBeNull();
   expect(await checkActivationCode(tx, { secret: SECRET, code: f.credential.code })).toEqual({ status: "unavailable" });
   expect(await checkActivationCode(tx, { secret: SECRET, code: result.activationCode })).toMatchObject({ status: "claimable", credentialId: result.credentialId });
   expect(credentials.find((c) => c.id === result.credentialId)?.lookupHmac).toBe(activationLookup(SECRET, result.activationCode));
+  const current = credentials.find((c) => c.id === result.credentialId)!;
+  expect(decryptActivationCode(current.encryptedCode!, { credentialId: current.id, cardId: card.id, lookupHmac: current.lookupHmac }, SECRETS)).toBe(result.activationCode);
   const events = await tx.select().from(s.activityEvents);
   expect(JSON.stringify(events)).not.toContain(result.activationCode);
   expect(JSON.stringify(credentials)).not.toContain(result.activationCode);
@@ -100,7 +106,7 @@ test.each([false, true])("verified code recovery reset=%s keeps the URL and old 
 test("reissue refuses claimed cards and reset refuses unclaimed cards", () => rollback(db, async (tx) => {
   const f = await fixture(tx);
   await linkCaseCard(tx, { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id });
-  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Invoice checked", activationSecret: SECRET };
+  const base = { caseId: f.caseId, actorId: f.actorId, cardId: f.card.id, verificationNote: "Invoice checked", secrets: SECRETS };
   await expect(resetCardOwnership(tx, base)).rejects.toMatchObject({ code: "card_unclaimed" });
   const customer = await insertAccount(tx);
   await claimCard(tx, { accountId: customer.id, credentialId: f.credential.credentialId });

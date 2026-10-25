@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "../../db/schema";
 import { issueActivationCredential, revokeUsableCredential, usableCredential } from "../activation/credentials";
+import type { CredentialSecrets } from "../activation/encryption";
 import { recordActivity } from "../activity/record";
 import { lockCard } from "../cards/card";
 import type { Db } from "../db";
@@ -70,7 +71,7 @@ export async function releaseReplacementCard(db: Db, input: CaseMutation & { ord
   });
 }
 
-type RecoveryInput = CaseMutation & { cardId: string; verificationNote: string; activationSecret: string };
+type RecoveryInput = CaseMutation & { cardId: string; verificationNote: string; secrets: CredentialSecrets };
 
 async function recoverCredential(db: Db, input: RecoveryInput, reset: boolean) {
   if (!z.string().trim().min(1).max(500).safeParse(input.verificationNote).success) throw new SupportError("invalid_input");
@@ -83,7 +84,7 @@ async function recoverCredential(db: Db, input: RecoveryInput, reset: boolean) {
     if (!reset && card.ownerAccountId) throw new SupportError("card_claimed");
     if (reset) await tx.update(s.cards).set({ ownerAccountId: null, profileId: null, disabledAt: null }).where(eq(s.cards.id, card.id));
     await revokeUsableCredential(tx, card.id);
-    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.activationSecret);
+    const { credentialId, code } = await issueActivationCredential(tx, card.id, input.secrets);
     await recordActivity(tx, { type: reset ? "card_ownership_reset" : "activation_credential_reissued", actorAccountId: input.actorId, cardId: card.id, supportCaseId: row.id, accountId: card.ownerAccountId ?? undefined, note: input.verificationNote.trim() });
     return { credentialId, activationCode: code };
   });

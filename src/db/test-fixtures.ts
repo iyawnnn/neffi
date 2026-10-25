@@ -2,6 +2,13 @@
 import { and, eq } from "drizzle-orm";
 import { accounts, cards, orderItems, orders, products, profiles, purchasers, scenes, stockPurchases } from "./schema";
 import type { TestTx } from "./testing";
+import type { CredentialSecrets } from "../modules/activation/encryption";
+
+export const syntheticCredentialSecrets = (lookupSecret = "synthetic-activation-lookup-secret-0123456789"): CredentialSecrets => ({
+  lookupSecret,
+  activeKeyId: "test-v1",
+  encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
+});
 
 let sequence = 0;
 const next = () => ++sequence;
