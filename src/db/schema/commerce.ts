@@ -61,6 +61,9 @@ export const orders = pgTable(
     deliveryMethod: deliveryMethod(),
     // Shipping fee charged to the customer; the courier's actual cost lives on the shipment.
     shippingFee: integer().notNull().default(0),
+    shippingFeePending: boolean().notNull().default(false),
+    clientKey: uuid(),
+    normalPaymentMethod: paymentMethod(),
     // The optional order Notes captured at creation. Owner internal notes are `note` activity events.
     notes: text(),
     cancellationReason: text(),
@@ -77,9 +80,13 @@ export const orders = pgTable(
   },
   (t) => [
     check("orders_shipping_fee_nonnegative", sql`${t.shippingFee} >= 0`),
+    check("orders_shipping_fee_pending_valid", sql`NOT ${t.shippingFeePending} OR (COALESCE(${t.deliveryMethod} = 'courier', false) AND ${t.shippingFee} = 0)`),
+    check("orders_completed_fee_confirmed", sql`${t.status} <> 'completed' OR NOT ${t.shippingFeePending}`),
+    check("orders_normal_payment_method_required", sql`${t.clientKey} IS NULL OR (${t.normalPaymentMethod} IS NOT NULL AND ${t.normalPaymentMethod}::text IN ('gcash', 'maya', 'maribank', 'gotyme', 'bank_transfer'))`),
     check("orders_completed_at_matches_status", sql`(${t.status} = 'completed') = (${t.completedAt} IS NOT NULL)`),
     check("orders_cancelled_at_matches_status", sql`(${t.status} = 'cancelled') = (${t.cancelledAt} IS NOT NULL)`),
     index("orders_purchaser_id_idx").on(t.purchaserId),
+    uniqueIndex("orders_client_key_unique").on(t.clientKey).where(sql`${t.clientKey} IS NOT NULL`),
     index("orders_status_created_at_idx").on(t.status, t.createdAt.desc()),
   ],
 );

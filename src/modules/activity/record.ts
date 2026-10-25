@@ -53,6 +53,7 @@ type ActivityInput = {
   type: ActivityType;
   actorAccountId: string | null;
   cardId?: string;
+  activationCredentialId?: string;
   accountId?: string;
   orderId?: string;
   stockPurchaseId?: string;

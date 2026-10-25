@@ -134,6 +134,27 @@
       "when": 1792654710147,
       "tag": "0018_concerned_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792934975672,
+      "tag": "0019_owner_operations_enum_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792935023637,
+      "tag": "0020_owner_operations_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792935048154,
+      "tag": "0021_retrievable_activation_credentials",
+      "breakpoints": true
     }
   ]
 }
