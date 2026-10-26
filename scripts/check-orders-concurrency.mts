@@ -15,9 +15,10 @@ import { cardUrl } from "../src/modules/cards/token";
 import { createPaidDbcOrder } from "../src/modules/orders/normal-dbc";
 import { normalOrderInput, syntheticCredentialSecrets } from "../src/modules/orders/operations-test-fixtures";
 import { receiveStock } from "../src/modules/inventory/stock-intake";
+import { markJntShipped, saveJntDelivery } from "../src/modules/orders/jnt-fulfillment";
 import { handOverOrder, reserveDbcCards } from "../src/modules/orders/fulfillment";
 import { recordPayment, recordRefund } from "../src/modules/payments/record";
-import { voidRefund } from "../src/modules/payments/void";
+import { voidPayment, voidRefund } from "../src/modules/payments/void";
 
 const url = new URL(process.env.DATABASE_URL_TEST ?? "");
 assert.equal(url.hostname, "127.0.0.1", "Concurrency checks require a disposable loopback database");
@@ -357,6 +358,98 @@ try {
     assert.deepEqual((await admin.query("SELECT id FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [cardId])).rows, [{ id: credential.id }]);
   });
 
+  const shippable = async (shippingFee?: number) => {
+    await readyForAllocation();
+    const { orderId } = await createPaidDbcOrder(dbA, normalOrderInput(owner, { secrets, delivery: { method: "jnt", recipientName: "Synthetic Recipient", recipientPhone: "0917 000 0000", address: "1 Synthetic Street", shippingFee } }));
+    assert.equal((await linkedCards(orderId)).length, 1);
+    return orderId;
+  };
+  const shipState = async (orderId: string) => {
+    const { rows: [order] } = await admin.query("SELECT status,shipping_fee,shipping_fee_pending FROM orders WHERE id=$1", [orderId]);
+    const { rows: payments } = await admin.query("SELECT amount FROM payments WHERE order_id=$1 AND voided_at IS NULL ORDER BY amount DESC", [orderId]);
+    const { rows: shipments } = await admin.query("SELECT status,shipped_on FROM shipments WHERE order_id=$1", [orderId]);
+    const events = async (type: string) => (await admin.query("SELECT count(*)::int AS n FROM activity_events WHERE order_id=$1 AND type=$2", [orderId, type])).rows[0].n as number;
+    return { order, payments: payments.map((p) => p.amount as number), shipments, cards: (await linkedCards(orderId)).map((c) => c.state), events };
+  };
+  const track = { trackingNumber: "SYNTH-TRACK" };
+
+  await check("ship vs cancel has one terminal outcome and no hidden partial effects", async () => {
+    const orderId = await shippable(12_000);
+    const errors = await lockedScenario("orders", orderId, [
+      () => markJntShipped(dbA, { actorId: owner, orderId, ...track }),
+      () => cancelOrder(dbB, { actorId: owner, orderId }),
+    ]);
+    assert.equal([errors[0], errors[1]].filter(Boolean).length, 1);
+    const state = await shipState(orderId);
+    if (!errors[0]) {
+      assert.equal(errorCode(errors[1]), "wrong_status");
+      assert.deepEqual([state.order.status, state.payments, state.cards, state.shipments[0].status], ["completed", [79_900, 12_000], ["released"], "in_transit"]);
+    } else {
+      assert.equal(errorCode(errors[0]), "wrong_status");
+      assert.deepEqual([state.order.status, state.payments, state.cards, state.shipments[0].status, state.shipments[0].shipped_on], ["cancelled", [79_900], [], "pending", null]);
+    }
+  });
+
+  await check("double Mark as shipped makes one receipt, one release and one completion", async () => {
+    const orderId = await shippable(12_000);
+    const errors = await lockedScenario("orders", orderId, [
+      () => markJntShipped(dbA, { actorId: owner, orderId, ...track }),
+      () => markJntShipped(dbB, { actorId: owner, orderId, ...track }),
+    ]);
+    assert(errors.every((error) => !error));
+    const state = await shipState(orderId);
+    assert.deepEqual([state.order.status, state.payments, state.cards, state.shipments.length], ["completed", [79_900, 12_000], ["released"], 1]);
+    assert.deepEqual([await state.events("order_completed"), await state.events("shipment_recorded"), await state.events("card_released")], [1, 1, 1]);
+  });
+
+  await check("fee save vs Mark as shipped commits one consistent fee and receipt", async () => {
+    const orderId = await shippable();
+    const errors = await lockedScenario("orders", orderId, [
+      () => saveJntDelivery(dbA, { actorId: owner, orderId, recipientName: "Saved Name", recipientPhone: "0999", address: "2 Saved Street", shippingFee: 5_000 }),
+      () => markJntShipped(dbB, { actorId: owner, orderId, ...track, shippingFee: 7_000 }),
+    ]);
+    assert.equal(errors[1], undefined);
+    if (errors[0]) assert.equal(errorCode(errors[0]), "wrong_status");
+    const state = await shipState(orderId);
+    assert.deepEqual([state.order.status, state.order.shipping_fee_pending, state.cards], ["completed", false, ["released"]]);
+    assert.deepEqual(state.payments, [79_900, 7_000]);
+    assert.equal(state.order.shipping_fee, 7_000);
+  });
+
+  await check("product receipt void vs Mark as shipped never fabricates collection", async () => {
+    const orderId = await shippable(12_000);
+    const { rows: [product] } = await admin.query("SELECT id FROM payments WHERE order_id=$1", [orderId]);
+    const errors = await lockedScenario("orders", orderId, [
+      () => markJntShipped(dbA, { actorId: owner, orderId, ...track }),
+      () => voidPayment(dbB, { actorId: owner, orderId, paymentId: product.id, reason: "Synthetic correction" }),
+    ]);
+    const state = await shipState(orderId);
+    if (!errors[0]) {
+      assert.equal(errorCode(errors[1]), "wrong_status");
+      assert.deepEqual([state.order.status, state.payments], ["completed", [79_900, 12_000]]);
+    } else {
+      assert.equal(errorCode(errors[0]), "settlement_mismatch");
+      assert.equal(errors[1], undefined);
+      assert.deepEqual([state.order.status, state.payments, state.cards, state.shipments[0].status], ["in_progress", [], ["reserved"], "pending"]);
+    }
+  });
+
+  for (const target of ["payments", "shipments", "activity_events"] as const) await check(`failure injected in ${target} rolls back the whole Mark as shipped`, async () => {
+    const orderId = await shippable();
+    const condition = target === "payments" ? "true" : target === "shipments" ? "NEW.status = 'in_transit'" : "NEW.type = 'shipment_recorded'";
+    const when = target === "shipments" ? "BEFORE UPDATE" : "BEFORE INSERT";
+    await admin.query(`CREATE OR REPLACE FUNCTION synthetic_ship_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF ${condition} AND NEW.id IS NOT NULL THEN RAISE EXCEPTION 'synthetic ship failure'; END IF; RETURN NEW; END $$`);
+    await admin.query(`CREATE TRIGGER synthetic_ship_failure ${when} ON ${target} FOR EACH ROW WHEN (${target === "payments" ? "NEW.amount = 12000" : "true"}) EXECUTE FUNCTION synthetic_ship_failure()`);
+    try {
+      await assert.rejects(markJntShipped(dbA, { actorId: owner, orderId, ...track, shippingFee: 12_000 }));
+    } finally {
+      await admin.query(`DROP TRIGGER synthetic_ship_failure ON ${target}`);
+    }
+    const state = await shipState(orderId);
+    assert.deepEqual([state.order.status, state.order.shipping_fee_pending, state.order.shipping_fee, state.payments, state.cards, state.shipments[0].status, state.shipments[0].shipped_on], ["in_progress", true, 0, [79_900], ["reserved"], "pending", null]);
+    assert.deepEqual([await state.events("shipment_recorded"), await state.events("card_released"), await state.events("order_completed")], [0, 0, 0]);
+  });
+
   await check("multi-card reservation locks fixed IDs from lowest to highest", async () => {
     await admin.query("UPDATE products SET active=false WHERE id=$1", [allocationProduct]);
     await admin.query("UPDATE cards SET product_id=$1,kind='dbc' WHERE state='blank' AND product_id IS NULL AND kind IS NULL AND order_item_id IS NULL", [allocationProduct]);
@@ -411,7 +504,7 @@ try {
   });
 
   assert.equal(failures.length, 0, `${failures.length} Order concurrency checks failed`);
-  console.log("All 19 Order concurrency scenarios passed. No GRC inventory workflow exercised.");
+  console.log("All 26 Order concurrency scenarios passed. No GRC inventory workflow exercised.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));

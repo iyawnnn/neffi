@@ -42,7 +42,13 @@ export async function returnCardToStock(db: Db, input: Mutation & { cardId: stri
   });
 }
 
-async function releaseDbcs(tx: Db, input: Mutation): Promise<number> {
+// Order -> item -> Card: callers hold the Order lock; item locks come before any Card lock.
+export async function lockOrderItems(tx: Db, orderId: string): Promise<void> {
+  await tx.select({ id: schema.orderItems.id }).from(schema.orderItems).where(eq(schema.orderItems.orderId, orderId)).orderBy(asc(schema.orderItems.id)).for("no key update");
+}
+
+export async function releaseDbcs(tx: Db, input: Mutation): Promise<number> {
+  await lockOrderItems(tx, input.orderId);
   const cards = await tx.select({ id: schema.cards.id, packageMatchedAt: schema.cards.packageMatchedAt }).from(schema.cards)
     .innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
     .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.cards.kind, "dbc"), eq(schema.cards.state, "reserved")))
@@ -61,6 +67,8 @@ export async function handOverOrder(db: Db, input: Mutation): Promise<void> {
   await mutateOrder(db, input, async (tx, order) => {
     if (order.deliveryMethod !== "pickup" && order.deliveryMethod !== "local_handoff") throw new OrderError("wrong_delivery");
     const facts = await loadOrderFacts(tx, input.orderId);
+    // Normal orders hand over only when every DBC quantity is prepared; legacy orders keep partial releases.
+    if (order.clientKey && facts.items.some((item) => item.productKind === "dbc" && item.preparedCount < item.quantity)) throw new OrderError("checks_incomplete");
     const released = await releaseDbcs(tx, input);
     if (!released && !(facts.items.some((item) => item.productKind === "grc") && !facts.hasCommercialDelivery)) throw new OrderError("nothing_reserved");
     if (!facts.hasHandedOver) await recordActivity(tx, { type: "order_handed_over", actorAccountId: input.actorId, orderId: input.orderId });
@@ -76,6 +84,7 @@ export async function shipOrder(db: Db, input: Mutation & z.input<typeof shippin
   if (!parsed.success) throw new OrderError("invalid_input");
   await mutateOrder(db, input, async (tx, order) => {
     if (order.deliveryMethod !== "courier") throw new OrderError("wrong_delivery");
+    if (order.clientKey) throw new OrderError("wrong_status");
     const facts = await loadOrderFacts(tx, input.orderId);
     const released = await releaseDbcs(tx, input);
     if (!released && !(facts.items.some((item) => item.productKind === "grc") && !facts.hasCommercialDelivery)) throw new OrderError("nothing_reserved");
