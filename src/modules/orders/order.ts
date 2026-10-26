@@ -28,11 +28,12 @@ export async function loadOrderFacts(tx: Db, id: string) {
     from orders o
     left join lateral (
       select jsonb_agg(jsonb_build_object('id', i.id, 'productKind', i.product_kind, 'quantity', i.quantity, 'unitPrice', i.unit_price,
-        'agreedTotal', i.agreed_total, 'activeCount', counts.active, 'releasedCount', counts.released)) as items,
+        'agreedTotal', i.agreed_total, 'activeCount', counts.prepared, 'allocatedCount', counts.allocated, 'preparedCount', counts.prepared, 'releasedCount', counts.released)) as items,
         bool_or(counts.released > 0) as any_released
       from order_items i
       cross join lateral (
-        select count(*) filter (where state in ('reserved', 'released'))::int as active,
+        select count(*) filter (where state in ('preparing', 'reserved', 'released'))::int as allocated,
+          count(*) filter (where state in ('reserved', 'released'))::int as prepared,
           count(*) filter (where state = 'released')::int as released
         from cards where order_item_id = i.id and kind = 'dbc' and i.product_kind = 'dbc'
       ) counts

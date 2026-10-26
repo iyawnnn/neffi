@@ -42,6 +42,8 @@ export async function getOrderDetail(db: Db, id: string) {
     db.select().from(schema.purchasers).where(eq(schema.purchasers.id, order.purchaserId)),
     db.select({ id: schema.orderItems.id, productId: schema.orderItems.productId, productKind: schema.orderItems.productKind, name: schema.products.name, quantity: schema.orderItems.quantity, unitPrice: schema.orderItems.unitPrice, agreedTotal: schema.orderItems.agreedTotal, label: schema.orderItems.label, reviewUrl: schema.orderItems.reviewUrl,
       activeCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state IN ('reserved', 'released'))`,
+      allocatedCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state IN ('preparing', 'reserved', 'released'))`,
+      preparedCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state IN ('reserved', 'released'))`,
       releasedCount: sql<number>`(SELECT count(*)::int FROM cards c WHERE c.order_item_id = order_items.id AND c.kind = 'dbc' AND order_items.product_kind = 'dbc' AND c.state = 'released')`,
     }).from(schema.orderItems).innerJoin(schema.products, eq(schema.products.id, schema.orderItems.productId)).where(eq(schema.orderItems.orderId, id)).orderBy(asc(schema.orderItems.createdAt), asc(schema.orderItems.id)),
     db.select().from(schema.payments).where(eq(schema.payments.orderId, id)).orderBy(desc(schema.payments.createdAt), desc(schema.payments.id)),

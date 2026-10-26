@@ -91,9 +91,9 @@ export async function receiveStockAction(_previous: ActionState | undefined, dat
     inboundShippingCost: optionalCost,
   });
   return run(schema, data, async (input, actorId) => {
-    const { stockPurchaseId } = await receiveStock(db, { actorId, ...input });
-    return { ok: `Received ${input.quantity} cards.`, href: `/admin/inventory/stock/${stockPurchaseId}` };
-  });
+    const { stockPurchaseId, retryFailed } = await receiveStock(db, { actorId, ...input, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+    return { ok: retryFailed ? `Received ${input.quantity} cards. Waiting orders need an allocation retry.` : `Received ${input.quantity} cards.`, href: `/admin/inventory/stock/${stockPurchaseId}` };
+  }, () => ["/admin/orders", "/admin"]);
 }
 
 export async function provisionDbcAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {

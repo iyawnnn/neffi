@@ -3,6 +3,8 @@ import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
 import { activeProductId } from "../cards/card";
 import type { Db } from "../db";
+import type { CredentialSecrets } from "../activation/encryption";
+import { allocateWaitingOrders } from "../orders/allocation";
 import { validateStockCosts } from "./stock-purchases";
 
 export type ReceiveStockInput = {
@@ -15,15 +17,16 @@ export type ReceiveStockInput = {
   intendedKind?: "dbc" | "grc";
   purchaseCost?: number | null;
   inboundShippingCost?: number | null;
+  secrets?: CredentialSecrets;
 };
 
-export async function receiveStock(db: Db, input: ReceiveStockInput): Promise<{ stockPurchaseId: string }> {
+export async function receiveStock(db: Db, input: ReceiveStockInput): Promise<{ stockPurchaseId: string; retryFailed: boolean }> {
   validateStockCosts(input);
   if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 500) {
     throw new RangeError("quantity must be a whole number from 1 to 500");
   }
 
-  return db.transaction(async (tx) => {
+  const received = await db.transaction(async (tx) => {
     const product = input.intendedKind ? { productId: await activeProductId(tx, input.intendedKind), kind: input.intendedKind } : {};
     const [purchase] = await tx
       .insert(schema.stockPurchases)
@@ -46,4 +49,11 @@ export async function receiveStock(db: Db, input: ReceiveStockInput): Promise<{ 
     });
     return { stockPurchaseId: purchase.id };
   });
+  if (!input.secrets) return { ...received, retryFailed: false };
+  try {
+    await allocateWaitingOrders(db, { actorId: input.actorId, secrets: input.secrets, limit: 20 });
+    return { ...received, retryFailed: false };
+  } catch {
+    return { ...received, retryFailed: true };
+  }
 }

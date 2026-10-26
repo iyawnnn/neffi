@@ -3,7 +3,7 @@ import { effectiveItemTotal, orderTotals, isCompletionEligible, type OrderFacts 
 
 const facts: OrderFacts = {
   status: "in_progress", deliveryMethod: "pickup", shippingFee: 500,
-  items: [{ productKind: "dbc", quantity: 2, unitPrice: 10000, agreedTotal: null, activeCount: 2, releasedCount: 2 }],
+  items: [{ productKind: "dbc", quantity: 2, unitPrice: 10000, agreedTotal: null, activeCount: 2, allocatedCount: 2, preparedCount: 2, releasedCount: 2 }],
   received: 20500, refunded: 0, hasShippedShipment: false, hasHandedOver: false,
 };
 

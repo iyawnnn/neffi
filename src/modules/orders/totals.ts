@@ -1,4 +1,4 @@
-export type ItemFacts = { productKind: "dbc" | "grc"; quantity: number; unitPrice: number; agreedTotal: number | null; activeCount: number; releasedCount: number };
+export type ItemFacts = { productKind: "dbc" | "grc"; quantity: number; unitPrice: number; agreedTotal: number | null; activeCount: number; allocatedCount: number; preparedCount: number; releasedCount: number };
 export type OrderFacts = {
   status: "in_progress" | "completed" | "cancelled";
   deliveryMethod: "pickup" | "local_handoff" | "courier" | null;

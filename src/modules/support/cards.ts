@@ -60,7 +60,7 @@ export async function releaseReplacementCard(db: Db, input: CaseMutation & { ord
       replacements: sql<number>`count(*) filter (where ${s.supportCaseCards.role} = 'replacement')::int`,
     }).from(s.supportCaseCards).innerJoin(s.cards, eq(s.cards.id, s.supportCaseCards.cardId)).where(and(eq(s.supportCaseCards.supportCaseId, row.id), eq(s.cards.orderItemId, item.id)));
     const facts = await loadOrderFacts(tx, item.orderId);
-    if (counts.affected <= counts.replacements || facts.items.find((line) => line.id === item.id)!.activeCount >= item.quantity) throw new SupportError("replacement_unavailable");
+    if (counts.affected <= counts.replacements || facts.items.find((line) => line.id === item.id)!.allocatedCount >= item.quantity) throw new SupportError("replacement_unavailable");
     const card = await lockCard(tx, input.cardId);
     if (card.kind !== "dbc" || card.state !== "ready" || card.productId !== item.productId) throw new SupportError("card_unavailable");
     if (!card.packageMatchedAt || !await usableCredential(tx, card.id)) throw new SupportError("checks_incomplete");

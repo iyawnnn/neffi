@@ -16,7 +16,7 @@ export async function reserveDbcCards(db: Db, input: Mutation & { orderItemId: s
     const [item] = await tx.select().from(schema.orderItems).where(and(eq(schema.orderItems.id, input.orderItemId), eq(schema.orderItems.orderId, input.orderId))).for("update");
     if (!item || item.productKind !== "dbc") throw new OrderError("invalid_input");
     const facts = await loadOrderFacts(tx, input.orderId);
-    if (input.cardIds.length > item.quantity - facts.items.find((f) => f.id === item.id)!.activeCount) throw new OrderError("item_full");
+    if (input.cardIds.length > item.quantity - facts.items.find((f) => f.id === item.id)!.allocatedCount) throw new OrderError("item_full");
     const reserved = await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(and(inArray(schema.cards.id, input.cardIds), eq(schema.cards.state, "ready"), eq(schema.cards.kind, "dbc"), eq(schema.cards.productId, item.productId))).returning({ id: schema.cards.id });
     if (reserved.length !== input.cardIds.length) throw new OrderError("card_unavailable");
     for (const card of reserved) await recordActivity(tx, { type: "card_reserved", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });

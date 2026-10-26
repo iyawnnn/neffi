@@ -39,7 +39,7 @@ export async function updateOrderItem(db: Db, input: Mutation & { orderItemId: s
     const line = orderLineSchema.safeParse({ ...input, kind: item.productKind });
     if (!line.success) throw new OrderError("invalid_input");
     const facts = await loadOrderFacts(tx, input.orderId);
-    if (item.productKind === "dbc" && line.data.quantity < facts.items.find((f) => f.id === item.id)!.activeCount) throw new OrderError("item_full");
+    if (item.productKind === "dbc" && line.data.quantity < facts.items.find((f) => f.id === item.id)!.allocatedCount) throw new OrderError("item_full");
     if (item.productKind === "grc" && facts.hasCommercialDelivery && line.data.quantity !== item.quantity) throw new OrderError("items_delivered");
     await tx.update(schema.orderItems).set({ quantity: line.data.quantity, agreedTotal: line.data.agreedTotal ?? null, label: line.data.label ?? null, reviewUrl: line.data.reviewUrl ?? null }).where(eq(schema.orderItems.id, item.id));
     await recordActivity(tx, { type: "order_items_changed", actorAccountId: input.actorId, orderId: input.orderId });

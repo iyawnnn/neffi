@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { activationLookup, normalizeActivationCode, sameLookup } from "../activation/code";
 import { issueActivationCredential, revokeUsableCredential, usableCredential } from "../activation/credentials";
@@ -10,6 +10,17 @@ import { activeProductId, CardError, lockCard } from "./card";
 import { generateCardToken } from "./token";
 
 type Actor = { actorId: string; cardId: string };
+
+// The allocator already holds the Order, item and virgin Blank card locks.
+export async function prepareAllocatedDbc(tx: Db, input: Actor & { orderId: string; orderItemId: string; productId: string; secrets: CredentialSecrets }): Promise<void> {
+  const publicToken = generateCardToken();
+  const [card] = await tx.update(schema.cards).set({ kind: "dbc", productId: input.productId, publicToken })
+    .where(and(eq(schema.cards.id, input.cardId), eq(schema.cards.state, "blank"), isNull(schema.cards.publicToken), isNull(schema.cards.orderItemId))).returning({ id: schema.cards.id });
+  if (!card) throw new CardError("wrong_state");
+  await issueActivationCredential(tx, card.id, input.secrets);
+  await tx.update(schema.cards).set({ state: "preparing", orderItemId: input.orderItemId }).where(eq(schema.cards.id, card.id));
+  await recordActivity(tx, { type: "card_provisioned", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id, note: `token ${publicToken}` });
+}
 
 // Blank -> permanent token + the initial credential. The raw code is returned exactly once; a repeated call fails
 // instead of issuing another, and a lost response is recovered through replaceProvisioningCredential.

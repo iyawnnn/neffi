@@ -40,7 +40,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   // What is left to do, derived only from the data already on this page.
   const toDo: { text: string; href: string }[] = [];
   if (order.status === "in_progress") {
-    for (const item of order.items) if (item.productKind === "dbc" && item.activeCount < item.quantity) toDo.push({ text: `Reserve DBC cards · ${item.name} (${item.quantity - item.activeCount} remaining)`, href: "#items" });
+    for (const item of order.items) if (item.productKind === "dbc" && item.allocatedCount < item.quantity) toDo.push({ text: `${order.clientKey ? "Allocate" : "Reserve"} DBC cards · ${item.name} (${item.quantity - item.allocatedCount} remaining)`, href: "#items" });
     if (!order.clientKey && order.totals.balance !== null && order.totals.balance > 0) toDo.push({ text: `Record payment · ${formatPeso(order.totals.balance)} due`, href: "#payments" });
     if (canDeliver && (order.deliveryMethod === "pickup" || order.deliveryMethod === "local_handoff")) toDo.push({ text: "Record handover", href: "#delivery" });
     if (canDeliver && order.deliveryMethod === "courier") toDo.push({ text: "Record shipment", href: "#delivery" });
@@ -71,15 +71,15 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
           {order.items.map((item) => <li key={item.id} className="flex flex-col gap-1 px-4 sm:px-5 py-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1"><h3 className="text-body font-medium">{item.name}{item.label ? ` · ${item.label}` : ""}</h3><p className="text-body tabular-nums">{item.quantity} × {formatPeso(item.unitPrice)} · Total {formatPeso(effectiveItemTotal(item))}</p></div>
             {item.agreedTotal !== null ? <p className={quiet}>Adjustment: {formatPeso(item.quantity * item.unitPrice - item.agreedTotal)}</p> : null}
-            {item.productKind === "dbc" ? <p className={quiet}>{item.activeCount} reserved or released · {item.releasedCount} released</p> : <p className={quiet}>Manual programming · Commercial delivery {order.hasCommercialDelivery ? "recorded" : "pending"}</p>}
+            {item.productKind === "dbc" ? <p className={quiet}>{item.allocatedCount} allocated · {item.preparedCount} prepared · {item.releasedCount} released</p> : <p className={quiet}>Manual programming · Commercial delivery {order.hasCommercialDelivery ? "recorded" : "pending"}</p>}
             {item.reviewUrl ? <a className={`${link} break-all text-meta`} href={item.reviewUrl}>{item.reviewUrl}</a> : null}
           </li>)}
         </ul>
         {order.cards.length ? <ul className="flex flex-wrap gap-x-6 gap-y-1 border-t bg-canvas/60 px-4 sm:px-5 py-3">{order.cards.map((card) => <li key={card.id}><Link className={`${link} inline-flex min-h-8 items-center gap-2 text-meta`} href={`/admin/inventory/cards/${card.id}`}>{card.kind?.toUpperCase()} {card.suffix ?? card.id.slice(-4)} · {card.state}</Link></li>)}</ul> : null}
       </Panel>
       {order.status === "in_progress" ? <div className="flex flex-wrap gap-2">
-        {order.items.filter((item) => item.productKind === "dbc" && item.activeCount < item.quantity).map((item) => <ActionSheet key={item.id} title={`Reserve DBC cards · ${item.name}`}>
-          <p>{item.quantity - item.activeCount} card(s) remaining on this line.</p>
+        {order.items.filter((item) => item.productKind === "dbc" && !order.clientKey && item.allocatedCount < item.quantity).map((item) => <ActionSheet key={item.id} title={`Reserve DBC cards · ${item.name}`}>
+          <p>{item.quantity - item.allocatedCount} card(s) remaining on this line.</p>
           {order.readyDbcCards.some((card) => card.productId === item.productId) ? <ActionForm action={reserveDbcCardsAction} submit="Reserve selected DBCs" variant="primary">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
             {order.readyDbcCards.filter((card) => card.productId === item.productId).map((card) => <label key={card.id} className={`${checkLabel} items-center border-b`}><input type="checkbox" name="cardId" value={card.id} /><span>DBC {card.suffix} · Received {card.receivedOn}</span></label>)}
           </ActionForm> : <p>No Ready DBCs for this product. <Link className={link} href="/admin/inventory">Open Inventory</Link></p>}

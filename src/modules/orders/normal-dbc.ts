@@ -7,7 +7,7 @@ import type { CredentialSecrets } from "../activation/encryption";
 import { activeProduct, CardError } from "../cards/card";
 import type { Db } from "../db";
 import { withCase } from "../support/case";
-import { allocateDbcCards, type AllocationResult } from "./allocation";
+import { allocateDbcCardsInTransaction, allocationDeficit, type AllocationResult } from "./allocation";
 import { OrderError } from "./errors";
 import { NEW_PAYMENT_METHODS, NORMAL_DBC_UNIT_PRICE, type NewPaymentMethod, type OwnerDelivery } from "./policy";
 import { resolvePurchaser } from "./purchasers";
@@ -44,8 +44,7 @@ export async function createPaidDbcOrder(db: Db, input: NormalDbcOrderInput): Pr
     const [existing] = await tx.select({ id: schema.orders.id, createdByAccountId: schema.orders.createdByAccountId }).from(schema.orders).where(eq(schema.orders.clientKey, data.clientKey));
     if (existing) {
       if (existing.createdByAccountId !== data.actorId) throw new OrderError("invalid_input");
-      const [item] = await tx.select({ quantity: schema.orderItems.quantity }).from(schema.orderItems).where(eq(schema.orderItems.orderId, existing.id));
-      return { orderId: existing.id, allocation: { allocatedCardIds: [], missingQuantity: item.quantity } };
+      return { orderId: existing.id, allocation: { allocatedCardIds: [], missingQuantity: await allocationDeficit(tx, existing.id) } };
     }
 
     const purchaserId = await resolvePurchaser(tx, data);
@@ -66,7 +65,7 @@ export async function createPaidDbcOrder(db: Db, input: NormalDbcOrderInput): Pr
     await recordActivity(tx, { type: "order_created", actorAccountId: data.actorId, orderId: order.id });
     await recordActivity(tx, { type: "payment_recorded", actorAccountId: data.actorId, orderId: order.id, note: `${NORMAL_DBC_UNIT_PRICE * data.quantity} centavos; ${data.paymentMethod}` });
     if (data.supportCaseId) await recordActivity(tx, { type: "support_order_linked", actorAccountId: data.actorId, orderId: order.id, supportCaseId: data.supportCaseId });
-    const allocation = await allocateDbcCards(tx, { actorId: data.actorId, orderId: order.id, secrets: data.secrets });
+    const allocation = await allocateDbcCardsInTransaction(tx, { actorId: data.actorId, orderId: order.id, secrets: data.secrets });
     return { orderId: order.id, allocation };
   };
 
@@ -75,8 +74,7 @@ export async function createPaidDbcOrder(db: Db, input: NormalDbcOrderInput): Pr
   const [prior] = await db.select({ id: schema.orders.id, createdByAccountId: schema.orders.createdByAccountId }).from(schema.orders).where(eq(schema.orders.clientKey, data.clientKey));
   if (prior) {
     if (prior.createdByAccountId !== data.actorId) throw new OrderError("invalid_input");
-    const [item] = await db.select({ quantity: schema.orderItems.quantity }).from(schema.orderItems).where(eq(schema.orderItems.orderId, prior.id));
-    return { orderId: prior.id, allocation: { allocatedCardIds: [], missingQuantity: item.quantity } };
+    return { orderId: prior.id, allocation: { allocatedCardIds: [], missingQuantity: await allocationDeficit(db, prior.id) } };
   }
   return data.supportCaseId ? withCase(db, { caseId: data.supportCaseId, actorId: data.actorId }, create) : db.transaction(create);
 }

@@ -1,9 +1,12 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
-import { activityEvents, cards, stockPurchases } from "@/db/schema";
+import { activityEvents, cards, orderItems, orders, payments, stockPurchases } from "@/db/schema";
 import { insertAccount, insertProduct } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { receiveStock } from "./stock-intake";
+import { createPaidDbcOrder } from "../orders/normal-dbc";
+import { allocateDbcCards } from "../orders/allocation";
+import { normalOrderInput, syntheticCredentialSecrets } from "../orders/operations-test-fixtures";
 
 let db: TestDb;
 beforeAll(async () => {
@@ -13,6 +16,42 @@ beforeAll(async () => {
 const input = { receivedOn: "2026-10-10" };
 
 describe("receiveStock", () => {
+  test("committed stock retries the oldest waiting paid order without another receipt", () => rollback(db, async (tx) => {
+    const owner = await insertAccount(tx, "owner");
+    await insertProduct(tx, "dbc");
+    const secrets = syntheticCredentialSecrets();
+    const input = normalOrderInput(owner.id, { secrets });
+    const first = await createPaidDbcOrder(tx, input);
+    expect(first.allocation.missingQuantity).toBe(1);
+    expect(await receiveStock(tx, { actorId: owner.id, quantity: 1, receivedOn: "2026-10-10", secrets })).toMatchObject({ retryFailed: false });
+    expect((await tx.select().from(cards))[0]).toMatchObject({ state: "preparing" });
+    expect((await createPaidDbcOrder(tx, input)).allocation.missingQuantity).toBe(0);
+    expect(await tx.select().from(payments)).toHaveLength(1);
+  }));
+
+  test("one new card goes to the oldest waiting order", () => rollback(db, async (tx) => {
+    const owner = await insertAccount(tx, "owner");
+    await insertProduct(tx, "dbc");
+    const secrets = syntheticCredentialSecrets();
+    const first = await createPaidDbcOrder(tx, normalOrderInput(owner.id, { secrets }));
+    const second = await createPaidDbcOrder(tx, normalOrderInput(owner.id, { secrets }));
+    await tx.update(orders).set({ createdAt: new Date("2026-10-01") }).where(eq(orders.id, first.orderId));
+    await receiveStock(tx, { actorId: owner.id, quantity: 1, receivedOn: "2026-10-10", secrets });
+    expect((await tx.select().from(cards))[0].orderItemId).toBe((await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.orderId, first.orderId)))[0].id);
+    expect((await allocateDbcCards(tx, { actorId: owner.id, orderId: second.orderId, secrets })).missingQuantity).toBe(1);
+  }));
+
+  test("failed allocation retry keeps received stock available for manual retry", () => rollback(db, async (tx) => {
+    const owner = await insertAccount(tx, "owner");
+    await insertProduct(tx, "dbc");
+    const secrets = syntheticCredentialSecrets();
+    const { orderId } = await createPaidDbcOrder(tx, normalOrderInput(owner.id, { secrets }));
+    const invalidSecrets = { ...secrets, activeKeyId: "missing" };
+    expect(await receiveStock(tx, { actorId: owner.id, quantity: 1, receivedOn: "2026-10-10", secrets: invalidSecrets })).toMatchObject({ retryFailed: true });
+    expect((await tx.select().from(cards))[0]).toMatchObject({ state: "blank", publicToken: null });
+    expect(await allocateDbcCards(tx, { actorId: owner.id, orderId, secrets })).toMatchObject({ missingQuantity: 0 });
+  }));
+
   test("creates one stock purchase, N tracked blank cards and a stock_received event", () =>
     rollback(db, async (tx) => {
       const owner = await insertAccount(tx, "owner");

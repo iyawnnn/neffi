@@ -7,6 +7,10 @@ import pg from "pg";
 import * as schema from "../src/db/schema";
 import { randomCrockford } from "../src/lib/crockford";
 import { cancelOrder } from "../src/modules/orders/cancel";
+import { allocateDbcCards } from "../src/modules/orders/allocation";
+import { createPaidDbcOrder } from "../src/modules/orders/normal-dbc";
+import { normalOrderInput, syntheticCredentialSecrets } from "../src/modules/orders/operations-test-fixtures";
+import { receiveStock } from "../src/modules/inventory/stock-intake";
 import { handOverOrder, reserveDbcCards } from "../src/modules/orders/fulfillment";
 import { recordPayment, recordRefund } from "../src/modules/payments/record";
 import { voidRefund } from "../src/modules/payments/void";
@@ -167,8 +171,83 @@ try {
     assert.equal(await orderState(input.orderId), "cancelled");
   });
 
+  // Fresh product isolates automatic allocation from Ready inventory used by the legacy checks above.
+  const allocationProduct = randomUUID();
+  const secrets = syntheticCredentialSecrets();
+  await admin.query("UPDATE products SET active=false WHERE kind='dbc'");
+  await admin.query("INSERT INTO products(id,kind,name,price) VALUES($1,'dbc','Synthetic allocation DBC',79900)", [allocationProduct]);
+  const waiting = async () => (await createPaidDbcOrder(dbA, normalOrderInput(owner, { secrets }))).orderId;
+  const linkedCards = async (orderId: string) => (await admin.query("SELECT c.id,c.state FROM cards c JOIN order_items i ON i.id=c.order_item_id WHERE i.order_id=$1 AND c.state IN ('preparing','reserved','released')", [orderId])).rows as { id: string; state: string }[];
+  const readyForAllocation = async () => {
+    const cardId = randomUUID();
+    await admin.query("INSERT INTO cards(id,stock_purchase_id,product_id,kind,public_token) VALUES($1,$2,$3,'dbc',$4)", [cardId, stock, allocationProduct, randomCrockford(26)]);
+    await admin.query("INSERT INTO activation_credentials(card_id,lookup_hmac) VALUES($1,$2)", [cardId, randomUUID().replaceAll("-", "").padEnd(64, "0")]);
+    await admin.query("UPDATE cards SET state='ready',nfc_verified_at=now(),package_matched_at=now() WHERE id=$1", [cardId]);
+    return cardId;
+  };
+  const blankForAllocation = async () => {
+    const cardId = randomUUID();
+    await admin.query("INSERT INTO cards(id,stock_purchase_id) VALUES($1,$2)", [cardId, stock]);
+    return cardId;
+  };
+
+  await check("two paid Orders compete for one Ready DBC without duplicate assignment", async () => {
+    const [first, second] = [await waiting(), await waiting()];
+    const cardId = await readyForAllocation();
+    await Promise.all([allocateDbcCards(dbA, { actorId: owner, orderId: first, secrets }), allocateDbcCards(dbB, { actorId: owner, orderId: second, secrets })]);
+    const assigned = [...await linkedCards(first), ...await linkedCards(second)];
+    assert.equal(assigned.length, 1);
+    assert.equal(assigned[0].id, cardId);
+    assert.equal(assigned[0].state, "reserved");
+  });
+
+  await check("two paid Orders compete for one virgin Blank without duplicate code", async () => {
+    const [first, second] = [await waiting(), await waiting()];
+    const cardId = await blankForAllocation();
+    await Promise.all([allocateDbcCards(dbA, { actorId: owner, orderId: first, secrets }), allocateDbcCards(dbB, { actorId: owner, orderId: second, secrets })]);
+    const assigned = [...await linkedCards(first), ...await linkedCards(second)];
+    assert.equal(assigned.length, 1);
+    assert.equal(assigned[0].id, cardId);
+    assert.equal(assigned[0].state, "preparing");
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1", [cardId])).rows[0].n, 1);
+  });
+
+  await check("same Order double allocation serializes on its row", async () => {
+    const orderId = await waiting();
+    const cardId = await blankForAllocation();
+    const errors = await lockedScenario("orders", orderId, [() => allocateDbcCards(dbA, { actorId: owner, orderId, secrets }), () => allocateDbcCards(dbB, { actorId: owner, orderId, secrets })]);
+    assert(errors.every((error) => !error));
+    assert.deepEqual((await linkedCards(orderId)).map((card) => card.id), [cardId]);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1", [cardId])).rows[0].n, 1);
+  });
+
+  await check("Ready row locked by another allocator is skipped and later retried", async () => {
+    const orderId = await waiting();
+    const cardId = await readyForAllocation();
+    const holder = await connect();
+    await holder.query("BEGIN");
+    try {
+      await holder.query("SELECT id FROM cards WHERE id=$1 FOR UPDATE", [cardId]);
+      assert.equal((await allocateDbcCards(dbA, { actorId: owner, orderId, secrets })).missingQuantity, 1);
+    } finally { await holder.query("ROLLBACK"); }
+    assert.deepEqual((await allocateDbcCards(dbB, { actorId: owner, orderId, secrets })).allocatedCardIds, [cardId]);
+  });
+
+  await check("stock-intake retry racing manual Order retry assigns once", async () => {
+    await receiveStock(dbA, { actorId: owner, receivedOn: "2026-10-25", quantity: 2, intendedKind: "dbc", secrets });
+    const orderId = await waiting();
+    const [receipt] = await Promise.all([
+      receiveStock(dbA, { actorId: owner, receivedOn: "2026-10-26", quantity: 1, intendedKind: "dbc", secrets }),
+      allocateDbcCards(dbB, { actorId: owner, orderId, secrets }),
+    ]);
+    assert.equal(receipt.retryFailed, false);
+    const assigned = await linkedCards(orderId);
+    assert.equal(assigned.length, 1);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1", [assigned[0].id])).rows[0].n, 1);
+  });
+
   assert.equal(failures.length, 0, `${failures.length} Order concurrency checks failed`);
-  console.log("All 7 Order concurrency scenarios passed. No GRC inventory workflow exercised.");
+  console.log("All 12 Order concurrency scenarios passed. No GRC inventory workflow exercised.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));
