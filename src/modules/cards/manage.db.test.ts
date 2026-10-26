@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, expect, test, vi } from "vitest";
-import { activityEvents, cards } from "@/db/schema";
+import { activityEvents, cards, profiles, scenes } from "@/db/schema";
 import { insertAccount, insertProfileWithScene, insertReleasedDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import * as activity from "../activity/record";
@@ -49,7 +49,10 @@ test("summaries list only owned DBCs with profile and disabled status", () => ro
   const { card } = await insertReleasedDbc(tx); const { card: foreign } = await insertReleasedDbc(tx);
   await tx.update(cards).set({ ownerAccountId: owner.id, profileId: profile.id, disabledAt: new Date() }).where(eq(cards.id, card.id));
   const rows = await cardSummaries(tx, owner.id);
-  expect(rows).toEqual([{ id: card.id, publicToken: card.publicToken, suffix: card.publicToken!.slice(-4), profileId: profile.id, profileName: profile.fullName, disabled: true }]);
+  expect(rows).toEqual([{ id: card.id, publicToken: card.publicToken, suffix: card.publicToken!.slice(-4), profileId: profile.id, profileName: profile.fullName, previewSceneId: profile.defaultSceneId, disabled: true }]);
+  const [shown] = await tx.insert(scenes).values({ profileId: profile.id, name: "Work" }).returning();
+  await tx.update(profiles).set({ activeSceneId: shown.id }).where(eq(profiles.id, profile.id));
+  expect((await getOwnedCard(tx, owner.id, card.id))?.previewSceneId).toBe(shown.id);
   expect(await getOwnedCard(tx, owner.id, foreign.id)).toBeNull();
 }));
 test("disable is idempotent and enable clears disabledAt, recording each transition", () => rollback(db, async tx => {

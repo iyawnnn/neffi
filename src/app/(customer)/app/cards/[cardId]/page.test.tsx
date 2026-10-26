@@ -40,6 +40,7 @@ const defaultCard = {
   publicToken: token,
   profileId: "p1",
   profileName: "Ana",
+  previewSceneId: "s1",
   disabled: false,
 };
 
@@ -162,7 +163,7 @@ test("card settings renders connected profile, published status, switch, and pri
 // 3. SHARE YOUR NEFFI SURFACE (Static tests)
 // ----------------------------------------------------
 
-test("share surface renders QR frame, shortened link, real URL, copy link, and download QR", async () => {
+test("share surface renders the permanent QR with secondary copy and download actions", async () => {
   const html = await renderStatic();
   expect(html).toContain("Share your Neffi");
   expect(html).toContain(
@@ -172,17 +173,14 @@ test("share surface renders QR frame, shortened link, real URL, copy link, and d
   expect(html).toContain('src="data:image/svg+xml');
   expect(html).toContain("Profile link");
   expect(html).toContain("Share this link or QR code with others.");
-  // Real URL preserved
-  expect(html).toContain(`https://tap.example.test/c/${token}`);
-  // Shortened pretty display
-  expect(html).toContain("tap.example.test/c/••••AAAA");
+  expect(html).not.toContain("data-url=");
   // No raw plain underlined link
   expect(html).not.toContain(
     'class="inline-flex min-h-11 items-center break-all text-sm underline'
   );
-  // Copy link (Vermilion primary: bg-action text-white) and Download QR code (secondary outline: border-border)
+  // Copy and download stay available beneath Sharing QR.
   expect(html).toMatch(
-    /<button[^>]*class="[^"]*bg-action[^"]*text-white[^"]*"[^>]*>[\s\S]*?Copy link[\s\S]*?<\/button>/
+    /<button[^>]*class="[^"]*border-border[^"]*"[^>]*>[\s\S]*?Copy link[\s\S]*?<\/button>/
   );
   expect(html).not.toMatch(
     /<button[^>]*class="[^"]*bg-primary[^"]*"[^>]*>[\s\S]*?Copy link[\s\S]*?<\/button>/
@@ -222,6 +220,13 @@ test("unconfigured card offers setup and hides the QR and Connected badge", asyn
   expect(html).toContain("Set up this Neffi");
   expect(html).not.toContain("data:image/svg+xml");
   expect(html).not.toContain("Connected");
+});
+
+test("owned draft profile previews its shown scene without opening the public card", async () => {
+  const html = await renderStatic();
+  expect(html).toContain('href="/app/profiles/p1/preview?scene=s1"');
+  expect(html).toContain('href="/app/profiles/p1"');
+  expect(html).not.toContain(`href="/c/${token}"`);
 });
 
 test("the Sharing QR shown and downloaded is the symbol of exactly this card's permanent URL, never /activate", async () => {

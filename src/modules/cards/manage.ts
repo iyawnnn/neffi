@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
@@ -34,20 +34,20 @@ export async function saveCardSettings(db: Db, input: { accountId: string; cardI
   });
 }
 
-export type CardSummary = { id: string; publicToken: string; suffix: string; profileId: string | null; profileName: string | null; disabled: boolean };
-const cardColumns = { id: schema.cards.id, publicToken: schema.cards.publicToken, profileId: schema.cards.profileId, profileName: schema.profiles.fullName, disabledAt: schema.cards.disabledAt };
+export type CardSummary = { id: string; publicToken: string; suffix: string; profileId: string | null; profileName: string | null; previewSceneId: string | null; disabled: boolean };
+const cardColumns = { id: schema.cards.id, publicToken: schema.cards.publicToken, profileId: schema.cards.profileId, profileName: schema.profiles.fullName, previewSceneId: sql<string | null>`coalesce(${schema.profiles.activeSceneId}, ${schema.profiles.defaultSceneId})`, disabledAt: schema.cards.disabledAt };
 
 // shortcut: capped at 50 for the V1 Cards list; add pagination when accounts need more.
 export async function cardSummaries(db: Db, accountId: string): Promise<CardSummary[]> {
   const rows = await db.select(cardColumns).from(schema.cards).leftJoin(schema.profiles, eq(schema.profiles.id, schema.cards.profileId))
     .where(and(eq(schema.cards.ownerAccountId, accountId), eq(schema.cards.kind, "dbc"))).orderBy(asc(schema.cards.createdAt)).limit(50);
-  return rows.map(row => ({ id: row.id, publicToken: row.publicToken!, suffix: row.publicToken!.slice(-4), profileId: row.profileId, profileName: row.profileName, disabled: row.disabledAt !== null }));
+  return rows.map(row => ({ id: row.id, publicToken: row.publicToken!, suffix: row.publicToken!.slice(-4), profileId: row.profileId, profileName: row.profileName, previewSceneId: row.previewSceneId, disabled: row.disabledAt !== null }));
 }
 
 export async function getOwnedCard(db: Db, accountId: string, cardId: string): Promise<CardSummary | null> {
   const [row] = await db.select(cardColumns).from(schema.cards).leftJoin(schema.profiles, eq(schema.profiles.id, schema.cards.profileId))
     .where(and(eq(schema.cards.id, cardId), eq(schema.cards.ownerAccountId, accountId), eq(schema.cards.kind, "dbc")));
-  return row ? { id: row.id, publicToken: row.publicToken!, suffix: row.publicToken!.slice(-4), profileId: row.profileId, profileName: row.profileName, disabled: row.disabledAt !== null } : null;
+  return row ? { id: row.id, publicToken: row.publicToken!, suffix: row.publicToken!.slice(-4), profileId: row.profileId, profileName: row.profileName, previewSceneId: row.previewSceneId, disabled: row.disabledAt !== null } : null;
 }
 
 export async function setCardDisabled(db: Db, input: { accountId: string; cardId: string; disabled: boolean }): Promise<void> {
