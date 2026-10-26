@@ -81,6 +81,7 @@ export async function getCardDetail(db: Db, cardId: string) {
       createdAt: schema.cards.createdAt,
       orderNumber: schema.orders.number,
       orderId: schema.orders.id,
+      orderStatus: schema.orders.status,
       label: schema.orderItems.label,
       reviewUrl: schema.orderItems.reviewUrl,
       purchaserId: schema.purchasers.id,
@@ -95,7 +96,7 @@ export async function getCardDetail(db: Db, cardId: string) {
   if (!card) return null;
 
   const credentials = await db
-    .select({ id: schema.activationCredentials.id, usedAt: schema.activationCredentials.usedAt, revokedAt: schema.activationCredentials.revokedAt })
+    .select({ id: schema.activationCredentials.id, usedAt: schema.activationCredentials.usedAt, revokedAt: schema.activationCredentials.revokedAt, retrievable: sql<boolean>`${schema.activationCredentials.encryptedCode} is not null` })
     .from(schema.activationCredentials)
     .where(eq(schema.activationCredentials.cardId, cardId));
   const activity = await db
@@ -105,7 +106,7 @@ export async function getCardDetail(db: Db, cardId: string) {
     .orderBy(desc(schema.activityEvents.createdAt), desc(schema.activityEvents.id))
     .limit(20);
 
-  const { orderNumber, orderId, label, reviewUrl, purchaserId, purchaserName, ownerAccountId, ...rest } = card;
+  const { orderNumber, orderId, orderStatus, label, reviewUrl, purchaserId, purchaserName, ownerAccountId, ...rest } = card;
   const [owningAccount] = ownerAccountId ? await db.select({ email: schema.accounts.email, role: schema.accounts.role, createdAt: schema.accounts.createdAt }).from(schema.accounts).where(eq(schema.accounts.id, ownerAccountId)) : [];
   return {
     ...rest,
@@ -113,8 +114,9 @@ export async function getCardDetail(db: Db, cardId: string) {
     owningAccountId: ownerAccountId,
     purchaser: purchaserId ? { id: purchaserId, name: purchaserName } : null,
     usableCredentialId: credentials.find((credential) => !credential.usedAt && !credential.revokedAt)?.id ?? null,
+    credentialRetrievable: credentials.find((credential) => !credential.usedAt && !credential.revokedAt)?.retrievable ?? false,
     credentialCount: credentials.length,
-    orderContext: orderNumber === null ? null : { orderId, orderNumber, label, reviewUrl },
+    orderContext: orderNumber === null ? null : { orderId, orderNumber, label, reviewUrl, status: orderStatus },
     activity,
   };
 }

@@ -78,7 +78,7 @@ describe("getCardDetail", () => {
       await recordActivity(tx, { type: "card_provisioned", actorAccountId: owner.id, cardId: card.id, note: "token x" });
 
       const detail = await getCardDetail(tx, card.id);
-      expect(detail).toMatchObject({ id: card.id, state: "blank", usableCredentialId: usable.id, credentialCount: 1, orderContext: null });
+      expect(detail).toMatchObject({ id: card.id, state: "blank", usableCredentialId: usable.id, credentialCount: 1, orderContext: null, credentialRetrievable: false });
       expect(detail?.activity).toMatchObject([{ type: "card_provisioned", note: "token x" }]);
       expect(JSON.stringify(detail)).not.toContain(syntheticLookup(77));
     }));
@@ -94,7 +94,7 @@ describe("getCardDetail", () => {
         .returning();
 
       const detail = await getCardDetail(tx, card.id);
-      expect(detail?.orderContext).toEqual({ orderId: order.id, orderNumber: order.number, label: "Branch A", reviewUrl: "https://g.page/r/x/review" });
+      expect(detail?.orderContext).toEqual({ orderId: order.id, orderNumber: order.number, label: "Branch A", reviewUrl: "https://g.page/r/x/review", status: "in_progress" });
       expect(detail?.usableCredentialId).toBeNull();
       expect(await getCardDetail(tx, crypto.randomUUID())).toBeNull();
     }));

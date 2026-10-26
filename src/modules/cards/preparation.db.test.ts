@@ -234,3 +234,14 @@ test("retiring Preparing without credential secrets is refused with its own code
   await expect(retireCard(tx, { actorId: owner.id, cardId, reason: "x" })).rejects.toMatchObject({ code: "secrets_required" });
   expect(await cardById(tx, cardId)).toEqual(before);
 }));
+
+test("the NFC activity note states only what is verified, not a phone or writable attestation", () => rollback(db, async (tx) => {
+  const owner = await insertAccount(tx, "owner");
+  await insertProduct(tx, "dbc");
+  const [cardId] = await virginStock(tx, 1);
+  await createPaidDbcOrder(tx, normalOrderInput(owner.id));
+  await nfc(tx, owner.id, cardId);
+  const [event] = (await tx.select().from(s.activityEvents).where(eq(s.activityEvents.cardId, cardId))).filter((row) => row.type === "card_nfc_verified");
+  expect(event.note).toBe("owner confirmed; the URL read back matched the permanent card URL exactly");
+  expect(event.note).not.toMatch(/phone|writable/i);
+}));

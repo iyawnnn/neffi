@@ -90,7 +90,7 @@ export async function recordNfcCheck(db: Db, input: NfcCheckInput): Promise<void
       actorAccountId: input.actorId,
       cardId: card.id,
       orderId: orderId ?? undefined,
-      note: ["read back exactly, phone opened it, tag left writable", input.device?.trim()].filter(Boolean).join("; "),
+      note: ["owner confirmed; the URL read back matched the permanent card URL exactly", input.device?.trim()].filter(Boolean).join("; "),
     });
   });
 }

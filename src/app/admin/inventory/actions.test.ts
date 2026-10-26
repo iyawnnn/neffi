@@ -58,7 +58,7 @@ type Case = {
   reveal: Record<string, string> | null;
 };
 
-const NFC = { cardId: CARD, readBackUri: "https://tap.example.test/c/X", readBackMatched: "on", phoneOpenedUri: "on", tagLeftWritable: "on" };
+const NFC = { cardId: CARD, readBackUri: "https://tap.example.test/c/X" };
 const REPLACE = { cardId: CARD, credentialId: ITEM, reason: "lost", confirm: "on" };
 const RETIRE = { cardId: CARD, reason: "failed", confirm: "on" };
 const STOCK = { receivedOn: "2026-10-10", quantity: "3", intendedKind: "dbc" };
@@ -77,7 +77,7 @@ const CASES: Case[] = [
     name: "recordNfcCheckAction",
     service: "recordNfcCheck",
     fields: NFC,
-    bad: [without(NFC, "readBackMatched"), without(NFC, "phoneOpenedUri"), without(NFC, "tagLeftWritable"), without(NFC, "readBackUri"), { ...NFC, cardId: "x" }],
+    bad: [without(NFC, "readBackUri"), { ...NFC, readBackUri: "  " }, { ...NFC, cardId: "x" }],
     reveal: null,
   },
   {

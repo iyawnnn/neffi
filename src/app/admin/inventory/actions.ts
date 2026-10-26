@@ -114,15 +114,13 @@ export async function recordNfcCheckAction(_previous: ActionState | undefined, d
   const schema = z.object({
     cardId: id,
     readBackUri: text(2048).min(1),
-    readBackMatched: checked,
-    phoneOpenedUri: checked,
-    tagLeftWritable: checked,
     device: optionalText(100),
   });
   return run(
     schema,
     data,
     async ({ cardId, readBackUri, device }, actorId) => {
+      // The single owner action attests the physical test; the server verifies only the exact read-back URL.
       await recordNfcCheck(db, {
         actorId,
         cardId,
@@ -133,7 +131,7 @@ export async function recordNfcCheckAction(_previous: ActionState | undefined, d
         tagLeftWritable: true,
         device,
       });
-      return { ok: "NFC check recorded." };
+      return { ok: "NFC test confirmed." };
     },
     cardPage,
   );

@@ -5,7 +5,7 @@ import { Ban, CircleAlert, CircleCheck, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, type Confirmation } from "../confirm-dialog";
-import { checkLabel, controlClass, fieldLabel, Input, NextStep, Select, TextLink, Textarea } from "../ui";
+import { controlClass, fieldLabel, Input, NextStep, Select, TextLink, Textarea } from "../ui";
 import { CardUrl } from "./card-url";
 import {
   matchPackageAction,
@@ -21,7 +21,6 @@ import {
 
 const field = controlClass;
 const label = fieldLabel;
-const check = checkLabel;
 
 type Action = (previous: ActionState | undefined, data: FormData) => Promise<ActionState>;
 
@@ -40,13 +39,13 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
 
   return (
     <div role="status" className="flex flex-col gap-4 rounded-panel border border-action/50 bg-background p-4 sm:p-5 text-body">
-      <h2 className="text-section">Activation code — shown once</h2>
+      <h2 className="text-section">Activation code</h2>
       <p className="rounded-lg border bg-canvas px-4 py-3 font-mono text-[1.5rem] leading-8 font-semibold tracking-wider break-all select-all">{reveal.code}</p>
       <Button type="button" variant="action" size="touch" className="self-start md:h-9" onClick={copy}>Copy activation code</Button>
       <p role="status" className="text-meta text-fg-secondary">{message}</p>
       {reveal.url ? <p className="font-mono text-label text-fg-secondary break-all select-all">{reveal.url}</p> : null}
       <p className="text-meta text-fg-secondary">
-        {reveal.instructions ?? "Save this code to the card's package now. It cannot be shown again. If it is lost before release, use Credential recovery."}
+        {reveal.instructions ?? "Print or write this code on the card's package now. You can show it again from this card until the customer activates it."}
       </p>
     </div>
   );
@@ -191,29 +190,21 @@ export function ProvisionForm({ cardId, available }: { cardId: string; available
   );
 }
 
+// One explicit action: the owner pastes what the card returned, the server compares it with the permanent URL and
+// records the physical-test attestation. There is no checkbox ceremony.
 export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expectedUri: string }) {
   return (
-    <ActionForm action={recordNfcCheckAction} submit="Confirm NFC check" variant="primary">
+    <ActionForm action={recordNfcCheckAction} submit="Confirm NFC test" variant="primary">
       <input type="hidden" name="cardId" value={cardId} />
-      <p className="text-body">Complete this only when you have the physical card.</p>
-      <CardUrl url={expectedUri} />
+      <CardUrl url={expectedUri} copyLabel="Copy NFC URL" copied="NFC URL copied." />
       <ol className="list-decimal space-y-1 pl-5 text-body">
         <li>Write this URL to the card using NFC Tools.</li>
-        <li>Scan the card again using NFC Tools → Read.</li>
-        <li>Paste the URL you read from the card below.</li>
+        <li>Read it back and tap the card on a phone. Keep the tag writable.</li>
+        <li>Paste the URL you read from the card.</li>
       </ol>
       <label className={label}>
         URL read from the card
         <Input name="readBackUri" required autoComplete="off" spellCheck={false} autoCapitalize="off" />
-      </label>
-      <label className={check}>
-        <input type="checkbox" name="readBackMatched" required />The URL on the card matches the Card URL above.
-      </label>
-      <label className={check}>
-        <input type="checkbox" name="phoneOpenedUri" required />Tapping the card on a phone opens the correct URL.
-      </label>
-      <label className={check}>
-        <input type="checkbox" name="tagLeftWritable" required />The card is still writable.
       </label>
     </ActionForm>
   );
@@ -221,13 +212,13 @@ export function NfcCheckForm({ cardId, expectedUri }: { cardId: string; expected
 
 export function MatchPackageForm({ cardId }: { cardId: string }) {
   return (
-    <ActionForm action={matchPackageAction} submit="Match package" variant="primary">
+    <ActionForm action={matchPackageAction} submit="Confirm package" variant="primary">
       <input type="hidden" name="cardId" value={cardId} />
       <label className={label}>
         Code from the package
         <Input name="activationCode" required autoComplete="off" spellCheck={false} autoCapitalize="off" className="font-mono" />
       </label>
-      <p className="text-meta text-fg-secondary">Type the private code printed in the package that goes with this card.</p>
+      <p className="text-meta text-fg-secondary">Type the private code printed on the package that goes with this card. It is never filled in for you.</p>
     </ActionForm>
   );
 }
