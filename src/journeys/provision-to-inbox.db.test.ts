@@ -62,6 +62,7 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     const partial = await loadOrderFacts(db, orderId);
     expect(partial.status).toBe("in_progress");
     expect(partial.totals.balance).toBe(90_000);
+    assert(partial.totals.balance !== null);
     await recordPayment(db, { actorId: owner.id, orderId, method: "cash", amount: partial.totals.balance, paidOn: "2026-10-16" });
     const detail = await getOrderDetail(db, orderId);
     assert(detail);

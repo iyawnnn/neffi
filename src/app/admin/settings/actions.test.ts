@@ -20,7 +20,8 @@ test("validates inputs and converts pesos on the server", async () => {
     expect(await saveProductAction(undefined, form(bad))).toHaveProperty("error");
   }
   expect(saveProduct).not.toHaveBeenCalled();
-  expect(await saveProductAction(undefined, form({ kind: "dbc", name: " DBC ", price: "1,500.50" }))).toHaveProperty("ok");
-  expect(saveProduct).toHaveBeenCalledWith({}, { productId: undefined, kind: "dbc", name: "DBC", price: 150050 });
+  expect(await saveProductAction(undefined, form({ kind: "dbc", name: "DBC", price: "1,500.50" }))).toHaveProperty("error");
+  expect(await saveProductAction(undefined, form({ kind: "dbc", name: " DBC ", price: "799.00" }))).toHaveProperty("ok");
+  expect(saveProduct).toHaveBeenCalledWith({}, { productId: undefined, kind: "dbc", name: "DBC", price: 79900 });
   expect(revalidatePath).toHaveBeenCalledWith("/admin/settings");
 });

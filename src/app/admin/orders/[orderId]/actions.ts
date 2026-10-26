@@ -60,7 +60,10 @@ const itemFields = {
 const lineInput = (input: z.output<z.ZodObject<typeof itemFields>>) => ({ ...input, agreedTotal: input.agreedTotal ? parsePesos(input.agreedTotal) : null, label: input.label || undefined, reviewUrl: input.reviewUrl || undefined });
 
 export async function addOrderItemAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
-  return run(z.object({ ...itemFields, kind: z.enum(["dbc", "grc"]) }), data, (input, actorId) => addOrderItem(db, { ...lineInput(input), kind: input.kind, actorId }));
+  return run(z.object({ ...itemFields, kind: z.enum(["dbc", "grc"]) }), data, (input, actorId) => {
+    if (input.kind === "dbc") throw new OrderError("wrong_status");
+    return addOrderItem(db, { ...lineInput(input), kind: input.kind, actorId });
+  });
 }
 
 export async function updateOrderItemAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
@@ -72,7 +75,7 @@ export async function removeOrderItemAction(_previous: ActionState | undefined, 
 }
 
 const optionalDate = z.preprocess((value) => value === "" ? undefined : value, z.iso.date().optional());
-const method = z.enum(["gcash", "bank_transfer", "cash"]);
+const method = z.enum(["gcash", "maya", "maribank", "gotyme", "bank_transfer", "cash"]);
 
 export async function recordPaymentAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(z.object({ orderId: id, amount: z.string().trim().max(30), method, paidOn: optionalDate, reference: z.string().trim().max(100).optional() }), data, (input, actorId) => recordPayment(db, { ...input, actorId, amount: input.amount ? parsePesos(input.amount) : undefined }));

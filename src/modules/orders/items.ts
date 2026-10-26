@@ -19,7 +19,8 @@ async function lockItem(tx: Db, orderId: string, itemId: string) {
 export async function addOrderItem(db: Db, input: Mutation & Record<string, unknown>): Promise<string> {
   const line = orderLineSchema.safeParse(input);
   if (!line.success) throw new OrderError("invalid_input");
-  return mutateOrder(db, input, async (tx) => {
+  return mutateOrder(db, input, async (tx, order) => {
+    if (order.clientKey) throw new OrderError("wrong_status");
     if (line.data.kind === "grc" && (await loadOrderFacts(tx, input.orderId)).hasCommercialDelivery) throw new OrderError("items_delivered");
     const product = await activeProduct(tx, line.data.kind).catch((error) => {
       if (error instanceof CardError && error.code === "no_product") throw new OrderError("no_product");
@@ -32,7 +33,8 @@ export async function addOrderItem(db: Db, input: Mutation & Record<string, unkn
 }
 
 export async function updateOrderItem(db: Db, input: Mutation & { orderItemId: string } & Record<string, unknown>): Promise<void> {
-  return mutateOrder(db, input, async (tx) => {
+  return mutateOrder(db, input, async (tx, order) => {
+    if (order.clientKey) throw new OrderError("wrong_status");
     const item = await lockItem(tx, input.orderId, input.orderItemId);
     const line = orderLineSchema.safeParse({ ...input, kind: item.productKind });
     if (!line.success) throw new OrderError("invalid_input");
@@ -45,7 +47,8 @@ export async function updateOrderItem(db: Db, input: Mutation & { orderItemId: s
 }
 
 export async function removeOrderItem(db: Db, input: Mutation & { orderItemId: string }): Promise<void> {
-  return mutateOrder(db, input, async (tx) => {
+  return mutateOrder(db, input, async (tx, order) => {
+    if (order.clientKey) throw new OrderError("wrong_status");
     const item = await lockItem(tx, input.orderId, input.orderItemId);
     const facts = await loadOrderFacts(tx, input.orderId);
     if (facts.items.length === 1) throw new OrderError("last_item");

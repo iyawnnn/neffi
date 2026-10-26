@@ -17,7 +17,7 @@ export async function lockOrder(tx: Db, id: string): Promise<Order> {
 
 export async function loadOrderFacts(tx: Db, id: string) {
   const result = await tx.execute<Facts>(sql`
-    select o.status, o.delivery_method as "deliveryMethod", o.shipping_fee as "shippingFee",
+    select o.status, o.delivery_method as "deliveryMethod", o.shipping_fee as "shippingFee", o.shipping_fee_pending as "shippingFeePending",
       coalesce(lines.items, '[]'::jsonb) as items,
       coalesce((select sum(amount)::float8 from payments where order_id = o.id and voided_at is null), 0) as received,
       coalesce((select sum(amount)::float8 from refunds where order_id = o.id and voided_at is null and support_case_id is null), 0) as refunded,
@@ -81,6 +81,7 @@ export async function addOrderNote(db: Db, input: { orderId: string; actorId: st
 
 export async function updateOrderDetails(db: Db, input: { orderId: string; actorId: string; deliveryMethod: Order["deliveryMethod"]; shippingFee: number; notes: string }) {
   return mutateOrder(db, input, async (tx, order) => {
+    if (order.clientKey) throw new OrderError("wrong_status");
     const facts = await loadOrderFacts(tx, order.id);
     if (input.deliveryMethod !== order.deliveryMethod && (facts.anyReleased || facts.hasCommercialDelivery)) throw new OrderError("delivery_locked");
     await tx.update(schema.orders).set({ deliveryMethod: input.deliveryMethod, shippingFee: input.shippingFee, notes: input.notes }).where(eq(schema.orders.id, order.id));

@@ -29,6 +29,8 @@ test("each action authorizes before domain calls", async () => {
 test("item actions validate quantity/confirmation and convert or clear the agreed total", async () => {
   expect(await removeOrderItemAction(undefined, form({ orderId: id, orderItemId: id }))).toHaveProperty("error");
   expect(await addOrderItemAction(undefined, form({ orderId: id, kind: "dbc", quantity: "0", agreedTotal: "" }))).toHaveProperty("error");
+  expect(await addOrderItemAction(undefined, form({ orderId: id, kind: "dbc", quantity: "1", agreedTotal: "" }))).toHaveProperty("error");
+  expect(addOrderItem).not.toHaveBeenCalled();
   await updateOrderItemAction(undefined, form({ orderId: id, orderItemId: id, quantity: "2", agreedTotal: "1,000.50" }));
   expect(updateOrderItem).toHaveBeenLastCalledWith({}, expect.objectContaining({ quantity: 2, agreedTotal: 100050 }));
   await updateOrderItemAction(undefined, form({ orderId: id, orderItemId: id, quantity: "2", agreedTotal: "" }));

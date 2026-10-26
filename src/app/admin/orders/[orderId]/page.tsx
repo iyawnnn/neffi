@@ -41,7 +41,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   const toDo: { text: string; href: string }[] = [];
   if (order.status === "in_progress") {
     for (const item of order.items) if (item.productKind === "dbc" && item.activeCount < item.quantity) toDo.push({ text: `Reserve DBC cards · ${item.name} (${item.quantity - item.activeCount} remaining)`, href: "#items" });
-    if (order.totals.balance > 0) toDo.push({ text: `Record payment · ${formatPeso(order.totals.balance)} due`, href: "#payments" });
+    if (!order.clientKey && order.totals.balance !== null && order.totals.balance > 0) toDo.push({ text: `Record payment · ${formatPeso(order.totals.balance)} due`, href: "#payments" });
     if (canDeliver && (order.deliveryMethod === "pickup" || order.deliveryMethod === "local_handoff")) toDo.push({ text: "Record handover", href: "#delivery" });
     if (canDeliver && order.deliveryMethod === "courier") toDo.push({ text: "Record shipment", href: "#delivery" });
   }
@@ -56,9 +56,9 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
       </span>}
       actions={<LinkButton icon={LifeBuoy} href={`/admin/support/new?orderId=${order.id}&purchaserId=${order.purchaserId}`}>Open support case</LinkButton>}
     />
-    <StatStrip items={[["Order total", order.totals.orderTotal], ["Net paid", order.totals.netPaid], ["Balance", order.totals.balance], ["Refund due", order.totals.refundDue]].map(([name, value]) => ({ label: name as string, value: formatPeso(value as number) }))} />
+    <StatStrip items={[["Order total", order.totals.orderTotal], ["Net paid", order.totals.netPaid], ["Balance", order.totals.balance], ["Refund due", order.totals.refundDue]].map(([name, value]) => ({ label: name as string, value: value === null ? "Pending shipping" : formatPeso(value as number) }))} />
     {toDo.length ? <Section title="To do"><Panel><ul className="divide-y">{toDo.map((entry) => <li key={entry.text}><a href={entry.href} className="flex min-h-12 items-center gap-3 px-4 sm:px-5 py-2.5 text-body nav-interact transition-colors hover:bg-canvas focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-brand" />{entry.text}</a></li>)}</ul></Panel></Section> : null}
-    {order.status === "completed" && order.totals.balance > 0 ? <p role="status" className="rounded-panel border border-amber-500/40 bg-background p-4 text-body">Balance due after correction: {formatPeso(order.totals.balance)}</p> : null}
+    {order.status === "completed" && order.totals.balance !== null && order.totals.balance > 0 ? <p role="status" className="rounded-panel border border-amber-500/40 bg-background p-4 text-body">Balance due after correction: {formatPeso(order.totals.balance)}</p> : null}
     {order.status === "completed" ? <p className={quiet}>After-sale refunds: {formatPeso(order.totals.afterSaleRefunded ?? 0)}</p> : null}
 
     <Section title="Support cases" description={supportCases.length ? undefined : "No support cases linked to this order."}>
@@ -86,7 +86,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
         </ActionSheet>)}
         {order.cards.filter((card) => card.state === "reserved").map((card) => <ActionSheet key={card.id} title={`Return DBC ${card.suffix ?? ""} to stock`}><ActionForm action={returnCardToStockAction} submit="Return to stock" confirm={{ field: "confirm", icon: <Undo2 className="size-5" />, title: `Return DBC ${card.suffix ?? ""} to stock?`, description: `The card leaves Order ${order.number} and goes back to Ready stock. For a lost package, replace its credential from Inventory afterward.`, confirmLabel: "Return to stock" }}>{hidden}<input type="hidden" name="cardId" value={card.id} /><p className={quiet}>Returns this DBC to Ready stock. For a lost package, replace its credential from Inventory afterward.</p></ActionForm></ActionSheet>)}
       </div> : null}
-      {order.status === "in_progress" ? <div className="flex flex-col gap-3">
+      {order.status === "in_progress" && !order.clientKey ? <div className="flex flex-col gap-3">
         {order.items.map((item) => <Disclosure key={item.id} summary={`Edit ${item.name}${item.label ? ` · ${item.label}` : ""}`}>
           <ActionForm action={updateOrderItemAction} submit="Save item">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
             <label className={fieldLabel}>Quantity<Input name="quantity" type="number" inputMode="numeric" min={1} max={500} required defaultValue={item.quantity} readOnly={item.productKind === "grc" && order.hasCommercialDelivery} /></label>
@@ -95,7 +95,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
           </ActionForm>
           {order.items.length > 1 && !(item.productKind === "grc" && order.hasCommercialDelivery) ? <div className="border-t pt-4"><ActionForm action={removeOrderItemAction} submit="Remove item" variant="destructive" confirm={{ field: "confirm", icon: <Trash2 className="size-5" />, title: "Remove this line?", description: `${item.quantity} × ${item.name}${item.label ? ` · ${item.label}` : ""} comes off Order ${order.number}, and the order total drops by ${formatPeso(effectiveItemTotal(item))}.`, confirmLabel: "Remove item" }}>{hidden}<input type="hidden" name="orderItemId" value={item.id} /></ActionForm></div> : null}
         </Disclosure>)}
-        {(["dbc", "grc"] as const).filter((kind) => kind === "dbc" || !order.hasCommercialDelivery).map((kind) => <Disclosure key={kind} summary={`Add ${kind.toUpperCase()} line`}><ActionForm action={addOrderItemAction} submit="Add item">{hidden}<input type="hidden" name="kind" value={kind} />
+        {(["grc"] as const).filter(() => !order.hasCommercialDelivery).map((kind) => <Disclosure key={kind} summary={`Add ${kind.toUpperCase()} line`}><ActionForm action={addOrderItemAction} submit="Add item">{hidden}<input type="hidden" name="kind" value={kind} />
           <label className={fieldLabel}>Quantity<Input name="quantity" type="number" inputMode="numeric" min={1} max={500} defaultValue={1} required /></label>
           <label className={fieldLabel}>Agreed line total (pesos, optional)<Input name="agreedTotal" inputMode="decimal" maxLength={30} /></label>
           {kind === "grc" ? <><label className={fieldLabel}>Branch label (optional)<Input name="label" maxLength={100} /></label><label className={fieldLabel}>Direct review URL (optional)<Input name="reviewUrl" type="url" maxLength={2048} /></label></> : null}
@@ -109,12 +109,12 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
         {order.refunds.map((refund) => <li key={refund.id} className="flex flex-col gap-1 px-4 sm:px-5 py-3.5"><p className={`text-body ${refund.voidedAt ? "line-through text-fg-secondary" : ""}`}>{refund.supportCaseId ? "After-sale refund" : "Refund"} {formatPeso(refund.amount)} · {refund.method} · {refund.refundedOn}</p>{refund.supportCaseId ? <Link className={`${link} inline-flex min-h-8 items-center text-meta`} href={`/admin/support/${refund.supportCaseId}`}>View support case</Link> : null}{refund.reason ? <p className={quiet}>{refund.reason}</p> : null}{refund.voidedAt ? <p className={quiet}>Voided: {refund.voidReason}</p> : order.status !== "completed" && !refund.supportCaseId ? <div>{correction("refund", refund.id, refund.amount)}</div> : null}</li>)}
       </ul></Panel> : <p className={quiet}>No money recorded.</p>}
       <div className="flex flex-wrap gap-2">
-        {order.status === "in_progress" && order.totals.balance > 0 ? <ActionSheet title="Record payment"><ActionForm action={recordPaymentAction} submit="Record payment" variant="primary">{hidden}<MoneyFields kind="payment" amount={order.totals.balance} /></ActionForm></ActionSheet> : null}
+        {order.status === "in_progress" && !order.clientKey && order.totals.balance !== null && order.totals.balance > 0 ? <ActionSheet title="Record payment"><ActionForm action={recordPaymentAction} submit="Record payment" variant="primary">{hidden}<MoneyFields kind="payment" amount={order.totals.balance} /></ActionForm></ActionSheet> : null}
         {order.status !== "completed" && order.totals.netPaid > 0 ? <ActionSheet title="Record refund"><ActionForm action={recordRefundAction} submit="Record refund" variant="destructive" confirm={{ field: "confirm", icon: <Banknote className="size-5" />, title: "Record this refund?", description: `This records that the money was returned to ${order.purchaser.name}. It lowers what Order ${order.number} counts as paid.`, confirmLabel: "Record refund" }}>{hidden}<MoneyFields kind="refund" amount={order.totals.refundDue || order.totals.netPaid} /></ActionForm></ActionSheet> : null}
       </div>
     </Section>
 
-    <Section id="delivery" title="Delivery" description={`${order.deliveryMethod?.replaceAll("_", " ") ?? "Not selected"} · Fee ${formatPeso(order.shippingFee)}`}>
+    <Section id="delivery" title="Delivery" description={`${order.deliveryMethod?.replaceAll("_", " ") ?? "Not selected"} · Fee ${order.shippingFeePending ? "pending" : formatPeso(order.shippingFee)}`}>
       <div className="flex flex-wrap gap-2">
         {order.status === "in_progress" && canDeliver && (order.deliveryMethod === "pickup" || order.deliveryMethod === "local_handoff") ? <ActionSheet title="Hand over"><ActionForm action={handOverOrderAction} submit="Record handover" variant="primary" confirm={{ field: "confirm", icon: <HandHelping className="size-5" />, title: "Record this handover?", description: `The goods are marked as handed to ${order.purchaser.name}. Reserved DBCs are released and cannot be taken back, and any Google Review Card goods count as delivered.`, confirmLabel: "Record handover" }}>{hidden}<p>Releases all Reserved DBCs and records commercial delivery of the GRC goods, if present.</p></ActionForm></ActionSheet> : null}
         {order.status === "in_progress" && canDeliver && order.deliveryMethod === "courier" ? <ActionSheet title="Ship"><ActionForm action={shipOrderAction} submit="Record shipment" variant="primary" confirm={{ field: "confirm", icon: <Truck className="size-5" />, title: "Record this shipment?", description: `The goods are marked as handed to the courier for Order ${order.number}. Reserved DBCs are released and cannot be taken back.`, confirmLabel: "Record shipment" }}>{hidden}

@@ -20,8 +20,8 @@ test("rejects malformed or excessive line data", async () => {
   expect(createOrder).not.toHaveBeenCalled();
 });
 
-test("validates and forwards the optional support case link", async () => {
-  const data = form();
+test("validates and forwards the optional support case link for GRC", async () => {
+  const data = form('[{"kind":"grc","quantity":1}]');
   data.set("supportCaseId", "invalid");
   expect(await createOrderAction(undefined, data)).toHaveProperty("error");
   expect(createOrder).not.toHaveBeenCalled();
@@ -31,8 +31,10 @@ test("validates and forwards the optional support case link", async () => {
   expect(createOrder).toHaveBeenCalledWith({}, expect.objectContaining({ supportCaseId: caseId }));
 });
 
-test("ignores client prices, converts negotiated pesos and redirects to the new workspace", async () => {
-  await createOrderAction(undefined, form('[{"kind":"dbc","quantity":1,"agreedTotal":"400.50","unitPrice":1}]'));
-  expect(createOrder).toHaveBeenCalledWith({}, expect.objectContaining({ actorId: "owner", items: [{ kind: "dbc", quantity: 1, agreedTotal: 40050, label: undefined, reviewUrl: undefined }] }));
+test("rejects legacy DBC creation and keeps GRC negotiated totals", async () => {
+  expect(await createOrderAction(undefined, form('[{"kind":"dbc","quantity":1,"agreedTotal":"400.50"}]'))).toHaveProperty("error");
+  expect(createOrder).not.toHaveBeenCalled();
+  await createOrderAction(undefined, form('[{"kind":"grc","quantity":1,"agreedTotal":"400.50","unitPrice":1}]'));
+  expect(createOrder).toHaveBeenCalledWith({}, expect.objectContaining({ actorId: "owner", items: [{ kind: "grc", quantity: 1, agreedTotal: 40050, label: undefined, reviewUrl: undefined }] }));
   expect(redirect).toHaveBeenCalledWith("/admin/orders/created");
 });

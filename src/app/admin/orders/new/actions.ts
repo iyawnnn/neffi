@@ -29,6 +29,7 @@ export async function createOrderAction(_previous: ActionState | undefined, data
   try {
     const decoded = z.array(z.object({ kind: z.enum(["dbc", "grc"]), quantity: z.number().int().min(1).max(500), agreedTotal: optional(30), label: optional(100), reviewUrl: optional(2048) })).min(1).max(50).safeParse(JSON.parse(input.items));
     if (!decoded.success) return { error: "Check the order items and try again." };
+    if (decoded.data.some((line) => line.kind === "dbc")) return { error: "New DBC orders use the fixed-price paid order flow." };
     const result = await createOrder(db, {
       actorId: auth.viewer.accountId,
       supportCaseId: input.supportCaseId,

@@ -20,8 +20,8 @@ export async function listOrders(db: Db, { before, offset = 0, limit, ...filters
   const lines = db.select({ subtotal: sql<number>`coalesce(sum(coalesce(${schema.orderItems.agreedTotal}, ${schema.orderItems.quantity}::bigint * ${schema.orderItems.unitPrice})), 0)::float8`.as("subtotal") }).from(schema.orderItems).where(eq(schema.orderItems.orderId, schema.orders.id)).as("lines");
   const settledPaid = sql<number>`coalesce((select sum(amount) from payments where order_id = ${schema.orders.id} and voided_at is null), 0) - coalesce((select sum(amount) from refunds where order_id = ${schema.orders.id} and voided_at is null and support_case_id is null), 0)`;
   const rows = await db.select({ id: schema.orders.id, number: schema.orders.number, status: schema.orders.status, purchaserName: schema.purchasers.name, assignedToAccountId: schema.orders.assignedToAccountId, createdAt: schema.orders.createdAt,
-    orderTotal: sql<number>`(${lines.subtotal} + ${schema.orders.shippingFee})::float8`,
-    balance: sql<number>`greatest(${lines.subtotal} + ${schema.orders.shippingFee} - (${settledPaid}), 0)::float8`,
+    orderTotal: sql<number | null>`case when ${schema.orders.shippingFeePending} then null else (${lines.subtotal} + ${schema.orders.shippingFee})::float8 end`,
+    balance: sql<number | null>`case when ${schema.orders.shippingFeePending} then null else greatest(${lines.subtotal} + ${schema.orders.shippingFee} - (${settledPaid}), 0)::float8 end`,
     cursor: sql<string>`${schema.orders.createdAt}::text || '|' || ${schema.orders.id}::text`,
   }).from(schema.orders).innerJoin(schema.purchasers, eq(schema.purchasers.id, schema.orders.purchaserId)).leftJoinLateral(lines, sql`true`)
     .where(and(...orderFilters(filters), cursor ? sql`(${schema.orders.createdAt}, ${schema.orders.id}) < (${cursor[1]}::timestamptz, ${cursor[4]}::uuid)` : undefined))

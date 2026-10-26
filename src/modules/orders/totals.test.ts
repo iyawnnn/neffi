@@ -13,6 +13,13 @@ test("effective item total uses the agreed total, including zero", () => {
   expect(effectiveItemTotal({ ...facts.items[0], agreedTotal: 0 })).toBe(0);
 });
 
+test("pending shipping has no final total or balance and cannot complete", () => {
+  const pending = { ...facts, deliveryMethod: "courier" as const, shippingFee: 0, shippingFeePending: true, received: 20000, hasShippedShipment: true };
+  expect(orderTotals(pending)).toMatchObject({ productSubtotal: 20000, shippingFeePending: true, orderTotal: null, balance: null, paymentState: "Unpaid" });
+  expect(isCompletionEligible(pending)).toBe(false);
+  expect(orderTotals({ ...pending, shippingFeePending: false, shippingFee: 500 })).toMatchObject({ orderTotal: 20500, balance: 500 });
+});
+
 test("GRC-only completion needs commercial delivery and exact payment, with no physical Card states", () => {
   const grc = { ...facts, items: [{ ...facts.items[0], productKind: "grc" as const, activeCount: 0, releasedCount: 0 }] };
   expect(isCompletionEligible(grc)).toBe(false);

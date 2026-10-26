@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { formatPeso } from "@/lib/money";
 import { formatDate } from "@/lib/format-date";
 import { listOwnerAccess, listProducts } from "@/modules/orders/products";
+import { NORMAL_DBC_UNIT_PRICE } from "@/modules/orders/policy";
 import { adminPageNarrow, EmptyPanel, fieldLabel, Input, PageHeader, Panel, RecordTable, Section } from "../ui";
 import { ActionForm } from "../inventory/forms";
 import { saveProductAction } from "./actions";
@@ -36,7 +37,7 @@ export default async function SettingsPage() {
                     <p className="text-meta text-fg-secondary">{blurb}</p>
                   </div>
                 </div>
-                <p className="shrink-0 text-right text-meta text-fg-secondary">{product ? <>Current price<span className="block text-section text-foreground tabular-nums">{formatPeso(product.price)}</span></> : "Not set up yet"}</p>
+                <p className="shrink-0 text-right text-meta text-fg-secondary">{kind === "dbc" ? <>Fixed price<span className="block text-section text-foreground tabular-nums">{formatPeso(NORMAL_DBC_UNIT_PRICE)}</span></> : product ? <>Current price<span className="block text-section text-foreground tabular-nums">{formatPeso(product.price)}</span></> : "Not set up yet"}</p>
               </div>
               <ActionForm action={saveProductAction} submit={product ? "Save changes" : "Create product"} className="sm:flex-row sm:flex-wrap sm:items-end sm:[&>button]:self-end">
                 <input type="hidden" name="kind" value={kind} />
@@ -46,7 +47,7 @@ export default async function SettingsPage() {
                   Price (pesos)
                   <span className="relative block">
                     <span aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-body text-fg-secondary">₱</span>
-                    <Input name="price" required inputMode="decimal" maxLength={30} defaultValue={product ? (product.price / 100).toFixed(2) : undefined} className="pl-7 tabular-nums" />
+                    <Input name="price" required inputMode="decimal" maxLength={30} defaultValue={kind === "dbc" ? "799.00" : product ? (product.price / 100).toFixed(2) : undefined} readOnly={kind === "dbc"} className="pl-7 tabular-nums" />
                   </span>
                 </label>
               </ActionForm>
