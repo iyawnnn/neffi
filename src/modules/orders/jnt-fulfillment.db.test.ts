@@ -7,7 +7,7 @@ import { recordNfcCheck } from "../cards/card";
 import { matchPackage } from "../cards/dbc";
 import { cardUrl } from "../cards/token";
 import { voidPayment } from "../payments/void";
-import { handOverOrder, shipOrder } from "./fulfillment";
+import { handOverOrder, shipOrder, updateShipment } from "./fulfillment";
 import { correctShipmentDate, markJntShipped, saveJntDelivery } from "./jnt-fulfillment";
 import { createPaidDbcOrder, type NormalDbcOrderInput } from "./normal-dbc";
 import { loadOrderFacts } from "./order";
@@ -221,4 +221,17 @@ test("the shipped date cannot be in the future or before the Order was created (
   expect(await payments(tx, orderId)).toHaveLength(1);
   await markJntShipped(tx, { ...base, trackingNumber: "T-1", shippedOn: "2026-10-11" });
   expect((await shipments(tx, orderId))[0]).toMatchObject({ shippedOn: "2026-10-11", status: "in_transit" });
+}));
+
+test("the generic shipment update cannot strand a pending normal shipment or overwrite its courier", () => rollback(db, async (tx) => {
+  const { base, orderId } = await setup(tx, jnt(12_000));
+  const [pending] = await shipments(tx, orderId);
+  await expect(updateShipment(tx, { ...base, shipmentId: pending.id, status: "in_transit" })).rejects.toMatchObject({ code: "delivery_locked" });
+  await expect(updateShipment(tx, { ...base, shipmentId: pending.id, status: "delivered" })).rejects.toMatchObject({ code: "delivery_locked" });
+  expect((await shipments(tx, orderId))[0]).toMatchObject({ status: "pending", shippedOn: null, courier: "J&T" });
+  await markJntShipped(tx, { ...base, trackingNumber: "T-1" });
+  await expect(updateShipment(tx, { ...base, shipmentId: pending.id, status: "delivered", courier: "LBC" })).rejects.toMatchObject({ code: "invalid_input" });
+  expect((await shipments(tx, orderId))[0]).toMatchObject({ courier: "J&T", status: "in_transit" });
+  await updateShipment(tx, { ...base, shipmentId: pending.id, status: "delivered", trackingNumber: "T-1", courierCost: 9_000 });
+  expect((await shipments(tx, orderId))[0]).toMatchObject({ courier: "J&T", status: "delivered", courierCost: 9_000, trackingNumber: "T-1" });
 }));

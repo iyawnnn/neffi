@@ -165,10 +165,14 @@ const classifiedExports: Record<string, readonly string[]> = {
     "handOverOrderAction",
     "shipOrderAction",
     "updateShipmentAction",
-    "cancelOrderAction"
+    "cancelOrderAction",
+    "saveJntDeliveryAction",
+    "markJntShippedAction",
+    "correctShipmentDateAction"
   ],
   "./admin/orders/new/actions.ts": [
-    "createOrderAction"
+    "createOrderAction",
+    "createPaidOrderAction"
   ],
   "./admin/settings/actions.ts": [
     "saveProductAction"

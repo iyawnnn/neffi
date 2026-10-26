@@ -98,7 +98,14 @@ const shipmentUpdate = z.object({ status: z.enum(["in_transit", "delivered", "fa
 export async function updateShipment(db: Db, input: Mutation & { shipmentId: string } & z.input<typeof shipmentUpdate>): Promise<void> {
   const parsed = shipmentUpdate.safeParse(input);
   if (!parsed.success) throw new OrderError("invalid_input");
-  await mutateOrder(db, { ...input, allow: ["in_progress", "completed"] }, async (tx) => {
+  await mutateOrder(db, { ...input, allow: ["in_progress", "completed"] }, async (tx, order) => {
+    // Normal J&T orders ship through markJntShipped only: the courier is server-fixed and a pending shipment cannot be moved by this generic update.
+    if (order.clientKey) {
+      const [shipment] = await tx.select({ shippedOn: schema.shipments.shippedOn }).from(schema.shipments).where(and(eq(schema.shipments.id, input.shipmentId), eq(schema.shipments.orderId, input.orderId), isNull(schema.shipments.supportCaseId)));
+      if (!shipment) throw new OrderError("not_found");
+      if (!shipment.shippedOn) throw new OrderError("delivery_locked");
+      if (parsed.data.courier !== undefined) throw new OrderError("invalid_input");
+    }
     const updated = await tx.update(schema.shipments).set(parsed.data).where(and(eq(schema.shipments.id, input.shipmentId), eq(schema.shipments.orderId, input.orderId), isNull(schema.shipments.supportCaseId))).returning({ id: schema.shipments.id });
     if (!updated.length) throw new OrderError("not_found");
     await recordActivity(tx, { type: "shipment_updated", actorAccountId: input.actorId, orderId: input.orderId });
