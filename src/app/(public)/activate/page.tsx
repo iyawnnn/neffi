@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AlertCircle, CircleHelp, CircleUser } from "lucide-react";
 import { getViewer } from "@/auth/access";
+import { NeffiLogo } from "@/components/neffi-logo";
 import { SignInForm } from "../sign-in/sign-in-form";
 import {
   ClaimForm,
@@ -106,13 +107,13 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
 
   return (
     <div data-auth-page className="flex flex-col bg-canvas">
-      <div data-auth-container className="mx-auto flex w-full max-w-[440px] md:max-w-[1080px] flex-col px-4 pt-4 sm:px-6 sm:pt-6 md:pt-8 pb-10 sm:pb-12 md:pb-14 gap-4 sm:gap-5 md:gap-6">
+      <div data-auth-container className={`mx-auto flex w-full flex-col gap-4 px-4 pt-4 pb-10 sm:gap-5 sm:px-6 sm:pt-6 sm:pb-12 md:pt-8 md:pb-14 ${challenge ? "max-w-[480px]" : "max-w-[440px] md:max-w-[1080px]"}`}>
 
         {/* Activation Surface */}
         <main className="w-full">
-          <div data-auth-card className="relative flex w-full flex-col rounded-2xl border border-border/80 bg-card shadow-xs md:grid md:grid-cols-[48%_52%] md:overflow-hidden">
+          <div data-auth-card className={`relative flex w-full flex-col rounded-2xl border border-border/80 bg-card shadow-xs ${challenge ? "" : "md:grid md:grid-cols-[48%_52%] md:overflow-hidden"}`}>
             {/* HERO REGION (mobile top feature panel with rounded corners / desktop left split panel) */}
-            <div className="w-full p-3.5 sm:p-4 pb-0 md:p-0 md:h-full">
+            {!challenge ? <div className="w-full p-3.5 sm:p-4 pb-0 md:p-0 md:h-full">
               <div data-auth-hero className="relative w-full overflow-hidden rounded-xl border border-border/70 bg-[#FAF9F5] aspect-[4/3] min-h-[220px] max-h-[340px] md:aspect-auto md:h-full md:max-h-none md:rounded-none md:border-0 md:border-r md:border-border/60">
                 {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
                 <picture className="block h-full w-full">
@@ -131,11 +132,13 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
                   />
                 </picture>
               </div>
-            </div>
+            </div> : null}
 
             {/* FORM & ONBOARDING REGION (right panel on desktop) */}
-            <div data-auth-body className="relative flex flex-col justify-center px-5 pt-5 pb-7 sm:px-6 sm:pt-6 sm:pb-8 md:px-8 md:py-10 lg:px-14">
+            <div data-auth-body data-accepted={challenge ? "" : undefined} className={`relative flex flex-col justify-center px-5 pt-5 pb-7 sm:px-6 sm:pt-6 sm:pb-8 ${challenge ? "md:px-8 md:py-9" : "md:px-8 md:py-10 lg:px-14"}`}>
               <div className="w-full max-w-[420px] mx-auto flex flex-col">
+                {challenge ? <NeffiLogo aria-label="Neffi" className="mx-auto mb-7 h-auto w-20 text-foreground" /> : null}
+                {challenge && viewer ? <p className="mb-2 text-center text-meta font-medium text-action-text">Code accepted</p> : null}
                 {/* Intro heading & supporting text */}
                 <div className="flex flex-col items-center text-center gap-2">
                   <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem] text-center">

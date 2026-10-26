@@ -64,7 +64,9 @@ test("only this segment disables prefetch and its metadata carries no profile da
   expect(metadata).toEqual({ title: "Neffi", robots: { index: false, follow: false } });
 });
 test("unavailable copy names no reason and no internal state", () => {
-  const text = renderToStaticMarkup(<Unavailable />).replace(/<[^>]+>/g, " ");
+  const html = renderToStaticMarkup(<Unavailable />);
+  expect(html).toContain('aria-label="Neffi"');
+  const text = html.replace(/<[^>]+>/g, " ");
   expect(text).toContain("This Neffi isn’t available right now");
   expect(text).not.toMatch(/disabled|draft|unpublish|claim|activat|token|profile|account|owner|error|404/i);
 });
