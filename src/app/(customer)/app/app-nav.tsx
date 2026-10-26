@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, CircleUser, House, LogOut, Nfc, UserRound } from "lucide-react";
+import { Bell, ChevronDown, CircleUser, House, LayoutDashboard, LogOut, Nfc, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -31,7 +31,7 @@ const isScrolled = () => window.scrollY > 8;
 const isScrolledOnServer = () => false;
 
 // Desktop sections share the header; mobile keeps the focused bottom tabs.
-export function AppHeader({ account, unread }: { account: HeaderAccount; unread: number }) {
+export function AppHeader({ account, unread, owner = false }: { account: HeaderAccount; unread: number; owner?: boolean }) {
   const pathname = usePathname();
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, isScrolledOnServer);
   if (pathname.startsWith("/app/setup/")) return <SetupHeader />;
@@ -54,7 +54,7 @@ export function AppHeader({ account, unread }: { account: HeaderAccount; unread:
         </nav>
         <div data-app-tools className="flex min-w-0 max-w-full items-center gap-0.5 justify-self-end">
           <InboxLink unread={unread} current={isCurrent(pathname, "/app/inbox")} />
-          <AccountMenu account={account} current={isCurrent(pathname, "/app/account")} />
+          <AccountMenu account={account} owner={owner} current={isCurrent(pathname, "/app/account")} />
         </div>
       </div>
     </header>
@@ -79,7 +79,8 @@ function InboxLink({ unread, current }: { unread: number; current: boolean }) {
   );
 }
 
-function AccountMenu({ account, current }: { account: HeaderAccount; current: boolean }) {
+// The Admin link is discoverability only: /admin still authorizes the OWNER role on the server.
+function AccountMenu({ account, owner, current }: { account: HeaderAccount; owner: boolean; current: boolean }) {
   const display = account.name ?? account.email.split("@")[0];
   const firstName = display.split(/\s+/)[0];
   const image = accountAvatarUrl(account.image);
@@ -116,6 +117,12 @@ function AccountMenu({ account, current }: { account: HeaderAccount; current: bo
             <CircleUser aria-hidden className="size-4 text-fg-secondary" />
             Account settings
           </DropdownMenuItem>
+          {owner ? (
+            <DropdownMenuItem render={<Link href="/admin" className="min-h-11" />} className="min-h-11 cursor-pointer gap-2.5 rounded-lg px-2.5 text-body interact transition-colors">
+              <LayoutDashboard aria-hidden className="size-4 text-fg-secondary" />
+              Admin dashboard
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem nativeButton render={<button type="submit" form="app-sign-out" />} className="min-h-11 w-full cursor-pointer gap-2.5 rounded-lg px-2.5 text-body interact transition-colors">
             <LogOut aria-hidden className="size-4 text-fg-secondary" />
             Sign out

@@ -80,3 +80,16 @@ test("OWNER denial stops before reading inventory", async () => {
   await expect(render()).rejects.toThrow("denied");
   expect(getCardDetail).not.toHaveBeenCalled();
 });
+
+test("the exact canonical Card path is the sign-in return destination and guards the protected fetch", async () => {
+  requireOwner.mockRejectedValueOnce(new Error("REDIRECT"));
+  await expect(render()).rejects.toThrow("REDIRECT");
+  expect(requireOwner).toHaveBeenCalledWith(`/admin/inventory/cards/${id}`);
+  expect(getCardDetail).not.toHaveBeenCalled();
+});
+
+test("a malformed card id still passes the owner gate (without a custom destination) before 404", async () => {
+  await expect(CardPage({ params: Promise.resolve({ cardId: "not-a-uuid" }), searchParams: Promise.resolve({}) })).rejects.toThrow();
+  expect(requireOwner).toHaveBeenCalledWith(undefined);
+  expect(getCardDetail).not.toHaveBeenCalled();
+});

@@ -10,7 +10,7 @@ import { loadOrderFacts, mutateOrder } from "./order";
 
 type Mutation = { orderId: string; actorId: string };
 
-const manilaToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+const manilaDate = (date = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(date);
 const fee = z.number().int().min(0).max(1_000_000_000);
 const text = (max: number) => z.string().trim().min(1).max(max);
 const deliveryInput = z.object({ recipientName: text(100), recipientPhone: text(100), address: text(500), shippingFee: fee.optional() });
@@ -71,7 +71,8 @@ export async function markJntShipped(db: Db, input: Mutation & z.input<typeof sh
     const { productSubtotal, received, refunded, afterSaleRefunded } = facts.totals;
     if (received !== productSubtotal || refunded !== 0 || afterSaleRefunded !== 0) throw new OrderError("settlement_mismatch");
 
-    const shippedOn = parsed.data.shippedOn ?? manilaToday();
+    const shippedOn = parsed.data.shippedOn ?? manilaDate();
+    if (shippedOn > manilaDate() || shippedOn < manilaDate(order.createdAt)) throw new OrderError("invalid_input");
     if (shippingFee > 0) {
       await tx.insert(schema.payments).values({ orderId: order.id, amount: shippingFee, method: order.normalPaymentMethod!, paidOn: shippedOn, recordedByAccountId: input.actorId });
       await recordActivity(tx, { type: "payment_recorded", actorAccountId: input.actorId, orderId: order.id, note: `${shippingFee} centavos; ${order.normalPaymentMethod}; shipping` });

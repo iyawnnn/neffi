@@ -46,6 +46,22 @@ describe("page gates", () => {
     await expect(requireOwner()).rejects.toThrow("REDIRECT /sign-in?next=/admin");
   });
 
+  test("a signed-out visitor to an exact Admin page returns to that same page after sign-in", async () => {
+    getSession.mockResolvedValue(null);
+    const path = "/admin/inventory/cards/3f2b8f64-5717-4562-b3fc-2c963f66afa6";
+    await expect(requireOwner(path)).rejects.toThrow(`REDIRECT /sign-in?next=${encodeURIComponent(path)}`);
+  });
+
+  test.each(["https://attacker.example/admin", "//attacker.example/admin", "/\attacker.example/admin", "/app/account", "javascript:alert(1)"])("an unsafe next (%s) falls back to /admin", async (raw) => {
+    getSession.mockResolvedValue(null);
+    await expect(requireOwner(raw)).rejects.toThrow("REDIRECT /sign-in?next=/admin");
+  });
+
+  test("a customer reaching an exact Admin page gets a 404, never a redirect or the page", async () => {
+    getSession.mockResolvedValue(sessionFor("customer"));
+    await expect(requireOwner("/admin/inventory/cards/3f2b8f64-5717-4562-b3fc-2c963f66afa6")).rejects.toThrow("NOT_FOUND");
+  });
+
   test("a customer passes the account gate but is shown a 404 at the owner gate", async () => {
     getSession.mockResolvedValue(sessionFor("customer"));
     await expect(requireAccount("/app")).resolves.toMatchObject({ role: "customer" });

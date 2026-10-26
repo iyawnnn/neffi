@@ -21,10 +21,11 @@ export const instant = false;
 const textLink = inlineLink;
 
 export default async function CardPage({ params }: PageProps<"/admin/inventory/cards/[cardId]">) {
-  await requireOwner();
-  await connection();
   const { cardId } = await params;
-  if (!z.uuid().safeParse(cardId).success) notFound();
+  const valid = z.uuid().safeParse(cardId).success;
+  await requireOwner(valid ? `/admin/inventory/cards/${cardId}` : undefined);
+  await connection();
+  if (!valid) notFound();
   const card = await getCardDetail(db, cardId);
   if (!card) notFound();
 

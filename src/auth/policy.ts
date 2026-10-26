@@ -43,3 +43,9 @@ export function safeNext(raw: unknown): string {
   const inside = ["/app", "/admin", "/activate"].some((root) => path === root || path.startsWith(`${root}/`));
   return inside ? path : FALLBACK;
 }
+
+// Owner-gate return destination: the exact internal Admin path, or /admin when the value is unsafe or elsewhere.
+export function safeAdminNext(raw: unknown): string {
+  const next = safeNext(raw);
+  return next === "/admin" || next.startsWith("/admin/") ? next : "/admin";
+}

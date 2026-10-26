@@ -294,8 +294,10 @@ for (const [path, load] of Object.entries(pageModules)) {
     const props = { params: Promise.resolve(params), searchParams: Promise.resolve({}), children: null };
     let thrown: unknown;
     try { await page(props); } catch (error) { thrown = error; }
+    // The Admin layout deliberately lets a signed-out visitor through so the independently gated page keeps its exact return path.
+    if (path === "./admin/layout.tsx" && role === "signed-out") { expect(thrown).toBeUndefined(); return; }
     expect(thrown).toBeInstanceOf(Error);
-    const expected = role === "customer" ? ["NOT_FOUND"] : admin ? ["REDIRECT /sign-in?next=/admin"] : ["REDIRECT /sign-in?next=/app", "NOT_FOUND"];
+    const expected = role === "customer" ? ["NOT_FOUND"] : admin ? ["REDIRECT /sign-in?next=/admin", "REDIRECT /sign-in?next=" + encodeURIComponent("/admin/inventory/cards/00000000-0000-4000-8000-000000000001")] : ["REDIRECT /sign-in?next=/app", "NOT_FOUND"];
     expect(expected).toContain((thrown as Error).message);
     if ((thrown as Error).message !== "NOT_FOUND" || admin) expect(m.getSession).toHaveBeenCalledTimes(1);
   });

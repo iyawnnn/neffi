@@ -141,6 +141,7 @@ test("Mark as shipped refuses an unprepared card", () => rollback(db, async (tx)
 
 test("a fee supplied while shipping confirms it, zero creates no payment, and the shipped date is honored", () => rollback(db, async (tx) => {
   const { base, orderId } = await setup(tx, jnt());
+  await tx.update(s.orders).set({ createdAt: new Date("2026-10-01T04:00:00Z") }).where(eq(s.orders.id, orderId));
   await markJntShipped(tx, { ...base, trackingNumber: "T-0", shippingFee: 0, shippedOn: "2026-10-20" });
   expect((await payments(tx, orderId)).map((p) => p.amount)).toEqual([79_900]);
   expect((await shipments(tx, orderId))[0]).toMatchObject({ shippedOn: "2026-10-20", status: "in_transit" });
@@ -187,6 +188,7 @@ test("an audit failure rolls back receipt, shipment, release and completion", ()
 
 test("the shipped date can be corrected with a reason without undoing fulfillment", () => rollback(db, async (tx) => {
   const { base, orderId } = await setup(tx, jnt(12_000));
+  await tx.update(s.orders).set({ createdAt: new Date("2026-10-01T04:00:00Z") }).where(eq(s.orders.id, orderId));
   await markJntShipped(tx, { ...base, trackingNumber: "T-1", shippedOn: "2026-10-20" });
   const [shipment] = await shipments(tx, orderId);
   const [order] = await tx.select().from(s.orders).where(eq(s.orders.id, orderId));
@@ -206,4 +208,17 @@ test("normal orders cannot use the legacy shipping action", () => rollback(db, a
   const { base, orderId } = await setup(tx, jnt(12_000));
   await expect(shipOrder(tx, { ...base, trackingNumber: "T-1" })).rejects.toMatchObject({ code: "wrong_status" });
   expect((await shipments(tx, orderId))[0].status).toBe("pending");
+}));
+
+test("the shipped date cannot be in the future or before the Order was created (Manila dates)", () => rollback(db, async (tx) => {
+  const { base, orderId } = await setup(tx, jnt(12_000));
+  const tomorrow = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(Date.now() + 86_400_000));
+  await tx.update(s.orders).set({ createdAt: new Date("2026-10-10T17:30:00Z") }).where(eq(s.orders.id, orderId)); // 2026-10-11 01:30 in Manila
+  for (const shippedOn of [tomorrow, "2026-10-10"]) {
+    await expect(markJntShipped(tx, { ...base, trackingNumber: "T-1", shippedOn })).rejects.toMatchObject({ code: "invalid_input" });
+  }
+  expect((await shipments(tx, orderId))[0].status).toBe("pending");
+  expect(await payments(tx, orderId)).toHaveLength(1);
+  await markJntShipped(tx, { ...base, trackingNumber: "T-1", shippedOn: "2026-10-11" });
+  expect((await shipments(tx, orderId))[0]).toMatchObject({ shippedOn: "2026-10-11", status: "in_transit" });
 }));

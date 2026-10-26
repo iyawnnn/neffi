@@ -3,7 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "./server";
-import { isOwner, toViewer, type Viewer } from "./policy";
+import { isOwner, safeAdminNext, toViewer, type Viewer } from "./policy";
 
 // The Data Access Layer for identity. Pages, layouts, route handlers and server actions all ask here who is
 // calling; nothing else reads the session. Layouts are not a security boundary for mutations or soft navigations,
@@ -23,9 +23,12 @@ export async function requireAccount(area: "/app" | "/admin"): Promise<Viewer> {
   return viewer;
 }
 
-// Signed-in non-owners get a plain 404 so the admin surface does not announce itself.
-export async function requireOwner(): Promise<Viewer> {
-  const viewer = await requireAccount("/admin");
+// Signed-in non-owners get a plain 404 so the admin surface does not announce itself. A signed-out visitor returns to
+// the exact Admin page they asked for; the optional path is validated here, never trusted.
+export async function requireOwner(nextPath?: string): Promise<Viewer> {
+  const next = safeAdminNext(nextPath);
+  const viewer = next === "/admin" ? await requireAccount("/admin") : await getViewer();
+  if (!viewer) redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   if (!isOwner(viewer)) notFound();
   return viewer;
 }

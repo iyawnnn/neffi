@@ -29,3 +29,22 @@ test.each([null, "http://lh3.googleusercontent.com/photo", "https://example.test
     vi.unstubAllGlobals();
   }
 });
+
+test.each([[true, true], [false, false]])("the Account menu lists Admin dashboard only for an OWNER (owner=%s)", async (owner, expected) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<AppHeader account={{ name: "Maya Santos", email: "maya@example.test" }} unread={0} owner={owner} />));
+    await act(async () => (host.querySelector('[aria-label="Account menu for Maya Santos"]') as HTMLElement).click());
+    const hrefs = [...document.querySelectorAll("a")].map((link) => link.getAttribute("href"));
+    expect(hrefs.includes("/admin")).toBe(expected);
+    for (const href of ["/app", "/app/profiles", "/app/cards", "/app/account"]) expect(hrefs).toContain(href);
+    expect(document.body.textContent?.includes("Admin dashboard")).toBe(expected);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+});
