@@ -15,6 +15,8 @@ export type ServerEnv = {
   authEmailFrom: string;
   supportReplyTo?: string;
   activationCodeSecret: string;
+  activationCodeEncryptionActiveKeyId: string;
+  activationCodeEncryptionKeys: ReadonlyMap<string, Buffer>;
   cardUrlOrigin: string;
   cloudinaryCloudName: string;
   cloudinaryApiKey: string;
@@ -28,6 +30,35 @@ const blankAsMissing = <T extends z.ZodType>(schema: T) => z.preprocess((value) 
 const url = (name: string) => z.url({ error: `${name} must be a valid URL` });
 
 const required = (name: string) => blankAsMissing(z.string({ error: `${name} is required` }).min(1, { error: `${name} is required` }));
+
+function parseEncryptionKeys(value: string): ReadonlyMap<string, Buffer> {
+  const fail = (): never => { throw new Error("ACTIVATION_CODE_ENCRYPTION_KEYS must be a flat JSON object of unique IDs and 32-byte base64 keys"); };
+  const keys = new Map<string, Buffer>();
+  let position = 0;
+  const spaces = () => { while (/\s/.test(value[position] ?? "")) position++; };
+  spaces();
+  if (value[position++] !== "{") fail();
+  spaces();
+  if (value[position] === "}") fail();
+  while (position < value.length) {
+    const match = /^"([A-Za-z0-9_-]+)"\s*:\s*"([A-Za-z0-9+/]+={0,2})"/.exec(value.slice(position)) ?? fail();
+    const [, id, encoded] = match;
+    const decoded = Buffer.from(encoded, "base64");
+    if (keys.has(id) || decoded.length !== 32 || decoded.toString("base64") !== encoded) fail();
+    keys.set(id, decoded);
+    position += match[0].length;
+    spaces();
+    if (value[position] === "}") {
+      position++;
+      spaces();
+      if (position !== value.length) fail();
+      return keys;
+    }
+    if (value[position++] !== ",") fail();
+    spaces();
+  }
+  return fail();
+}
 
 // The origin written into physical cards. It is bare (no path, query or hash) so `${origin}/c/${token}` is exact.
 const cardUrlOrigin = blankAsMissing(
@@ -60,6 +91,8 @@ const serverSchema = z.object({
   ACTIVATION_CODE_SECRET: blankAsMissing(
     z.string({ error: "ACTIVATION_CODE_SECRET is required" }).min(32, { error: "ACTIVATION_CODE_SECRET must be at least 32 characters" }),
   ),
+  ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID: required("ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID"),
+  ACTIVATION_CODE_ENCRYPTION_KEYS: required("ACTIVATION_CODE_ENCRYPTION_KEYS"),
   CARD_URL_ORIGIN: cardUrlOrigin,
   CLOUDINARY_CLOUD_NAME: required("CLOUDINARY_CLOUD_NAME"),
   CLOUDINARY_API_KEY: required("CLOUDINARY_API_KEY"),
@@ -89,6 +122,13 @@ function resolveAuthBaseUrl(appEnv: AppEnv, explicit: string | undefined, branch
 export function parseServerEnv(raw: RawEnv): ServerEnv {
   const appEnv = resolveAppEnv(raw.VERCEL_ENV || undefined);
   const env = parse(serverSchema, raw);
+  if (!/^[A-Za-z0-9_-]+$/.test(env.ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID)) {
+    throw new Error("ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID must be a valid key ID");
+  }
+  const encryptionKeys = parseEncryptionKeys(env.ACTIVATION_CODE_ENCRYPTION_KEYS);
+  if (!encryptionKeys.has(env.ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID)) {
+    throw new Error("ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID must identify a configured key");
+  }
   assertDatabaseIsolation(appEnv, env.DATABASE_URL);
   if (appEnv !== "development" && !env.CARD_URL_ORIGIN.startsWith("https://")) {
     throw new Error(`Invalid environment configuration:
@@ -107,6 +147,8 @@ export function parseServerEnv(raw: RawEnv): ServerEnv {
     authEmailFrom: env.AUTH_EMAIL_FROM,
     supportReplyTo: env.SUPPORT_REPLY_TO,
     activationCodeSecret: env.ACTIVATION_CODE_SECRET,
+    activationCodeEncryptionActiveKeyId: env.ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID,
+    activationCodeEncryptionKeys: encryptionKeys,
     cardUrlOrigin: env.CARD_URL_ORIGIN,
     cloudinaryCloudName: env.CLOUDINARY_CLOUD_NAME,
     cloudinaryApiKey: env.CLOUDINARY_API_KEY,

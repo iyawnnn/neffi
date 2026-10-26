@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AdminFrame } from "@/app/admin/admin-frame";
 import { DashboardView } from "@/app/admin/dashboard-view";
 import { ExpensesView } from "@/app/admin/expenses/expenses-view";
-import { InventoryView, type InventoryViewProps } from "@/app/admin/inventory/inventory-view";
+import { InventoryView } from "@/app/admin/inventory/inventory-view";
 import { OrdersView, type OrdersViewProps } from "@/app/admin/orders/orders-view";
 import { CustomersView } from "@/app/admin/customers/customers-view";
 import { SupportView, type SupportViewProps } from "@/app/admin/support/support-view";
@@ -12,7 +12,7 @@ import { SearchView } from "@/app/admin/search/search-view";
 import { adminPage, PageHeader, Panel, TextLink } from "@/app/admin/ui";
 import { Button } from "@/components/ui/button";
 import { PreviewPalette } from "@/dev/admin/preview-palette";
-import { accounts, cases, counts, dashboardData, filterCards, filterCases, filterOrders, fixturePage, MONTH, MONTH_LABEL, orders, owners, PREVIEW_BASE, previewHitHref, previewHref, purchasers, purchases, report, searchFixtures, trends } from "@/dev/admin/fixtures";
+import { accounts, cases, counts, dashboardData, filterQueue, filterCases, filterOrders, fixturePage, MONTH, MONTH_LABEL, orders, owners, PREVIEW_BASE, previewHitHref, previewHref, purchasers, purchases, report, searchFixtures, trends } from "@/dev/admin/fixtures";
 
 export const metadata: Metadata = { title: "Admin preview — development only", robots: { index: false, follow: false } };
 export const instant = false;
@@ -37,12 +37,12 @@ export default async function AdminPreviewPage({ params, searchParams }: {
   } else if (section === "dashboard") {
     content = <DashboardView month={MONTH} monthLabel={MONTH_LABEL} data={dashboardData} report={report} trends={trends} recentOrders={{ orders, next: null }} openCases={{ cases: cases.filter((row) => row.status === "open"), next: null }} basePath={PREVIEW_BASE} actions={<>{disabled("New Order")}{disabled("Add Stock")}{disabled("Add Expense")}{disabled("Open Support Case")}</>} />;
   } else if (section === "inventory") {
-    const kind = value(query, "kind"); const state = value(query, "state");
-    const filters: InventoryViewProps["filters"] = { kind: kind === "dbc" || kind === "grc" || kind === "none" ? kind : undefined, state: state === "blank" || state === "ready" || state === "reserved" || state === "released" || state === "retired" ? state : undefined };
+    const status = value(query, "status"); const search = value(query, "q") || undefined;
+    const filter = (["needs_preparation", "ready", "assigned", "delivered", "activated", "retired", "available"] as const).find((candidate) => candidate === status);
     const stockView = query.view === "stock";
-    const page = fixturePage(filterCards(filters), query.page, 10);
+    const page = fixturePage(filterQueue(filter, search), query.page);
     const stockPage = fixturePage(purchases, query.page);
-    content = <InventoryView {...{ filters, stockView, counts, basePath, recordHref }} paging={stockView ? stockPage.window : page.window} cardPage={{ cards: page.rows, next: null }} purchases={stockPage.rows} actions={<>{disabled("Receive stock")}{disabled("Provision cards")}</>} />;
+    content = <InventoryView {...{ filter, search, stockView, counts, basePath, recordHref }} shortage={0} paging={stockView ? stockPage.window : page.window} queue={{ cards: page.rows, next: null }} purchases={stockPage.rows} actions={<>{disabled("Receive stock")}{disabled("Provision cards")}</>} />;
   } else if (section === "orders") {
     const status = value(query, "status");
     const filters: OrdersViewProps["filters"] = { status: status === "in_progress" || status === "completed" || status === "cancelled" ? status : undefined, assigneeId: value(query, "assigneeId") || undefined };

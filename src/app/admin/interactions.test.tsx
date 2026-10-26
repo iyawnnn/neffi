@@ -58,13 +58,15 @@ test("charts ship a summary and a screen-reader table of the real numbers", () =
   expect(bar).not.toContain("recharts-tooltip-wrapper");
 });
 
-test("inventory summary carves provisioning out of blank and never invents cards", () => {
-  const html = renderToStaticMarkup(<InventorySummary full inProvisioning={4} rows={[{ kind: "dbc", state: "blank", count: 6 }, { kind: "dbc", state: "ready", count: 2 }, { kind: "grc", state: "reserved", count: 1 }]} />);
+test("inventory summary uses the owner status words and never invents cards", () => {
+  const html = renderToStaticMarkup(<InventorySummary full rows={[{ kind: "dbc", status: "needs_preparation", count: 4 }, { kind: "dbc", status: "ready", count: 2 }, { kind: "dbc", status: "shipped", count: 2 }, { kind: "grc", status: "assigned", count: 1 }]} />);
   expect(html).toContain(">9<");
   expect(html).toContain("cards in total");
-  expect(html).toContain("In provisioning");
-  expect(html).toContain('href="/admin/inventory?state=ready"');
-  expect(renderToStaticMarkup(<InventorySummary inProvisioning={0} rows={[]} />)).toContain("No cards yet");
+  expect(html).toContain("Needs preparation");
+  expect(html).toContain("Delivered");
+  expect(html).toContain('href="/admin/inventory?status=ready"');
+  expect(html).not.toMatch(/Blank|Reserved|Released|In provisioning/);
+  expect(renderToStaticMarkup(<InventorySummary rows={[]} />)).toContain("No cards yet");
 });
 
 test("search hits link to the right record and show only the card ending", () => {
@@ -77,7 +79,7 @@ test("search hits link to the right record and show only the card ending", () =>
   expect(hitHref({ type: "account", id: "c" })).toBe("/admin/customers/accounts/c");
   expect(hitHref({ type: "card", id: "k" })).toBe("/admin/inventory/cards/k");
   expect(hitHref({ type: "support", id: "s" })).toBe("/admin/support/s");
-  expect(describeHit({ type: "card", id: "k", title: "42AF", subtitle: "dbc", status: "ready", matched: "Card ending" })).toEqual({ title: "•••• 42AF", subtitle: "Digital Business Card", status: "Ready" });
+  expect(describeHit({ type: "card", id: "k", title: "N-0042", subtitle: "dbc", status: "Ready", matched: "Card reference" })).toEqual({ title: "N-0042", subtitle: "Digital Business Card", status: "Ready" });
 });
 
 test("category bars show ranked amounts and shares with an accessible data table", () => {

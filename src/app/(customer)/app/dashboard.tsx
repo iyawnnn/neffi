@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Eye, Nfc, Pencil, Plus, QrCode, UserRound, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, Nfc, Pencil, Plus, QrCode, UserRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ButtonLink, CardGlyph, EmptyState, ListPanel, ProfileGlyph, ProfileStatus, Row, RowList, SectionHeader, SectionLink } from "@/components/app-ui";
@@ -77,7 +77,6 @@ export function DashboardView({
             Desktop separators are short centered hairlines via the qa-strip class in globals.css. */}
         <ul className="qa-strip divide-y overflow-hidden rounded-panel border bg-background md:grid md:auto-cols-[minmax(0,1fr)] md:grid-flow-col md:divide-y-0">
           <QuickAction href="/activate" icon={Plus} label={cards.length ? "Activate another Neffi" : "Activate a Neffi"} meta="Enter your package code" />
-          {focus ? <QuickAction href={`/app/profiles/${focus.id}/preview`} icon={Eye} label="Preview profile" meta={profileName(focus.fullName)} /> : null}
           {cards.length ? <QuickAction href="/app/cards" icon={Nfc} label="Manage cards" meta={connected === cards.length ? plural(connected, "connected card") : `${plural(cards.length, "card")}, ${connected} connected`} /> : null}
         </ul>
       </section>
@@ -257,14 +256,7 @@ function LiveCard({ profile, cards }: { profile: ProfileRow; cards: CardSummary[
       }
       actions={
         <div role="group" aria-label="Profile actions" className="flex w-full items-center gap-2 md:w-auto">
-          <Link
-            href={`/app/profiles/${profile.id}/preview`}
-            aria-label="Preview profile"
-            title="Preview profile"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-background text-foreground transition-colors duration-[220ms] hover:border-border-strong hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
-          >
-            <Eye aria-hidden className="size-4 shrink-0 text-foreground" />
-          </Link>
+          <ButtonLink href={`/app/profiles/${profile.id}/preview`} variant="outline" className="h-11 flex-1 md:flex-none">Preview</ButtonLink>
           {live && shownOn[0] ? (
             <Link
               href={`/app/cards/${shownOn[0].id}`}

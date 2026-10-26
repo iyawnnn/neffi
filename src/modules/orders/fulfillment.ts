@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "../../db/schema";
 import { usableCredential } from "../activation/credentials";
@@ -16,24 +16,39 @@ export async function reserveDbcCards(db: Db, input: Mutation & { orderItemId: s
     const [item] = await tx.select().from(schema.orderItems).where(and(eq(schema.orderItems.id, input.orderItemId), eq(schema.orderItems.orderId, input.orderId))).for("update");
     if (!item || item.productKind !== "dbc") throw new OrderError("invalid_input");
     const facts = await loadOrderFacts(tx, input.orderId);
-    if (input.cardIds.length > item.quantity - facts.items.find((f) => f.id === item.id)!.activeCount) throw new OrderError("item_full");
-    const reserved = await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(and(inArray(schema.cards.id, input.cardIds), eq(schema.cards.state, "ready"), eq(schema.cards.kind, "dbc"), eq(schema.cards.productId, item.productId))).returning({ id: schema.cards.id });
-    if (reserved.length !== input.cardIds.length) throw new OrderError("card_unavailable");
-    for (const card of reserved) await recordActivity(tx, { type: "card_reserved", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
+    if (input.cardIds.length > item.quantity - facts.items.find((f) => f.id === item.id)!.allocatedCount) throw new OrderError("item_full");
+    for (const cardId of [...input.cardIds].sort()) {
+      const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state, kind: schema.cards.kind, productId: schema.cards.productId, orderItemId: schema.cards.orderItemId })
+        .from(schema.cards).where(eq(schema.cards.id, cardId)).for("update");
+      if (!card || card.state !== "ready" || card.kind !== "dbc" || card.productId !== item.productId || card.orderItemId) throw new OrderError("card_unavailable");
+      await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(eq(schema.cards.id, card.id));
+      await recordActivity(tx, { type: "card_reserved", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
+    }
   });
 }
 
 export async function returnCardToStock(db: Db, input: Mutation & { cardId: string }): Promise<void> {
   await mutateOrder(db, input, async (tx) => {
-    const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state }).from(schema.cards).innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
-      .where(and(eq(schema.cards.id, input.cardId), eq(schema.cards.kind, "dbc"), eq(schema.orderItems.orderId, input.orderId))).for("update", { of: schema.cards });
-    if (!card || card.state !== "reserved") throw new OrderError("card_unavailable");
-    await tx.update(schema.cards).set({ state: "ready", orderItemId: null }).where(eq(schema.cards.id, card.id));
+    const [snapshot] = await tx.select({ itemId: schema.cards.orderItemId }).from(schema.cards).where(eq(schema.cards.id, input.cardId));
+    if (!snapshot?.itemId) throw new OrderError("card_unavailable");
+    const [item] = await tx.select({ id: schema.orderItems.id }).from(schema.orderItems)
+      .where(and(eq(schema.orderItems.id, snapshot.itemId), eq(schema.orderItems.orderId, input.orderId))).for("no key update");
+    if (!item) throw new OrderError("card_unavailable");
+    const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state, orderItemId: schema.cards.orderItemId }).from(schema.cards)
+      .where(eq(schema.cards.id, input.cardId)).for("update");
+    if (!card || card.orderItemId !== item.id || (card.state !== "reserved" && card.state !== "preparing")) throw new OrderError("card_unavailable");
+    await tx.update(schema.cards).set({ state: card.state === "preparing" ? "blank" : "ready", orderItemId: null }).where(eq(schema.cards.id, card.id));
     await recordActivity(tx, { type: "card_returned", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
   });
 }
 
-async function releaseDbcs(tx: Db, input: Mutation): Promise<number> {
+// Order -> item -> Card: callers hold the Order lock; item locks come before any Card lock.
+export async function lockOrderItems(tx: Db, orderId: string): Promise<void> {
+  await tx.select({ id: schema.orderItems.id }).from(schema.orderItems).where(eq(schema.orderItems.orderId, orderId)).orderBy(asc(schema.orderItems.id)).for("no key update");
+}
+
+export async function releaseDbcs(tx: Db, input: Mutation): Promise<number> {
+  await lockOrderItems(tx, input.orderId);
   const cards = await tx.select({ id: schema.cards.id, packageMatchedAt: schema.cards.packageMatchedAt }).from(schema.cards)
     .innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
     .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.cards.kind, "dbc"), eq(schema.cards.state, "reserved")))
@@ -52,6 +67,8 @@ export async function handOverOrder(db: Db, input: Mutation): Promise<void> {
   await mutateOrder(db, input, async (tx, order) => {
     if (order.deliveryMethod !== "pickup" && order.deliveryMethod !== "local_handoff") throw new OrderError("wrong_delivery");
     const facts = await loadOrderFacts(tx, input.orderId);
+    // Normal orders hand over only when every DBC quantity is prepared; legacy orders keep partial releases.
+    if (order.clientKey && facts.items.some((item) => item.productKind === "dbc" && item.preparedCount < item.quantity)) throw new OrderError("checks_incomplete");
     const released = await releaseDbcs(tx, input);
     if (!released && !(facts.items.some((item) => item.productKind === "grc") && !facts.hasCommercialDelivery)) throw new OrderError("nothing_reserved");
     if (!facts.hasHandedOver) await recordActivity(tx, { type: "order_handed_over", actorAccountId: input.actorId, orderId: input.orderId });
@@ -67,6 +84,7 @@ export async function shipOrder(db: Db, input: Mutation & z.input<typeof shippin
   if (!parsed.success) throw new OrderError("invalid_input");
   await mutateOrder(db, input, async (tx, order) => {
     if (order.deliveryMethod !== "courier") throw new OrderError("wrong_delivery");
+    if (order.clientKey) throw new OrderError("wrong_status");
     const facts = await loadOrderFacts(tx, input.orderId);
     const released = await releaseDbcs(tx, input);
     if (!released && !(facts.items.some((item) => item.productKind === "grc") && !facts.hasCommercialDelivery)) throw new OrderError("nothing_reserved");
@@ -80,7 +98,14 @@ const shipmentUpdate = z.object({ status: z.enum(["in_transit", "delivered", "fa
 export async function updateShipment(db: Db, input: Mutation & { shipmentId: string } & z.input<typeof shipmentUpdate>): Promise<void> {
   const parsed = shipmentUpdate.safeParse(input);
   if (!parsed.success) throw new OrderError("invalid_input");
-  await mutateOrder(db, { ...input, allow: ["in_progress", "completed"] }, async (tx) => {
+  await mutateOrder(db, { ...input, allow: ["in_progress", "completed"] }, async (tx, order) => {
+    // Normal J&T orders ship through markJntShipped only: the courier is server-fixed and a pending shipment cannot be moved by this generic update.
+    if (order.clientKey) {
+      const [shipment] = await tx.select({ shippedOn: schema.shipments.shippedOn }).from(schema.shipments).where(and(eq(schema.shipments.id, input.shipmentId), eq(schema.shipments.orderId, input.orderId), isNull(schema.shipments.supportCaseId)));
+      if (!shipment) throw new OrderError("not_found");
+      if (!shipment.shippedOn) throw new OrderError("delivery_locked");
+      if (parsed.data.courier !== undefined) throw new OrderError("invalid_input");
+    }
     const updated = await tx.update(schema.shipments).set(parsed.data).where(and(eq(schema.shipments.id, input.shipmentId), eq(schema.shipments.orderId, input.orderId), isNull(schema.shipments.supportCaseId))).returning({ id: schema.shipments.id });
     if (!updated.length) throw new OrderError("not_found");
     await recordActivity(tx, { type: "shipment_updated", actorAccountId: input.actorId, orderId: input.orderId });

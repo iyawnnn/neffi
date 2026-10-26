@@ -1,6 +1,8 @@
 import type { OrdersViewProps } from "@/app/admin/orders/orders-view";
 import type { SupportViewProps } from "@/app/admin/support/support-view";
 import type { InventoryViewProps } from "@/app/admin/inventory/inventory-view";
+import { inventoryReference, STATUS_LABEL_BY_KEY, type StatusKey } from "@/modules/inventory/operations-view";
+import type { QueueCard, QueueFilter } from "@/modules/inventory/queries";
 import type { ExpenseRow } from "@/modules/expenses/report";
 import type { SearchHit } from "@/modules/search-types";
 import { pageWindow } from "@/modules/pagination";
@@ -11,7 +13,7 @@ export const PREVIEW_BASE = "/dev/admin-preview";
 const day = (n: number) => `${MONTH}-${String(n).padStart(2, "0")}`;
 const date = (n: number, hour = 9) => new Date(`${day(n)}T${String(hour).padStart(2, "0")}:00:00+08:00`);
 const id = (kind: string, n: number) => `preview-${kind}-${String(n + 1).padStart(3, "0")}`;
-const names = ["Juan Dela Cruz", "Maria Santos", "Paolo Reyes", "Isabel Garcia", "Miguel Tan", "Camille Mendoza", "Rafael Lim", "Andrea Ramos", "Jose Bautista", "Sofia Villanueva", "Luis Aquino", "Bianca Flores", "Gabriel Castillo", "Patricia Navarro", "Marco Santiago", "Elena Torres", "Carlo Mercado", "Diana Cruz", "Angelo Rivera", "Bea Sy", "Nico Fernandez", "Lara Gonzales", "Enzo Valdez", "Mika Salazar", "Adrian Chua", "Julia Soriano", "Anton Perez", "Clara David", "Diego Uy", "Althea Lopez", "Joaquin Ong", "Nina Evangelista", "Francis Co", "Sam Domingo", "Mara Pineda", "Leo Manalo", "Studio Sampaguita", "Tala Design Collective", "Amihan Coffee", "Luntian Creative Studio", "Sinag Community Workshop", "Habi Manila", "The Sampaguita Creative Consultancy and Community Learning Cooperative Services"];
+const names = ["Juan Dela Cruz", "Maria Santos", "Paolo Reyes", "Isabel Garcia", "Miguel Tan", "Camille Mendoza", "Rafael Lim", "Andrea Ramos", "Jose Bautista", "Sofia Villanueva and the Community Learning Cooperative of the Northern Philippines", "Luis Aquino", "Bianca Flores", "Gabriel Castillo", "Patricia Navarro", "Marco Santiago", "Elena Torres", "Carlo Mercado", "Diana Cruz", "Angelo Rivera", "Bea Sy", "Nico Fernandez", "Lara Gonzales", "Enzo Valdez", "Mika Salazar", "Adrian Chua", "Julia Soriano", "Anton Perez", "Clara David", "Diego Uy", "Althea Lopez", "Joaquin Ong", "Nina Evangelista", "Francis Co", "Sam Domingo", "Mara Pineda", "Leo Manalo", "Studio Sampaguita", "Tala Design Collective", "Amihan Coffee", "Luntian Creative Studio", "Sinag Community Workshop", "Habi Manila", "The Sampaguita Creative Consultancy and Community Learning Cooperative Services"];
 
 const customers = names.map((name, i) => ({ id: id("customer", i), name, contactNumber: i % 9 === 0 ? null : `09XX 000 ${String(i + 1).padStart(4, "0")}` }));
 export const accounts = customers.map((customer, i) => ({ id: id("account", i), email: `sample.${String(i + 1).padStart(2, "0")}@example.invalid`, role: "customer" as const, createdAt: date(1 + i % 31) }));
@@ -68,13 +70,21 @@ const topics = ["activation_issue", "account_recovery", "ownership_correction", 
 const summaries = ["Help with first card activation", "Account access assistance requested", "Confirm the correct card owner", "Card is not scanning consistently", "Delivery address needs clarification", "Replacement for a damaged card", "Question about updating profile details"];
 export const cases = Array.from({ length: 23 }, (_, i) => ({ id: id("case", i), type: topics[i % topics.length], status: (["open", "waiting_on_customer", "resolved", "resolved"] as const)[i % 4], source: (["owner", "public", "account"] as const)[i % 3], summary: `TEST-${String(i + 1).padStart(3, "0")} · ${summaries[i % summaries.length]}${i === 0 ? " for The Sampaguita Creative Consultancy and Community Learning Cooperative — customer requested a follow-up after their team event" : ` · ${customers[i % customers.length].name}`}`, assignedToAccountId: i % 3 ? owners[0].id : null, createdAt: date(1 + i * 4 % 31, 10 + i % 8), cursor: "", orderId: orders[i].id, purchaserId: orders[i].purchaserId, accountId: accounts[i].id, cardId: cards[i].id })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-export const counts: InventoryViewProps["counts"] = {
-  rows: Array.from(new Set(cards.map((row) => `${row.kind ?? "none"}:${row.state}`))).map((key) => {
-    const rows = cards.filter((row) => `${row.kind ?? "none"}:${row.state}` === key);
-    return { kind: rows[0].kind, state: rows[0].state, count: rows.length };
-  }),
-  inProvisioning: cards.filter((row) => row.kind === "dbc" && row.state === "blank" && row.publicToken).length,
-};
+const statusOf = (row: (typeof cards)[number], index: number): StatusKey => row.state === "retired" ? "retired" : row.state === "released" ? row.kind === "grc" ? (["delivery_unconfirmed", "shipped", "delivery_unconfirmed", "given"] as const)[index % 4] : (["activated", "shipped", "waiting_activation", "given"] as const)[index % 4] : row.state === "reserved" ? "assigned" : row.state === "ready" ? "ready" : row.publicToken ? "needs_preparation" : "available_blank";
+export const queueCards: QueueCard[] = cards.map((row, index) => {
+  const statusKey = statusOf(row, index);
+  const order = orders.find((candidate) => candidate.id === row.orderId);
+  return {
+    id: row.id, inventoryNumber: index + 1, kind: row.kind, state: row.state, publicToken: row.publicToken, ownerAccountId: statusKey === "activated" ? id("account", index % 9) : null, createdAt: row.createdAt, cursor: "",
+    orderId: row.orderId, orderNumber: order?.number ?? null, deliveryMethod: order?.deliveryMethod ?? null, customer: order?.purchaserName ?? null,
+    shipped: statusKey === "shipped", handedOver: statusKey === "given", tracking: statusKey === "shipped" ? `JT${900000 + index}` : null, courier: statusKey === "shipped" ? "J&T" : null, shipmentStatus: null, statusKey,
+    activation: { usable: row.kind === "dbc" && statusKey !== "retired" && statusKey !== "activated" && row.publicToken !== null, retrievable: index % 3 !== 0, revoked: statusKey === "retired" },
+  };
+});
+export const counts: InventoryViewProps["counts"] = Array.from(new Set(queueCards.map((row) => `${row.kind ?? "none"}:${row.statusKey}`))).map((key) => {
+  const rows = queueCards.filter((row) => `${row.kind ?? "none"}:${row.statusKey}` === key);
+  return { kind: rows[0].kind, status: rows[0].statusKey, count: rows.length };
+});
 
 export const trends = {
   collected: activeDays.map((n) => ({ day: day(n), amount: orders.filter((row) => row.paidOn === day(n)).reduce((sum, row) => sum + row.collected, 0) })),
@@ -86,7 +96,7 @@ export const dashboardData = {
   collected: orders.reduce((sum, row) => sum + row.collected, 0),
   expenses: report.total,
   openSupportCases: cases.filter((row) => row.status !== "resolved").length,
-  stock: counts,
+  stock: { status: counts },
   recent: orders.slice(0, 15).map((row, i) => ({ id: id("event", i), type: row.collected ? "payment_recorded" : "order_created", note: `Order #${row.number} · ${row.purchaserName}`, orderId: row.id, cardId: null, stockPurchaseId: null, createdAt: row.createdAt })),
 };
 
@@ -94,7 +104,7 @@ export const searchHits: SearchHit[] = [
   ...orders.map((row): SearchHit => ({ type: "order", id: row.id, title: `#${row.number}`, subtitle: row.purchaserName, status: row.status, matched: "Order number / customer" })),
   ...purchasers.map((row): SearchHit => ({ type: "customer", id: row.id, title: row.name, subtitle: row.contactNumber ?? "No contact", status: null, matched: "Name / contact" })),
   ...accounts.map((row): SearchHit => ({ type: "account", id: row.id, title: row.email, subtitle: row.role, status: null, matched: "Email" })),
-  ...cards.map((row): SearchHit => ({ type: "card", id: row.id, title: (row.publicToken ?? row.id).slice(-4).toUpperCase(), subtitle: row.kind ?? "none", status: row.state, matched: "Card ending" })),
+  ...queueCards.map((row): SearchHit => ({ type: "card", id: row.id, title: inventoryReference(row.inventoryNumber), subtitle: row.kind ?? "none", status: STATUS_LABEL_BY_KEY[row.statusKey], matched: "Card reference" })),
   ...cases.map((row): SearchHit => ({ type: "support", id: row.id, title: row.summary, subtitle: row.type, status: row.status, matched: "Case summary / reference" })),
 ];
 
@@ -111,8 +121,10 @@ export function fixturePage<T>(rows: T[], requested: unknown, size = 20) {
 export function filterOrders(filters: OrdersViewProps["filters"]) {
   return orders.filter((row) => (!filters.status || row.status === filters.status) && (!filters.assigneeId || row.assignedToAccountId === filters.assigneeId));
 }
-export function filterCards(filters: InventoryViewProps["filters"]) {
-  return cards.filter((row) => (!filters.state || row.state === filters.state) && (!filters.kind || (row.kind ?? "none") === filters.kind));
+const FILTER_KEYS: Record<QueueFilter, StatusKey[]> = { needs_preparation: ["needs_preparation"], ready: ["ready"], assigned: ["assigned"], delivered: ["shipped", "given", "waiting_activation"], activated: ["activated"], retired: ["retired"], available: ["available_blank"] };
+export function filterQueue(filter: QueueFilter | undefined, search = "") {
+  const term = search.trim().toLowerCase();
+  return queueCards.filter((row) => (filter ? FILTER_KEYS[filter].includes(row.statusKey) : term || row.statusKey !== "available_blank") && (!term || (row.customer ?? "").toLowerCase().includes(term) || (row.tracking ?? "").toLowerCase().includes(term) || `n-${String(row.inventoryNumber).padStart(4, "0")}` === term));
 }
 export function filterCases(filters: SupportViewProps["filters"]) {
   return cases.filter((row) => (!filters.status || row.status === filters.status) && (!filters.source || row.source === filters.source));

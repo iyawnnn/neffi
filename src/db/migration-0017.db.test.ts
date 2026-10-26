@@ -96,15 +96,16 @@ test("0017 migrates default themes without changing existing profiles, accents, 
   const db = await createLegacyDb();
   try {
     const before = (await db.execute(sql`SELECT to_jsonb(p) - 'theme' AS data FROM profiles p ORDER BY id`)).rows;
+    // inventory_number is a later (0019) column; every column that existed at 0017 must be unchanged.
     const tables = ["cards", "scenes", "scene_blocks", "profile_links", "form_definitions", "form_submissions"];
-    const related = await Promise.all(tables.map(async (table) => (await db.execute(sql`SELECT * FROM ${sql.identifier(table)} ORDER BY id`)).rows));
+    const related = await Promise.all(tables.map(async (table) => (await db.execute(sql`SELECT to_jsonb(t) - 'inventory_number' AS data FROM ${sql.identifier(table)} t ORDER BY id`)).rows));
     await migrate(db, { migrationsFolder: "drizzle" });
     expect((await db.execute(sql`SELECT layout, color_mode, goal FROM profiles ORDER BY id`)).rows).toEqual(
       before.map(() => ({ layout: "classic", color_mode: "light", goal: null })),
     );
     expect((await db.execute(sql`SELECT to_jsonb(p) - 'layout' - 'color_mode' - 'goal' - 'cover_asset_id' - 'cover_width' - 'cover_height' - 'cover_crop_x' - 'cover_crop_y' - 'cover_crop_width' AS data FROM profiles p ORDER BY id`)).rows).toEqual(before);
     for (const [index, table] of tables.entries()) {
-      expect((await db.execute(sql`SELECT * FROM ${sql.identifier(table)} ORDER BY id`)).rows, table).toEqual(related[index]);
+      expect((await db.execute(sql`SELECT to_jsonb(t) - 'inventory_number' AS data FROM ${sql.identifier(table)} t ORDER BY id`)).rows, table).toEqual(related[index]);
     }
     const journal = (await db.execute(sql`SELECT * FROM drizzle.__drizzle_migrations ORDER BY id`)).rows;
     await migrate(db, { migrationsFolder: "drizzle" });

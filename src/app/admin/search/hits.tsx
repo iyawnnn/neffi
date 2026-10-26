@@ -35,10 +35,10 @@ export function hitHref({ type, id }: Pick<SearchHit, "type" | "id">) {
   }
 }
 
-/** Two display lines and the status word for a hit. Card references show only the last four characters. */
+/** Two display lines and the status word for a hit. */
 export function describeHit(hit: SearchHit): { title: string; subtitle: string; status: string | null } {
   switch (hit.type) {
-    case "card": return { title: `•••• ${hit.title}`, subtitle: KIND_LABEL[hit.subtitle as keyof typeof KIND_LABEL] ?? "Card", status: hit.status ? label(hit.status) : null };
+    case "card": return { title: hit.title, subtitle: KIND_LABEL[hit.subtitle as keyof typeof KIND_LABEL] ?? "Card", status: hit.status ? label(hit.status) : null };
     case "support": return { title: hit.title, subtitle: label(hit.subtitle), status: hit.status ? label(hit.status) : null };
     case "account": return { title: hit.title, subtitle: `Neffi account · ${label(hit.subtitle)}`, status: null };
     case "order": return { title: hit.title, subtitle: hit.subtitle, status: hit.status ? label(hit.status) : null };

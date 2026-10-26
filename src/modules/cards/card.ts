@@ -2,8 +2,12 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import { revokeUsableCredential } from "../activation/credentials";
+import type { CredentialSecrets } from "../activation/encryption";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
+import { allocateDbcCardsInTransaction } from "../orders/allocation";
+import { OrderError } from "../orders/errors";
+import { withPreparationCard } from "./preparation";
 import { cardUrl } from "./token";
 
 export type CardErrorCode =
@@ -16,7 +20,9 @@ export type CardErrorCode =
   | "item_ineligible"
   | "item_full"
   | "checks_incomplete"
-  | "uri_mismatch";
+  | "uri_mismatch"
+  | "retry"
+  | "secrets_required";
 
 // A rule refusal the owner can act on. Messages carry no data, only the code that callers map to copy.
 export class CardError extends Error {
@@ -26,7 +32,7 @@ export class CardError extends Error {
   }
 }
 
-// Every card mutation starts here, so concurrent operations on one card serialize and re-read fresh state.
+// Card-only callers use this lock; order-linked preparation locks its parent first.
 export async function lockCard(tx: Db, cardId: string) {
   const [card] = await tx.select().from(schema.cards).where(eq(schema.cards.id, cardId)).for("update");
   if (!card) throw new CardError("not_found");
@@ -65,22 +71,14 @@ export type NfcCheckInput = {
 export async function recordNfcCheck(db: Db, input: NfcCheckInput): Promise<void> {
   if (!input.readBackMatched || !input.phoneOpenedUri || !input.tagLeftWritable) throw new CardError("checks_incomplete");
 
-  await db.transaction(async (tx) => {
-    const card = await lockCard(tx, input.cardId);
+  await withPreparationCard(db, input, async (tx, { card, item, orderId, orderStatus }) => {
     let expectedUri: string;
-    let orderId: string | undefined;
 
-    if (card.kind === "dbc" && card.state === "blank" && card.publicToken) {
+    if (card.kind === "dbc" && (card.state === "blank" || card.state === "preparing") && card.publicToken) {
       expectedUri = cardUrl(input.cardUrlOrigin, card.publicToken);
-    } else if (card.kind === "grc" && card.state === "reserved" && card.orderItemId) {
-      const [item] = await tx
-        .select({ reviewUrl: schema.orderItems.reviewUrl, orderId: schema.orders.id, orderStatus: schema.orders.status })
-        .from(schema.orderItems)
-        .innerJoin(schema.orders, eq(schema.orders.id, schema.orderItems.orderId))
-        .where(eq(schema.orderItems.id, card.orderItemId));
-      if (!item?.reviewUrl || item.orderStatus !== "in_progress") throw new CardError("item_ineligible");
+    } else if (card.kind === "grc" && card.state === "reserved" && item) {
+      if (!item.reviewUrl || orderStatus !== "in_progress") throw new CardError("item_ineligible");
       expectedUri = item.reviewUrl;
-      orderId = item.orderId;
     } else {
       throw new CardError("wrong_state");
     }
@@ -91,31 +89,34 @@ export async function recordNfcCheck(db: Db, input: NfcCheckInput): Promise<void
       type: "card_nfc_verified",
       actorAccountId: input.actorId,
       cardId: card.id,
-      orderId,
-      note: ["read back exactly, phone opened it, tag left writable", input.device?.trim()].filter(Boolean).join("; "),
+      orderId: orderId ?? undefined,
+      note: ["owner confirmed; the URL read back matched the permanent card URL exactly", input.device?.trim()].filter(Boolean).join("; "),
     });
   });
 }
 
 // Pre-release removal of a card that failed or must not be sold. History is kept: credentials are revoked (never
 // deleted) and a reserved GRC keeps its order link, which stops counting against the item so a replacement fits.
-export async function retireCard(db: Db, input: { actorId: string; cardId: string; reason: string }): Promise<void> {
-  await db.transaction(async (tx) => {
-    const card = await lockCard(tx, input.cardId);
-    const retirable = card.state === "blank" || card.state === "ready" || (card.state === "reserved" && card.kind === "grc");
+export async function retireCard(db: Db, input: { actorId: string; cardId: string; reason: string; secrets?: CredentialSecrets }): Promise<void> {
+  await withPreparationCard(db, input, async (tx, { card, item, orderId }) => {
+    const retirable = card.state === "blank" || card.state === "ready" || (card.state === "reserved" && card.kind === "grc") || (card.state === "preparing" && card.kind === "dbc");
     if (!retirable) throw new CardError("wrong_state");
+    if (card.state === "preparing" && !input.secrets) throw new CardError("secrets_required");
 
     await revokeUsableCredential(tx, card.id);
     await tx.update(schema.cards).set({ state: "retired" }).where(eq(schema.cards.id, card.id));
-    const [item] = card.orderItemId
-      ? await tx.select({ orderId: schema.orderItems.orderId }).from(schema.orderItems).where(eq(schema.orderItems.id, card.orderItemId))
-      : [];
     await recordActivity(tx, {
       type: "card_retired",
       actorAccountId: input.actorId,
       cardId: card.id,
-      orderId: item?.orderId,
+      orderId: orderId ?? undefined,
       note: `reason: ${input.reason}`,
     });
+    if (card.state === "preparing" && item && orderId) {
+      await allocateDbcCardsInTransaction(tx, { actorId: input.actorId, orderId, orderItemId: item.id, secrets: input.secrets! }).catch((error: unknown) => {
+        if (error instanceof OrderError) throw new CardError("wrong_state");
+        throw error;
+      });
+    }
   });
 }

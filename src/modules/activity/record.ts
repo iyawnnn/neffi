@@ -8,6 +8,8 @@ export type ActivityType =
   | "card_nfc_verified"
   | "card_ready"
   | "activation_credential_replaced"
+  | "activation_code_viewed"
+  | "activation_code_adopted"
   | "card_reserved"
   | "card_retired"
   | "account_role_changed"
@@ -53,6 +55,7 @@ type ActivityInput = {
   type: ActivityType;
   actorAccountId: string | null;
   cardId?: string;
+  activationCredentialId?: string;
   accountId?: string;
   orderId?: string;
   stockPurchaseId?: string;

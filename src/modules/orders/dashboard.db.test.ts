@@ -13,7 +13,7 @@ test("dashboard derives balances, dated nonvoid collections, expenses and stock"
   await tx.insert(expenses).values({ amount: 700, category: "other", spentOn: "2026-10-01", createdByAccountId: owner.id });
   await insertProvisioningDbc(tx);
   const result = await dashboard(tx, "2026-10");
-  expect(result).toMatchObject({ inProgress: 1, outstanding: 75000, collected: 15000, expenses: 700, stock: { inProvisioning: 1 } });
+  expect(result).toMatchObject({ inProgress: 1, outstanding: 75000, collected: 15000, expenses: 700, stock: { status: expect.arrayContaining([expect.objectContaining({ status: "needs_preparation", count: 1 })]) } });
   expect(await tx.select().from(orders)).toHaveLength(1);
   await tx.update(orders).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(orders.id, order.id));
   expect(await dashboard(tx, "2026-10")).toMatchObject({ inProgress: 0, outstanding: 0, collected: 15000 });

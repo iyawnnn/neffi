@@ -10,7 +10,6 @@ import {
   Download,
   HelpCircle,
   IdCard,
-  Link as LinkIcon,
   LoaderCircle,
   Nfc,
   X,
@@ -83,15 +82,6 @@ function CardToasts() {
   );
 }
 
-function formatDisplayUrl(rawUrl: string, suffix: string): string {
-  try {
-    const parsed = new URL(rawUrl);
-    return `${parsed.host}/c/••••${suffix}`;
-  } catch {
-    return rawUrl.replace(/^https?:\/\//, "");
-  }
-}
-
 function CardEditorInner({
   card,
   profiles,
@@ -129,7 +119,6 @@ function CardEditorInner({
         }
       : profiles[0]);
 
-  const displayUrl = formatDisplayUrl(url, card.suffix);
 
   async function handleCopy() {
     try {
@@ -204,7 +193,9 @@ function CardEditorInner({
               Manage which profile this card opens.
             </p>
           </div>
-          <div className="flex shrink-0 items-center">
+          <div className="flex flex-wrap items-center gap-2">
+            {card.profileId && card.previewSceneId ? <ButtonLink href={`/app/profiles/${card.profileId}/preview?scene=${card.previewSceneId}`} variant="outline">Preview</ButtonLink> : null}
+            {card.profileId ? <ButtonLink href={`/app/profiles/${card.profileId}`} variant="action">Edit profile</ButtonLink> : null}
             <Link
               href={`/support?cardId=${card.id}`}
               className="inline-flex min-h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-[10px] border border-border bg-background px-3.5 text-body font-medium text-foreground transition-colors duration-[220ms] hover:border-border-strong hover:bg-canvas active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
@@ -454,42 +445,12 @@ function CardEditorInner({
                 </p>
               </div>
 
-              {/* Read-only link field */}
-              <div className="flex min-h-11 w-full items-center justify-between rounded-[10px] border border-border bg-canvas/50 px-3.5 py-2">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <LinkIcon
-                    aria-hidden
-                    className="size-4 shrink-0 text-fg-secondary"
-                  />
-                  <span
-                    className="truncate text-meta font-mono text-foreground"
-                    title={url}
-                    data-url={url}
-                  >
-                    {displayUrl}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  aria-label="Copy profile link"
-                  title="Copy link"
-                  className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-fg-secondary transition-colors duration-[220ms] hover:bg-canvas hover:text-foreground active:bg-subtle focus-visible:outline-2 focus-visible:outline-brand motion-reduce:transition-none"
-                >
-                  {copied ? (
-                    <Check aria-hidden className="size-4 text-brand" />
-                  ) : (
-                    <Copy aria-hidden className="size-4" />
-                  )}
-                </button>
-              </div>
-
               {/* Actions row */}
               <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
                 <Button
                   type="button"
                   size="touch"
-                  variant="action"
+                  variant="outline"
                   onClick={handleCopy}
                   className="w-full sm:w-auto gap-2"
                 >

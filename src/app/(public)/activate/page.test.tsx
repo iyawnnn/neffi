@@ -88,6 +88,8 @@ test("signed out with an accepted code: sign in and come back here", async () =>
   expect(html).toContain('data-sign-in="/activate"');
   expect(html).toContain("Enter a different code");
   expect(html).not.toContain("data-code-form");
+  expect(html).not.toContain("neffi-activation-hero-desktop.png");
+  expect(html).toContain('data-accepted');
   expect(m.ownedCards).not.toHaveBeenCalled();
 });
 

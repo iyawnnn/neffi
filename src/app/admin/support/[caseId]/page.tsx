@@ -62,8 +62,8 @@ export default async function CasePage({ params, searchParams }: PageProps<"/adm
           <Panel padded className="flex flex-col gap-4">
             {support.order ? <>
               <Link className={`${link} break-words`} href={`/admin/orders/${support.order.id}`}>Order {support.order.number} · {label(support.order.status)}</Link>
-              <DetailList rows={[["Order total", formatPeso(support.order.totals.orderTotal)], ["Net paid", formatPeso(support.order.totals.netPaid)], ["Balance", formatPeso(support.order.totals.balance)], ["After-sale refunds", formatPeso(support.order.totals.afterSaleRefunded)]]} />
-              {support.order.status === "completed" && support.order.totals.balance > 0 ? <div role="status"><Notice tone="warning" title={`Balance due after correction: ${formatPeso(support.order.totals.balance)}`} /></div> : null}
+              <DetailList rows={[["Order total", support.order.totals.orderTotal === null ? "Pending shipping" : formatPeso(support.order.totals.orderTotal)], ["Net paid", formatPeso(support.order.totals.netPaid)], ["Balance", support.order.totals.balance === null ? "Pending shipping" : formatPeso(support.order.totals.balance)], ["After-sale refunds", formatPeso(support.order.totals.afterSaleRefunded)]]} />
+              {support.order.status === "completed" && support.order.totals.balance !== null && support.order.totals.balance > 0 ? <div role="status"><Notice tone="warning" title={`Balance due after correction: ${formatPeso(support.order.totals.balance)}`} /></div> : null}
             </> : <p className={quiet}>No original order linked.</p>}
             <DetailList rows={[
               support.purchaser ? ["Purchaser", <Link key="p" className={link} href={`/admin/customers/purchasers/${support.purchaser.id}`}>{support.purchaser.name}</Link>] : null,

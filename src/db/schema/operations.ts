@@ -4,7 +4,7 @@ import { accounts } from "./auth";
 import { createdAt, timestamps } from "./columns";
 import { orders, purchasers } from "./commerce";
 import { expenseCategory, supportCaseCardRole, supportCaseSource, supportCaseStatus, supportCaseType } from "./enums";
-import { cards, stockPurchases } from "./inventory";
+import { activationCredentials, cards, stockPurchases } from "./inventory";
 
 // Manually entered costs only. Stock-purchase and courier costs stay on their source rows and are combined
 // in expense reporting, so the same amount is never stored twice.
@@ -117,6 +117,7 @@ export const activityEvents = pgTable(
     actorAccountId: uuid().references(() => accounts.id),
     orderId: uuid().references(() => orders.id),
     cardId: uuid().references(() => cards.id),
+    activationCredentialId: uuid().references(() => activationCredentials.id),
     accountId: uuid().references(() => accounts.id),
     supportCaseId: uuid().references(() => supportCases.id),
     stockPurchaseId: uuid().references(() => stockPurchases.id),
@@ -130,6 +131,7 @@ export const activityEvents = pgTable(
     ),
     index("activity_events_order_id_idx").on(t.orderId, t.createdAt).where(sql`${t.orderId} IS NOT NULL`),
     index("activity_events_card_id_idx").on(t.cardId, t.createdAt).where(sql`${t.cardId} IS NOT NULL`),
+    index("activity_events_activation_credential_id_idx").on(t.activationCredentialId).where(sql`${t.activationCredentialId} IS NOT NULL`),
     index("activity_events_account_id_idx").on(t.accountId, t.createdAt).where(sql`${t.accountId} IS NOT NULL`),
     index("activity_events_support_case_id_idx")
       .on(t.supportCaseId, t.createdAt)

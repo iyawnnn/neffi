@@ -10,7 +10,7 @@ import { ActionForm } from "../../inventory/forms";
 import { createOrderAction } from "./actions";
 
 type Line = { kind: "dbc" | "grc"; quantity: number; agreedTotal: string; label: string; reviewUrl: string; adjust: boolean };
-const newLine = (): Line => ({ kind: "dbc", quantity: 1, agreedTotal: "", label: "", reviewUrl: "", adjust: false });
+const newLine = (): Line => ({ kind: "grc", quantity: 1, agreedTotal: "", label: "", reviewUrl: "", adjust: false });
 const KIND_NAME = { dbc: "Digital Business Card", grc: "Google Review Card" } as const;
 
 // Display-only estimate for the summary. The server recomputes every total; an unparsable entry just falls back to
@@ -57,7 +57,7 @@ export function OrderForm({ products, purchaser, supportCaseId }: { products: { 
                   {lines.length > 1 ? <Button type="button" variant="ghost" size="icon" aria-label={`Remove line ${index + 1}`} className="-my-1 -mr-2 size-11 text-fg-secondary hover:bg-destructive/10 hover:text-destructive md:size-8" onClick={() => setLines((current) => current.filter((_, i) => i !== index))}><Trash2 aria-hidden /></Button> : null}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
-                  <label className={fieldLabel}>Product<Select value={line.kind} onChange={(e) => update(index, { kind: e.target.value as Line["kind"] })}><option value="dbc">{KIND_NAME.dbc}</option><option value="grc">{KIND_NAME.grc}</option></Select></label>
+                  <label className={fieldLabel}>Product<Select value={line.kind} onChange={(e) => update(index, { kind: e.target.value as Line["kind"] })}><option value="grc">{KIND_NAME.grc}</option></Select></label>
                   <label className={fieldLabel}>Quantity<Input type="number" inputMode="numeric" min={1} max={500} required value={line.quantity} onChange={(e) => update(index, { quantity: Number(e.target.value) })} /></label>
                 </div>
                 <p className="text-meta text-fg-secondary">{product ? `${product.name} · ${formatPeso(product.price)} per card` : "Set up this product in Settings first."}</p>

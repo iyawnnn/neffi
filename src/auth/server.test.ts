@@ -11,6 +11,8 @@ beforeAll(() => {
   vi.stubEnv("RESEND_API_KEY", "re_synthetic_key_not_real");
   vi.stubEnv("AUTH_EMAIL_FROM", "Neffi <auth@example.test>");
   vi.stubEnv("ACTIVATION_CODE_SECRET", "a".repeat(40));
+  vi.stubEnv("ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID", "test-v1");
+  vi.stubEnv("ACTIVATION_CODE_ENCRYPTION_KEYS", JSON.stringify({ "test-v1": Buffer.alloc(32, 7).toString("base64") }));
   vi.stubEnv("CARD_URL_ORIGIN", "http://localhost:3000");
 });
 

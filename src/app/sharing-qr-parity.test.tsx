@@ -21,6 +21,7 @@ vi.mock("@/modules/inventory/queries", () => ({
   }),
 }));
 vi.mock("@/modules/cards/grc", () => ({ eligibleGrcItems: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/app/admin/inventory/actions", () => ({ revealActivationCodeAction: vi.fn(), saveExistingActivationCodeAction: vi.fn() }));
 vi.mock("@/app/admin/inventory/forms", () => ({
   ProvisionForm: () => null, MatchPackageForm: () => null, ReplaceForm: () => null, ReserveForm: () => null, RetireForm: () => null,
   NfcCheckForm: ({ expectedUri }: { expectedUri: string }) => <output data-nfc-uri={expectedUri} />,

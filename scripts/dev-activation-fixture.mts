@@ -16,6 +16,10 @@ assert(["postgres:", "postgresql:"].includes(url.protocol));
 assert(![...url.searchParams.keys()].some((key) => ["host", "hostaddr", "port"].includes(key)));
 const secret = process.env.ACTIVATION_CODE_SECRET ?? "";
 assert(secret.length >= 32, "Set ACTIVATION_CODE_SECRET to the dev server's value");
+const activeKeyId = process.env.ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID ?? "";
+const configuredKeys = JSON.parse(process.env.ACTIVATION_CODE_ENCRYPTION_KEYS ?? "{}") as Record<string, string>;
+const secrets = { lookupSecret: secret, activeKeyId, encryptionKeys: new Map(Object.entries(configuredKeys).map(([id, key]) => [id, Buffer.from(key, "base64")])) };
+assert(secrets.encryptionKeys.has(activeKeyId), "Set activation encryption keys to the dev server's values");
 
 const pool = new pg.Pool({ connectionString: url.href, max: 2 });
 try {
@@ -45,7 +49,7 @@ try {
     );
     return { id, suffix: token.slice(-4) };
   };
-  const issue = async (cardId: string) => formatActivationCode((await issueActivationCredential(db, cardId, secret)).code);
+  const issue = async (cardId: string) => formatActivationCode((await issueActivationCredential(db, cardId, secrets)).code);
   const rows: { scenario: string; code: string; card: string }[] = [];
 
   for (const n of [1, 2, 3]) {

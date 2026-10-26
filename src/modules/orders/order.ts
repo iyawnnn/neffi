@@ -17,7 +17,7 @@ export async function lockOrder(tx: Db, id: string): Promise<Order> {
 
 export async function loadOrderFacts(tx: Db, id: string) {
   const result = await tx.execute<Facts>(sql`
-    select o.status, o.delivery_method as "deliveryMethod", o.shipping_fee as "shippingFee",
+    select o.status, o.delivery_method as "deliveryMethod", o.shipping_fee as "shippingFee", o.shipping_fee_pending as "shippingFeePending",
       coalesce(lines.items, '[]'::jsonb) as items,
       coalesce((select sum(amount)::float8 from payments where order_id = o.id and voided_at is null), 0) as received,
       coalesce((select sum(amount)::float8 from refunds where order_id = o.id and voided_at is null and support_case_id is null), 0) as refunded,
@@ -28,11 +28,12 @@ export async function loadOrderFacts(tx: Db, id: string) {
     from orders o
     left join lateral (
       select jsonb_agg(jsonb_build_object('id', i.id, 'productKind', i.product_kind, 'quantity', i.quantity, 'unitPrice', i.unit_price,
-        'agreedTotal', i.agreed_total, 'activeCount', counts.active, 'releasedCount', counts.released)) as items,
+        'agreedTotal', i.agreed_total, 'activeCount', counts.prepared, 'allocatedCount', counts.allocated, 'preparedCount', counts.prepared, 'releasedCount', counts.released)) as items,
         bool_or(counts.released > 0) as any_released
       from order_items i
       cross join lateral (
-        select count(*) filter (where state in ('reserved', 'released'))::int as active,
+        select count(*) filter (where state in ('preparing', 'reserved', 'released'))::int as allocated,
+          count(*) filter (where state in ('reserved', 'released'))::int as prepared,
           count(*) filter (where state = 'released')::int as released
         from cards where order_item_id = i.id and kind = 'dbc' and i.product_kind = 'dbc'
       ) counts
@@ -81,6 +82,7 @@ export async function addOrderNote(db: Db, input: { orderId: string; actorId: st
 
 export async function updateOrderDetails(db: Db, input: { orderId: string; actorId: string; deliveryMethod: Order["deliveryMethod"]; shippingFee: number; notes: string }) {
   return mutateOrder(db, input, async (tx, order) => {
+    if (order.clientKey) throw new OrderError("wrong_status");
     const facts = await loadOrderFacts(tx, order.id);
     if (input.deliveryMethod !== order.deliveryMethod && (facts.anyReleased || facts.hasCommercialDelivery)) throw new OrderError("delivery_locked");
     await tx.update(schema.orders).set({ deliveryMethod: input.deliveryMethod, shippingFee: input.shippingFee, notes: input.notes }).where(eq(schema.orders.id, order.id));

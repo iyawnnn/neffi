@@ -7,6 +7,7 @@ import { env } from "@/config/env";
 import { db } from "@/db";
 import { formatActivationCode } from "@/modules/activation/code";
 import { ActivationCredentialError } from "@/modules/activation/credentials";
+import { revealActivationCode, saveExistingActivationCode } from "@/modules/activation/retrieval";
 import { CardError, recordNfcCheck, retireCard, type CardErrorCode } from "@/modules/cards/card";
 import { matchPackage, provisionDbc, replaceProvisioningCredential } from "@/modules/cards/dbc";
 import { reserveGrc } from "@/modules/cards/grc";
@@ -17,7 +18,7 @@ import { parsePesos } from "@/lib/money";
 import { OrderError } from "@/modules/orders/errors";
 
 // Every action is a public endpoint: authorize as OWNER first, then validate, then call the domain service.
-// A raw activation code appears only in the `reveal` of the response that issued it.
+// A raw activation code appears only in an explicit issuing or retrieval action response.
 export type ActionState = { error?: string; ok?: string; href?: string; reveal?: { code: string; url?: string; instructions?: string } };
 
 const MESSAGES: Record<CardErrorCode, string> = {
@@ -31,6 +32,8 @@ const MESSAGES: Record<CardErrorCode, string> = {
   item_full: "That order item already has all of its cards.",
   checks_incomplete: "Complete every physical check first.",
   uri_mismatch: "The address you read back doesn't match the expected one.",
+  retry: "That card just changed. Reload it and try again.",
+  secrets_required: "That card can't be retired from here.",
 };
 
 const text = (max: number) => z.string().trim().max(max);
@@ -90,9 +93,9 @@ export async function receiveStockAction(_previous: ActionState | undefined, dat
     inboundShippingCost: optionalCost,
   });
   return run(schema, data, async (input, actorId) => {
-    const { stockPurchaseId } = await receiveStock(db, { actorId, ...input });
-    return { ok: `Received ${input.quantity} cards.`, href: `/admin/inventory/stock/${stockPurchaseId}` };
-  });
+    const { stockPurchaseId, retryFailed } = await receiveStock(db, { actorId, ...input, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+    return { ok: retryFailed ? `Received ${input.quantity} cards. Waiting orders need an allocation retry.` : `Received ${input.quantity} cards.`, href: `/admin/inventory/stock/${stockPurchaseId}` };
+  }, () => ["/admin/orders", "/admin"]);
 }
 
 export async function provisionDbcAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
@@ -100,7 +103,7 @@ export async function provisionDbcAction(_previous: ActionState | undefined, dat
     z.object({ cardId: id }),
     data,
     async ({ cardId }, actorId) => {
-      const { publicToken, activationCode } = await provisionDbc(db, { actorId, cardId, activationSecret: env.activationCodeSecret });
+      const { publicToken, activationCode } = await provisionDbc(db, { actorId, cardId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { reveal: { url: cardUrl(env.cardUrlOrigin, publicToken), code: formatActivationCode(activationCode) } };
     },
     cardPage,
@@ -111,15 +114,13 @@ export async function recordNfcCheckAction(_previous: ActionState | undefined, d
   const schema = z.object({
     cardId: id,
     readBackUri: text(2048).min(1),
-    readBackMatched: checked,
-    phoneOpenedUri: checked,
-    tagLeftWritable: checked,
     device: optionalText(100),
   });
   return run(
     schema,
     data,
     async ({ cardId, readBackUri, device }, actorId) => {
+      // The single owner action attests the physical test; the server verifies only the exact read-back URL.
       await recordNfcCheck(db, {
         actorId,
         cardId,
@@ -130,7 +131,7 @@ export async function recordNfcCheckAction(_previous: ActionState | undefined, d
         tagLeftWritable: true,
         device,
       });
-      return { ok: "NFC check recorded." };
+      return { ok: "NFC test confirmed." };
     },
     cardPage,
   );
@@ -142,7 +143,7 @@ export async function matchPackageAction(_previous: ActionState | undefined, dat
     data,
     async ({ cardId, activationCode }, actorId) => {
       await matchPackage(db, { actorId, cardId, activationCode, activationSecret: env.activationCodeSecret });
-      return { ok: "Package matched. The card is Ready." };
+      return { ok: "Package matched." };
     },
     cardPage,
   );
@@ -153,11 +154,37 @@ export async function replaceCredentialAction(_previous: ActionState | undefined
     z.object({ cardId: id, credentialId: id, reason, confirm: checked }),
     data,
     async ({ cardId, credentialId, reason }, actorId) => {
-      const { activationCode } = await replaceProvisioningCredential(db, { actorId, cardId, credentialId, reason, activationSecret: env.activationCodeSecret });
+      const { activationCode } = await replaceProvisioningCredential(db, { actorId, cardId, credentialId, reason, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { reveal: { code: formatActivationCode(activationCode) } };
     },
     cardPage,
   );
+}
+
+export async function revealActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ cardId: id, credentialId: id }), data, async ({ cardId, credentialId }, actorId) => {
+    const unavailable = { error: "The activation code could not be shown. Reload the card and try again." };
+    try {
+      const result = await revealActivationCode(db, { actorId, cardId, credentialId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+      if (result.status === "available") return { reveal: { code: formatActivationCode(result.code) } };
+      if (result.status === "legacy_code_needed") return { error: "This older credential needs its existing package code saved before it can be shown." };
+      if (result.status === "key_unavailable") return { error: "The activation code key is unavailable. Restore the configured key and try again." };
+    } catch {
+      return unavailable;
+    }
+    return unavailable;
+  });
+}
+
+export async function saveExistingActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  return run(z.object({ cardId: id, credentialId: id, code: text(64).min(1) }), data, async ({ cardId, credentialId, code }, actorId) => {
+    try {
+      await saveExistingActivationCode(db, { actorId, cardId, credentialId, code, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+      return { ok: "Existing activation code saved." };
+    } catch {
+      return { error: "That code could not be saved for this card. Reload and check the package." };
+    }
+  }, cardPage);
 }
 
 export async function reserveGrcAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
@@ -177,7 +204,7 @@ export async function retireCardAction(_previous: ActionState | undefined, data:
     z.object({ cardId: id, reason, confirm: checked }),
     data,
     async ({ cardId, reason }, actorId) => {
-      await retireCard(db, { actorId, cardId, reason });
+      await retireCard(db, { actorId, cardId, reason, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { ok: "Card retired." };
     },
     cardPage,

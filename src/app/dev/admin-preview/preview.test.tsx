@@ -9,7 +9,7 @@ vi.mock("@/db", () => { throw new Error("Preview must not load the database"); }
 vi.mock("@/auth/access", () => { throw new Error("Preview must not load authentication"); });
 vi.mock("@/auth/actions", () => { throw new Error("Preview must not load auth actions"); });
 import PreviewPage from "./[[...view]]/page";
-import { dashboardData, expenses, MONTH, orders, report, trends } from "@/dev/admin/fixtures";
+import { dashboardData, expenses, filterQueue, MONTH, orders, report, trends } from "@/dev/admin/fixtures";
 import { cashFlowPoints, expensePoints, orderPoints } from "@/app/admin/chart-data";
 import { formatPeso } from "@/lib/money";
 
@@ -53,10 +53,10 @@ test("stock deliveries show fixture costs and quantities without mutation action
 });
 
 test("last pages, invalid pages and filter reset retain the shared pagination behavior", async () => {
-  for (const [view, last, expected] of [["inventory", "7", "Showing 61–63 of 63 cards"], ["orders", "6", "Showing 101–102 of 102 orders"], ["customers", "3", "Showing 41–43 of 43 customers"], ["support", "2", "Showing 21–23 of 23 cases"]]) {
+  for (const [view, last, expected] of [["inventory", String(Math.ceil(filterQueue(undefined).length / 20)), `Showing ${(Math.ceil(filterQueue(undefined).length / 20) - 1) * 20 + 1}–${filterQueue(undefined).length} of ${filterQueue(undefined).length} cards`], ["orders", "6", "Showing 101–102 of 102 orders"], ["customers", "3", "Showing 41–43 of 43 customers"], ["support", "2", "Showing 21–23 of 23 cases"]]) {
     expect(renderToStaticMarkup(await page(view, { page: last }))).toContain(expected);
   }
-  expect(renderToStaticMarkup(await page("inventory", { page: "bad" }))).toContain("Showing 1–10 of 63 cards");
+  expect(renderToStaticMarkup(await page("inventory", { page: "bad" }))).toContain(`Showing 1–20 of ${filterQueue(undefined).length} cards`);
   const html = renderToStaticMarkup(await page("orders", { status: "in_progress", page: "2" }));
   expect(html).toContain('name="status"');
   expect(html).not.toContain('name="page"');

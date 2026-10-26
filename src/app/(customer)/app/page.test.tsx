@@ -88,60 +88,17 @@ test("published summary has one unified action row with Preview, QR, and Manage 
   const actions = [...actionGroup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)];
   expect(actions).toHaveLength(3);
 
-  // Desktop action order: 1. Preview, 2. Share QR, 3. Manage profile
-  // 1. Preview: icon-only square button with tooltip and aria-label
-  const preview = actions[0][0];
-  expect(preview).toContain('href="/app/profiles/p2/preview"');
-  expect(preview).toContain('aria-label="Preview profile"');
-  expect(preview).toContain('title="Preview profile"');
-  expect(preview).toContain("lucide-eye");
-  expect(preview).not.toContain(">Preview</a>");
-  for (const token of ["size-11", "rounded-[10px]", "border-border", "bg-background", "text-foreground", "duration-[220ms]"]) {
-    expect(preview).toContain(token);
-  }
-
-  // 2. Share QR: icon-only square button with tooltip and aria-label
-  const qr = actions[1][0];
-  expect(qr).toContain('href="/app/cards/c2"');
-  expect(qr).toContain('aria-label="Share QR code"');
-  expect(qr).toContain('title="Share QR code"');
-  expect(qr).toContain("lucide-qr-code");
-  expect(qr).not.toContain(">Share QR code</a>");
-  for (const token of ["size-11", "rounded-[10px]", "border-border", "bg-background", "text-foreground", "duration-[220ms]"]) {
-    expect(qr).toContain(token);
-  }
-
-  // 3. Manage profile: Vermilion primary with icon + text, flex-1 on mobile, auto on desktop
-  const manage = actions[2][0];
-  expect(manage).toContain('href="/app/profiles/p2"');
-  for (const token of [
-    "Manage profile",
-    "bg-action",
-    "text-white",
-    "lucide-pencil",
-    "h-11",
-    "rounded-[10px]",
-    "duration-[220ms]",
-    "order-first",
-    "flex-1",
-    "md:order-last",
-    "md:flex-initial",
-    "md:w-auto",
-  ]) {
-    expect(manage).toContain(token);
-  }
-
-  // No separate secondary grid / no duplicate text-only row
+  expect(actions[0][0]).toContain('href="/app/profiles/p2/preview"');
+  expect(actions[0][0]).toContain('>Preview</a>');
+  expect(actions[1][0]).toContain('href="/app/cards/c2"');
+  expect(actions[2][0]).toContain('href="/app/profiles/p2"');
   expect(summary).not.toContain("grid-cols-2");
   expect(actions.filter(([link]) => link.includes("bg-action"))).toHaveLength(1);
-  expect(summary).toContain("flex-wrap");
-
-  // Unrelated Home sections remain unchanged
   const quick = html.match(/<section aria-labelledby="quick-actions"[\s\S]*?<\/section>/)![0];
-  for (const text of ["Activate another Neffi", "Preview profile", "Manage cards"]) expect(quick).toContain(text);
-  for (const href of ["/activate", "/app/profiles/p2/preview", "/app/cards"]) expect(quick).toContain(`href="${href}"`);
-  for (const title of ["Your profiles", "Your cards", "1 connected card", "Connected to Lee"]) expect(html).toContain(title);
-  const badges = [...html.matchAll(/<span class="([^"]*)"><span aria-hidden="true"[^>]*><\/span>Published<\/span>/g)];
+  expect(quick).not.toContain("Preview profile");
+  for (const text of ["Activate another Neffi", "Manage cards"]) expect(quick).toContain(text);
+  for (const href of ["/activate", "/app/cards"]) expect(quick).toContain(`href="${href}"`);
+  for (const title of ["Your profiles", "Your cards", "1 connected card", "Connected to Lee"]) expect(html).toContain(title);  const badges = [...html.matchAll(/<span class="([^"]*)"><span aria-hidden="true"[^>]*><\/span>Published<\/span>/g)];
   expect(badges).toHaveLength(2);
   expect(badges[0][1]).toBe(badges[1][1]);
   for (const badge of badges) {

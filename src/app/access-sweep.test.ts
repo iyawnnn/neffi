@@ -54,6 +54,8 @@ vi.mock("@/config/env", async () => {
   "RESEND_API_KEY": "re_ci_dummy_resend_key_0123456789",
   "AUTH_EMAIL_FROM": "Neffi <ci@example.invalid>",
   "ACTIVATION_CODE_SECRET": "ci-dummy-activation-code-secret-0123456789abcdef",
+  "ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID": "ci-test-v1",
+  "ACTIVATION_CODE_ENCRYPTION_KEYS": JSON.stringify({ "ci-test-v1": Buffer.alloc(32, 75).toString("base64") }),
   "CARD_URL_ORIGIN": "http://localhost:3000",
   "CLOUDINARY_CLOUD_NAME": "ci-dummy-cloud",
   "CLOUDINARY_API_KEY": "ci-dummy-cloudinary-key-0123456789",
@@ -142,6 +144,8 @@ const classifiedExports: Record<string, readonly string[]> = {
     "recordNfcCheckAction",
     "matchPackageAction",
     "replaceCredentialAction",
+    "revealActivationCodeAction",
+    "saveExistingActivationCodeAction",
     "reserveGrcAction",
     "retireCardAction"
   ],
@@ -161,10 +165,15 @@ const classifiedExports: Record<string, readonly string[]> = {
     "handOverOrderAction",
     "shipOrderAction",
     "updateShipmentAction",
-    "cancelOrderAction"
+    "cancelOrderAction",
+    "saveJntDeliveryAction",
+    "markJntShippedAction",
+    "correctShipmentDateAction",
+    "allocateAvailableStockAction"
   ],
   "./admin/orders/new/actions.ts": [
-    "createOrderAction"
+    "createOrderAction",
+    "createPaidOrderAction"
   ],
   "./admin/settings/actions.ts": [
     "saveProductAction"
@@ -290,8 +299,10 @@ for (const [path, load] of Object.entries(pageModules)) {
     const props = { params: Promise.resolve(params), searchParams: Promise.resolve({}), children: null };
     let thrown: unknown;
     try { await page(props); } catch (error) { thrown = error; }
+    // The Admin layout deliberately lets a signed-out visitor through so the independently gated page keeps its exact return path.
+    if (path === "./admin/layout.tsx" && role === "signed-out") { expect(thrown).toBeUndefined(); return; }
     expect(thrown).toBeInstanceOf(Error);
-    const expected = role === "customer" ? ["NOT_FOUND"] : admin ? ["REDIRECT /sign-in?next=/admin"] : ["REDIRECT /sign-in?next=/app", "NOT_FOUND"];
+    const expected = role === "customer" ? ["NOT_FOUND"] : admin ? ["REDIRECT /sign-in?next=/admin", "REDIRECT /sign-in?next=" + encodeURIComponent("/admin/inventory/cards/00000000-0000-4000-8000-000000000001")] : ["REDIRECT /sign-in?next=/app", "NOT_FOUND"];
     expect(expected).toContain((thrown as Error).message);
     if ((thrown as Error).message !== "NOT_FOUND" || admin) expect(m.getSession).toHaveBeenCalledTimes(1);
   });

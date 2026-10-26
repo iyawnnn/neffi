@@ -1,13 +1,12 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { activationCredentials, activityEvents, cards, orderItems } from "@/db/schema";
-import { insertAccount, insertClaimedCard, insertOrderItem, insertStockPurchase } from "@/db/test-fixtures";
+import { insertAccount, insertClaimedCard, insertOrderItem, insertProduct, insertStockPurchase, syntheticCredentialSecrets } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { matchPackage, provisionDbc } from "./dbc";
 import { recordNfcCheck, retireCard } from "./card";
 import { eligibleGrcItems, reserveGrc } from "./grc";
 import { cardUrl } from "./token";
-import { insertProduct } from "@/db/test-fixtures";
 
 let db: TestDb;
 beforeAll(async () => {
@@ -15,6 +14,7 @@ beforeAll(async () => {
 });
 
 const SECRET = "s".repeat(40);
+const SECRETS = syntheticCredentialSecrets(SECRET);
 const ORIGIN = "https://tap.example.test";
 const events = (tx: TestTx, cardId: string) => tx.select().from(activityEvents).where(eq(activityEvents.cardId, cardId));
 const reload = async (tx: TestTx, cardId: string) => (await tx.select().from(cards).where(eq(cards.id, cardId)))[0];
@@ -39,7 +39,7 @@ describe("retireCard", () => {
     rollback(db, async (tx) => {
       const { base, card } = await blankCard(tx);
       await insertProduct(tx, "dbc");
-      const provisioned = await provisionDbc(tx, { ...base, activationSecret: SECRET });
+      const provisioned = await provisionDbc(tx, { ...base, secrets: SECRETS });
       await recordNfcCheck(tx, { ...base, cardUrlOrigin: ORIGIN, readBackUri: cardUrl(ORIGIN, provisioned.publicToken), readBackMatched: true, phoneOpenedUri: true, tagLeftWritable: true });
       await matchPackage(tx, { ...base, activationCode: provisioned.activationCode, activationSecret: SECRET });
 
@@ -48,6 +48,7 @@ describe("retireCard", () => {
       const credentials = await tx.select().from(activationCredentials).where(eq(activationCredentials.cardId, card.id));
       expect(credentials).toHaveLength(1);
       expect(credentials[0].revokedAt).toBeInstanceOf(Date);
+      expect(credentials[0].encryptedCode).toBeNull();
       expect(await reload(tx, card.id)).toMatchObject({ state: "retired", publicToken: provisioned.publicToken });
     }));
 

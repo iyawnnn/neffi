@@ -3,7 +3,7 @@ import { effectiveItemTotal, orderTotals, isCompletionEligible, type OrderFacts 
 
 const facts: OrderFacts = {
   status: "in_progress", deliveryMethod: "pickup", shippingFee: 500,
-  items: [{ productKind: "dbc", quantity: 2, unitPrice: 10000, agreedTotal: null, activeCount: 2, releasedCount: 2 }],
+  items: [{ productKind: "dbc", quantity: 2, unitPrice: 10000, agreedTotal: null, activeCount: 2, allocatedCount: 2, preparedCount: 2, releasedCount: 2 }],
   received: 20500, refunded: 0, hasShippedShipment: false, hasHandedOver: false,
 };
 
@@ -11,6 +11,13 @@ test("effective item total uses the agreed total, including zero", () => {
   expect(effectiveItemTotal(facts.items[0])).toBe(20000);
   expect(effectiveItemTotal({ ...facts.items[0], agreedTotal: 17000 })).toBe(17000);
   expect(effectiveItemTotal({ ...facts.items[0], agreedTotal: 0 })).toBe(0);
+});
+
+test("pending shipping has no final total or balance and cannot complete", () => {
+  const pending = { ...facts, deliveryMethod: "courier" as const, shippingFee: 0, shippingFeePending: true, received: 20000, hasShippedShipment: true };
+  expect(orderTotals(pending)).toMatchObject({ productSubtotal: 20000, shippingFeePending: true, orderTotal: null, balance: null, paymentState: "Unpaid" });
+  expect(isCompletionEligible(pending)).toBe(false);
+  expect(orderTotals({ ...pending, shippingFeePending: false, shippingFee: 500 })).toMatchObject({ orderTotal: 20500, balance: 500 });
 });
 
 test("GRC-only completion needs commercial delivery and exact payment, with no physical Card states", () => {

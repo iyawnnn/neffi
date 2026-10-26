@@ -11,6 +11,7 @@ import { CARD_REQUEST_HEADER, readCardRequest } from "@/modules/cards/request";
 import { loadCurrentPublicSceneView } from "@/modules/profiles/view";
 import { cachedSceneView } from "./cached-view";
 import { Unavailable } from "./unavailable";
+import { ProfileIntro } from "./profile-intro";
 
 // Public but kept out of search: customer-controlled indexing is a later, separately planned feature.
 export const metadata: Metadata = { title: "Neffi", robots: { index: false, follow: false } };
@@ -27,7 +28,8 @@ export default async function CardPage({ params }: PageProps<"/c/[token]">) {
   if (snapshot.status === "unavailable") return <Unavailable manageHref={`/app/cards/${snapshot.ownerCardId}`} />;
   const view = await loadCurrentPublicSceneView(db, snapshot, cachedSceneView);
   if (!view) notFound();
-  return (
+  return <>
+    <ProfileIntro />
     <main className="flex flex-1 flex-col bg-[var(--pf-bg)] text-[var(--pf-fg)]" style={{ ...profileTheme(view.appearance.accent, view.appearance.mode), colorScheme: view.appearance.mode } as CSSProperties}>
       {snapshot.owner ? (
         <nav aria-label="Manage your Neffi" className="pf-owner-bar flex flex-wrap items-center justify-center gap-2 px-4 py-2 text-sm">
@@ -38,5 +40,5 @@ export default async function CardPage({ params }: PageProps<"/c/[token]">) {
       ) : null}
       <ProfileRenderer view={view} visitorActions={{ saveContactHref: `/c/${token}/contact` }} />
     </main>
-  );
+  </>;
 }

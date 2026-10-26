@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, test } from "vitest";
 import { activationCredentials, activityEvents, cards } from "@/db/schema";
-import { insertAccount, insertProvisioningDbc, insertReleasedDbc } from "@/db/test-fixtures";
+import { insertAccount, insertProvisioningDbc, insertReleasedDbc, syntheticCredentialSecrets } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { ownedCards } from "../cards/owned";
 import { checkActivationCode, claimCard } from "./claim";
-import { formatActivationCode } from "./code";
+import { activationLookup, formatActivationCode } from "./code";
 import { issueActivationCredential, revokeUsableCredential } from "./credentials";
 
 let db: TestDb;
@@ -15,9 +15,10 @@ beforeAll(async () => {
 });
 
 const SECRET = "s".repeat(40);
+const SECRETS = syntheticCredentialSecrets(SECRET);
 async function released(tx: TestTx) {
   const { card } = await insertReleasedDbc(tx);
-  const { credentialId, code } = await issueActivationCredential(tx, card.id, SECRET);
+  const { credentialId, code } = await issueActivationCredential(tx, card.id, SECRETS);
   return { card, credentialId, code };
 }
 const check = (tx: TestTx, code: string, accountId?: string) => checkActivationCode(tx, { secret: SECRET, code, accountId });
@@ -43,7 +44,7 @@ describe("checkActivationCode", () => {
   test("an unsold card's code is unavailable, whether in provisioning or Ready", () =>
     rollback(db, async (tx) => {
       const { card } = await insertProvisioningDbc(tx);
-      const { code } = await issueActivationCredential(tx, card.id, SECRET);
+      const { code } = await issueActivationCredential(tx, card.id, SECRETS);
       expect(await check(tx, code)).toEqual({ status: "unavailable" });
       await tx.update(cards).set({ state: "ready", nfcVerifiedAt: new Date(), packageMatchedAt: new Date() }).where(eq(cards.id, card.id));
       expect(await check(tx, code)).toEqual({ status: "unavailable" });
@@ -87,9 +88,21 @@ describe("claimCard", () => {
       const credential = await credentialRow(tx, credentialId);
       expect(credential.usedAt).toBeInstanceOf(Date);
       expect(credential.revokedAt).toBeNull();
+      expect(credential.encryptedCode).toBeNull();
       const events = await claimEvents(tx, card.id);
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({ actorAccountId: account.id, accountId: account.id, note: null });
+    }));
+
+  test("claims a legacy HMAC-only credential without an encryption key", () =>
+    rollback(db, async (tx) => {
+      const { card } = await insertReleasedDbc(tx);
+      const code = "N8KF42PQ";
+      const [credential] = await tx.insert(activationCredentials).values({ cardId: card.id, lookupHmac: activationLookup(SECRET, code) }).returning();
+      expect(credential.encryptedCode).toBeNull();
+      expect(await check(tx, code)).toEqual({ status: "claimable", credentialId: credential.id });
+      expect(await claimCard(tx, { credentialId: credential.id, accountId: (await insertAccount(tx)).id })).toMatchObject({ status: "claimed" });
+      expect((await credentialRow(tx, credential.id)).encryptedCode).toBeNull();
     }));
 
   test("a repeated claim by the same account changes nothing", () =>

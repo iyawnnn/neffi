@@ -19,6 +19,7 @@ assert(![...url.searchParams.keys()].some((key) => ["host", "hostaddr", "port"].
 
 const SECRET = "c".repeat(40);
 const ORIGIN = "https://tap.example.test";
+const secrets = { lookupSecret: SECRET, activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]) };
 const clients: pg.Client[] = [];
 const pools: pg.Pool[] = [];
 const failures: string[] = [];
@@ -76,7 +77,7 @@ try {
   const actor = { actorId: owner };
   const provisionWithNfc = async () => {
     const cardId = await blankCard();
-    const result = await provisionDbc(db, { ...actor, cardId, activationSecret: SECRET });
+    const result = await provisionDbc(db, { ...actor, cardId, secrets });
     await admin.query("UPDATE cards SET nfc_verified_at = now() WHERE id = $1", [cardId]);
     return { cardId, ...result };
   };
@@ -108,7 +109,7 @@ try {
 
   await check("provisionDbc waits for the card lock, then sees it was retired", async () => {
     const cardId = await blankCard();
-    await lockedScenario(cardId, () => provisionDbc(db, { ...actor, cardId, activationSecret: SECRET }), async (h) => {
+    await lockedScenario(cardId, () => provisionDbc(db, { ...actor, cardId, secrets }), async (h) => {
       await h.query("UPDATE cards SET state='retired' WHERE id=$1", [cardId]);
     }, "wrong_state");
   });
@@ -116,7 +117,7 @@ try {
   await check("recordNfcCheck waits for the card lock, then sees it was retired", async () => {
     const { cardId, publicToken } = await (async () => {
       const id = await blankCard();
-      const result = await provisionDbc(db, { ...actor, cardId: id, activationSecret: SECRET });
+      const result = await provisionDbc(db, { ...actor, cardId: id, secrets });
       return { cardId: id, publicToken: result.publicToken };
     })();
     await lockedScenario(cardId, () => recordNfcCheck(db, { ...actor, cardId, cardUrlOrigin: ORIGIN, readBackUri: `${ORIGIN}/c/${publicToken}`, readBackMatched: true, phoneOpenedUri: true, tagLeftWritable: true }), async (h) => {
@@ -135,7 +136,7 @@ try {
 
   await check("replaceProvisioningCredential waits for the card lock, then sees the credential was already replaced", async () => {
     const { cardId, credentialId } = await provisionWithNfc();
-    await lockedScenario(cardId, () => replaceProvisioningCredential(db, { ...actor, cardId, credentialId, reason: "race", activationSecret: SECRET }), async (h) => {
+    await lockedScenario(cardId, () => replaceProvisioningCredential(db, { ...actor, cardId, credentialId, reason: "race", secrets }), async (h) => {
       await h.query("UPDATE activation_credentials SET revoked_at=now() WHERE id=$1", [credentialId]);
       await h.query("INSERT INTO activation_credentials(card_id,lookup_hmac) VALUES ($1,$2)", [cardId, randomUUID().replaceAll("-", "").padEnd(64, "0")]);
     }, "credential_changed");
@@ -150,7 +151,7 @@ try {
 
   await check("a double provision of one card issues exactly one credential", async () => {
     const cardId = await blankCard();
-    const results = await Promise.allSettled([1, 2].map(() => provisionDbc(db, { ...actor, cardId, activationSecret: SECRET })));
+    const results = await Promise.allSettled([1, 2].map(() => provisionDbc(db, { ...actor, cardId, secrets })));
     assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
     const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
     assert.equal(rejected.reason.code, "already_provisioned");

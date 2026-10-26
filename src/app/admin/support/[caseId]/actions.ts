@@ -165,14 +165,14 @@ const verified = z.object({ caseId: id, cardId: id, verificationNote: note, conf
 
 export async function reissueActivationCodeAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(verified, data, async (input, actorId) => {
-    const { activationCode } = await reissueActivationCode(db, { ...input, actorId, activationSecret: env.activationCodeSecret });
+    const { activationCode } = await reissueActivationCode(db, { ...input, actorId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
     return { reveal: { code: formatActivationCode(activationCode), instructions: "Copy it now and deliver it to the verified requester outside Neffi. This code cannot be shown again after closing or leaving this page." } };
   });
 }
 
 export async function resetCardOwnershipAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
   return run(verified, data, async (input, actorId) => {
-    const { activationCode } = await resetCardOwnership(db, { ...input, actorId, activationSecret: env.activationCodeSecret });
+    const { activationCode } = await resetCardOwnership(db, { ...input, actorId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
     return { reveal: { code: formatActivationCode(activationCode), instructions: "Copy it now and deliver it to the verified requester outside Neffi. The card stays offline until it is claimed and connected to a Profile. This code cannot be shown again after closing or leaving this page." } };
   });
 }

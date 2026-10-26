@@ -59,6 +59,7 @@ export const cards = pgTable(
     // Copy of the product's kind, kept honest by the composite FK, so card-level guards can see it.
     kind: productKind(),
     state: cardState().notNull().default("blank"),
+    inventoryNumber: integer().notNull().default(sql`nextval('cards_inventory_number_seq'::regclass)`),
     orderItemId: uuid(),
     // Permanent public `/c/{token}` identifier. Public, so never proof of ownership.
     publicToken: text().unique("cards_public_token_unique"),
@@ -90,6 +91,8 @@ export const cards = pgTable(
       sql`COALESCE(${t.kind} = 'dbc', false) OR (${t.publicToken} IS NULL AND ${t.ownerAccountId} IS NULL AND ${t.profileId} IS NULL AND ${t.disabledAt} IS NULL)`,
     ),
     check("cards_committed_states_need_product", sql`${t.state} IN ('blank', 'retired') OR ${t.productId} IS NOT NULL`),
+    check("cards_inventory_number_positive", sql`${t.inventoryNumber} > 0`),
+    check("cards_preparing_dbc", sql`${t.state}::text <> 'preparing' OR (COALESCE(${t.kind} = 'dbc', false) AND ${t.productId} IS NOT NULL AND ${t.orderItemId} IS NOT NULL AND ${t.publicToken} IS NOT NULL AND ${t.ownerAccountId} IS NULL)`),
     check(
       "cards_dbc_ready_checks_recorded",
       sql`${t.kind} IS DISTINCT FROM 'dbc' OR ${t.state} <> 'ready' OR (${t.nfcVerifiedAt} IS NOT NULL AND ${t.packageMatchedAt} IS NOT NULL)`,
@@ -101,7 +104,7 @@ export const cards = pgTable(
     ),
     check(
       "cards_fulfillment_needs_order_item",
-      sql`${t.state} NOT IN ('reserved', 'released') OR ${t.orderItemId} IS NOT NULL`,
+      sql`(${t.state} NOT IN ('reserved', 'released') AND ${t.state}::text <> 'preparing') OR ${t.orderItemId} IS NOT NULL`,
     ),
     check("cards_stock_has_no_order_item", sql`${t.state} NOT IN ('blank', 'ready') OR ${t.orderItemId} IS NULL`),
     // Composite FKs skip their check when any column is NULL (MATCH SIMPLE); these close that gap.
@@ -112,6 +115,7 @@ export const cards = pgTable(
     check("cards_owner_only_after_sale", sql`${t.ownerAccountId} IS NULL OR ${t.state} IN ('released', 'retired')`),
     check("cards_retired_routes_nowhere", sql`${t.state} <> 'retired' OR ${t.profileId} IS NULL`),
     unique("cards_id_kind_unique").on(t.id, t.kind),
+    unique("cards_inventory_number_unique").on(t.inventoryNumber),
     index("cards_owner_account_id_idx").on(t.ownerAccountId).where(sql`${t.ownerAccountId} IS NOT NULL`),
     index("cards_profile_id_idx").on(t.profileId).where(sql`${t.profileId} IS NOT NULL`),
     index("cards_kind_state_idx").on(t.kind, t.state),
@@ -120,7 +124,7 @@ export const cards = pgTable(
   ],
 );
 
-// One-time claim credential for a DBC. Only a keyed-hash lookup value is stored, never the code. State is
+// One-time claim credential for a DBC. The lookup HMAC and encrypted current code are stored, never plaintext. State is
 // derived: usable while both timestamps are NULL; used and revoked are final (activation_credentials_guard).
 export const activationCredentials = pgTable(
   "activation_credentials",
@@ -129,6 +133,7 @@ export const activationCredentials = pgTable(
     cardId: uuid().notNull(),
     cardKind: productKind().notNull().default("dbc"),
     lookupHmac: text().notNull(),
+    encryptedCode: text(),
     createdAt: createdAt(),
     usedAt: timestamp({ withTimezone: true }),
     revokedAt: timestamp({ withTimezone: true }),

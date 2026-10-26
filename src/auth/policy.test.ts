@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { isOwner, ownsAccountResource, safeNext, toViewer } from "./policy";
+import { isOwner, ownsAccountResource, safeAdminNext, safeNext, toViewer } from "./policy";
 
 const session = (user: object) => ({ user: { id: "a1", email: "a@example.test", emailVerified: true, role: "customer", ...user } });
 
@@ -83,4 +83,26 @@ describe("safeNext", () => {
     "data:text/html,x",
     "app",
   ])("falls back to /app for %j", (raw) => expect(safeNext(raw)).toBe("/app"));
+});
+
+describe("safeAdminNext", () => {
+  const cardPath = "/admin/inventory/cards/3f2b8f64-5717-4562-b3fc-2c963f66afa6";
+  test.each([
+    [cardPath, cardPath],
+    [`${cardPath}?tab=1#top`, cardPath],
+    ["/admin", "/admin"],
+    [undefined, "/admin"],
+    ["/app/account", "/admin"],
+    ["/activate", "/admin"],
+    ["https://attacker.example/admin", "/admin"],
+    ["//attacker.example/admin", "/admin"],
+    ["/\attacker.example/admin", "/admin"],
+    ["\\attacker.example\admin", "/admin"],
+    ["javascript:alert(1)", "/admin"],
+    ["/adminx", "/admin"],
+    ["/admin/../app", "/admin"],
+    ["/admin/%2e%2e/app", "/admin"],
+  ])("safeAdminNext(%s) → %s", (raw, expected) => {
+    expect(safeAdminNext(raw)).toBe(expected);
+  });
 });

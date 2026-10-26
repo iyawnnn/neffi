@@ -1,3 +1,4 @@
+import { syntheticCredentialSecrets } from "@/db/test-fixtures";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { asc, eq } from "drizzle-orm";
@@ -42,7 +43,7 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     expect(received).toHaveLength(2);
     const provisioned = [];
     for (const card of received) {
-      const output = await provisionDbc(db, { actorId: owner.id, cardId: card.id, activationSecret: secret });
+      const output = await provisionDbc(db, { actorId: owner.id, cardId: card.id, secrets: syntheticCredentialSecrets(secret) });
       // These are synthetic attestations, not physical NFC evidence.
       await recordNfcCheck(db, { actorId: owner.id, cardId: card.id, cardUrlOrigin: origin, readBackUri: cardUrl(origin, output.publicToken), readBackMatched: true, phoneOpenedUri: true, tagLeftWritable: true, device: "Synthetic journey fixture" });
       await matchPackage(db, { actorId: owner.id, cardId: card.id, activationCode: output.activationCode, activationSecret: secret });
@@ -61,6 +62,7 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     const partial = await loadOrderFacts(db, orderId);
     expect(partial.status).toBe("in_progress");
     expect(partial.totals.balance).toBe(90_000);
+    assert(partial.totals.balance !== null);
     await recordPayment(db, { actorId: owner.id, orderId, method: "cash", amount: partial.totals.balance, paidOn: "2026-10-16" });
     const detail = await getOrderDetail(db, orderId);
     assert(detail);
@@ -103,8 +105,8 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     const home = await dashboard(db, "2026-10");
     expect(home.inProgress).toBe(0);
     expect(home.outstanding).toBe(0);
-    expect(home.stock.rows.filter(row => row.state === "released")).toEqual([{ kind: "dbc", state: "released", count: 2 }]);
-    expect(home.stock.rows.filter(row => row.state === "ready")).toEqual([]);
+    expect(home.stock.status.filter(row => row.status === "activated" || row.status === "waiting_activation")).toEqual([{ kind: "dbc", status: "activated", count: 2 }]);
+    expect(home.stock.status.filter(row => row.status === "ready")).toEqual([]);
     const expenses = await expenseReport(db, "2026-10");
     expect(expenses.total).toBe(16_000);
     expect(expenses.rows.filter(row => row.source === "stock").map(row => row.amount)).toEqual([16_000]);
