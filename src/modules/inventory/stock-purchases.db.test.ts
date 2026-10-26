@@ -5,7 +5,7 @@ import { insertAccount, insertClaimedCard, insertProvisioningDbc } from "@/db/te
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { receiveStock } from "./stock-intake";
 import { getCardDetail, listInventoryQueue } from "./queries";
-import { getStockPurchase, listStockPurchases, updateStockPurchase } from "./stock-purchases";
+import { getStockPurchase, listStockPurchaseCards, listStockPurchases, updateStockPurchase } from "./stock-purchases";
 
 let db: TestDb;
 beforeAll(async () => { db = await createTestDb(); });
@@ -18,6 +18,8 @@ test("costs stay on their source; quantity and states derive only from Cards", (
   await tx.update(cards).set({ state: "retired" }).where(eq(cards.id, card.id));
   expect(await getStockPurchase(tx, stockPurchaseId)).toMatchObject({ quantity: 3, purchaseCost: 15000, inboundShippingCost: null, supplier: "Updated", states: { blank: 2, retired: 1 } });
   expect(await listStockPurchases(tx, { limit: 20 })).toMatchObject([{ id: stockPurchaseId, quantity: 3 }]);
+  expect(await listStockPurchaseCards(tx, stockPurchaseId)).toHaveLength(3);
+  expect(await listStockPurchaseCards(tx, stockPurchaseId)).toEqual(expect.arrayContaining([expect.objectContaining({ orderId: null, orderNumber: null })]));
   expect(await getStockPurchase(tx, crypto.randomUUID())).toBeNull();
   expect((await tx.select().from(stockPurchases))).toHaveLength(1);
 }));

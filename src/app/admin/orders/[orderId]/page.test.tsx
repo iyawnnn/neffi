@@ -184,3 +184,57 @@ test("legacy orders keep raw, truthful history and method names", async () => {
   const html = await render();
   expect(html).toContain("10000 centavos; cash");
 });
+
+test("In person delivery shows method, preparation, handoff state and handoff date", async () => {
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: null }], timeline: [{ id: "e1", type: "order_handed_over", note: null, createdAt: new Date("2026-10-26T04:00:00Z") }] }, { releasedCount: 1 }));
+  const html = await render();
+  const delivery = html.slice(html.indexOf('id="delivery"'), html.indexOf('id="payments"'));
+  expect(delivery).toContain("In person");
+  expect(delivery).toContain("1 of 1 prepared");
+  expect(delivery).toContain("Given to customer");
+  expect(delivery).toContain("Handoff date");
+  expect(delivery).toContain("Oct 26, 2026");
+  expect(delivery).toContain("Waiting for the customer to activate");
+});
+
+test("J&T delivery groups recipient, phone, address, fee, tracking, shipped date and status", async () => {
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: null }] }, { releasedCount: 1 }));
+  const html = await render();
+  const delivery = html.slice(html.indexOf('id="delivery"'), html.indexOf('id="payments"'));
+  for (const text of ["Recipient", "Rey Dela Cruz", "Phone", "0917 000 0000", "Address", "1 Long Street, Quezon City", "Shipping fee", "₱120.00", "Tracking number", "JT-9", "Shipped date", "2026-10-27", "Shipment status", "In transit"]) expect(delivery).toContain(text);
+});
+
+test("J&T with a pending fee and no shipment row says what is missing instead of inventing details", async () => {
+  getOrderDetail.mockResolvedValue(normal({ deliveryMethod: "courier", shippingFeePending: true, totals: { ...normal().totals, orderTotal: null, balance: null }, shipments: [] }));
+  const html = await render();
+  const delivery = html.slice(html.indexOf('id="delivery"'), html.indexOf('id="payments"'));
+  expect(delivery).toContain("To be confirmed");
+  expect(delivery).toContain("Not added yet");
+  expect(delivery).toContain("Not shipped yet");
+  expect(delivery).toContain("Add the recipient details");
+});
+
+test("each assigned card shows its human reference with preparation, delivery and card state", async () => {
+  getOrderDetail.mockResolvedValue(normal({ cards: [{ id: "c1", kind: "dbc", state: "reserved", inventoryNumber: 51, ownerAccountId: null }, { id: "c2", kind: "dbc", state: "preparing", inventoryNumber: 52, ownerAccountId: null }] }, { quantity: 2, allocatedCount: 2, preparedCount: 1 }));
+  const html = await render();
+  expect(html).toContain("N-0051");
+  expect(html).toContain("N-0052");
+  expect(html).toContain("Needs preparation");
+  expect(html).toContain("Not delivered yet");
+  expect(html).toContain("Assigned");
+});
+
+test("activity is a timeline of readable events and collapses older ones behind Show all", async () => {
+  const events = Array.from({ length: 8 }, (_, index) => ({ id: `e${index}`, type: "note", note: `Note ${index}`, createdAt: new Date(`2026-10-${10 + index}T04:00:00Z`) }));
+  getOrderDetail.mockResolvedValue(normal({ timeline: events }));
+  const html = await render();
+  expect(html).toContain("Show all 8 events");
+  expect(html).toContain("<time");
+  expect(html).toContain("Note 7");
+});
+
+test("normal orders never show the forbidden legacy money and handover controls", async () => {
+  getOrderDetail.mockResolvedValue(normal({ deliveryMethod: "courier", shippingFeePending: true, shipments: [dest] }));
+  const html = await render();
+  for (const gone of ["Paid now", "Record handover", "Record shipping payment", "Record shipment", "Record payment", "Agreed line total", 'type="checkbox"']) expect(html).not.toContain(gone);
+});

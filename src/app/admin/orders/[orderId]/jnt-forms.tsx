@@ -28,7 +28,7 @@ export function MarkShippedForm({ orderId, fee, feeKnown, today, earliest }: { o
   const [tracking, setTracking] = useState("");
   const [shippedOn, setShippedOn] = useState(today);
   const [shippingFee, setShippingFee] = useState(fee);
-  return <ActionForm action={markJntShippedAction} submit="Mark as shipped" variant="primary">
+  return <ActionForm action={markJntShippedAction} submit="Mark as shipped" pendingText="Shipping…" variant="primary">
     <input type="hidden" name="orderId" value={orderId} />
     <div className="grid gap-4 sm:grid-cols-2">
       <label className={fieldLabel}>J&amp;T tracking number<Input name="trackingNumber" required maxLength={100} autoComplete="off" value={tracking} onChange={(event) => setTracking(event.target.value)} /></label>

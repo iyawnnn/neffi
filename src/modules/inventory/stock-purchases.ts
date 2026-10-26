@@ -1,5 +1,5 @@
 import "server-only";
-import { count, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
 import { OrderError } from "../orders/errors";
@@ -39,4 +39,15 @@ export async function listStockPurchases(db: Db, { offset = 0, limit }: { offset
 export async function getStockPurchase(db: Db, id: string) {
   const [row] = await db.select(projection).from(schema.stockPurchases).where(eq(schema.stockPurchases.id, id));
   return row ?? null;
+}
+
+// The cards this delivery produced, with the order each one now serves (if any). Read-only; no credential columns.
+export async function listStockPurchaseCards(db: Db, id: string) {
+  return db
+    .select({ id: schema.cards.id, inventoryNumber: schema.cards.inventoryNumber, state: schema.cards.state, orderId: schema.orders.id, orderNumber: schema.orders.number })
+    .from(schema.cards)
+    .leftJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
+    .leftJoin(schema.orders, eq(schema.orders.id, schema.orderItems.orderId))
+    .where(eq(schema.cards.stockPurchaseId, id))
+    .orderBy(asc(schema.cards.inventoryNumber));
 }

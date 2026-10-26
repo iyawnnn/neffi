@@ -81,11 +81,18 @@ export function Panel({ children, className, padded = false }: { children: React
   return <div className={cn("overflow-hidden rounded-panel border bg-background", padded && panelPad, className)}>{children}</div>;
 }
 
-/** Highlights the single next thing to do on a screen: the Vermilion hairline is the only accent. */
-export function NextStep({ title, children }: { title: string; children: ReactNode }) {
+/** Highlights the single next thing to do on a screen: the Vermilion hairline is the only accent. `quiet` is for a
+ *  waiting or finished state with nothing left for the owner to do. */
+export function NextStep({ title, children, icon: Icon, quiet = false }: { title: string; children: ReactNode; icon?: LucideIcon; quiet?: boolean }) {
   return (
-    <section className={cn("flex flex-col gap-3 rounded-panel border border-action/40 bg-background", panelPad)}>
-      <h2 className="text-section">{title}</h2>
+    <section className={cn("flex flex-col gap-3 rounded-panel border bg-background", quiet ? "border-border" : "border-action/40", panelPad)}>
+      <div className="flex items-center gap-3">
+        {Icon ? <span aria-hidden className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", quiet ? "bg-subtle text-fg-secondary" : "bg-action/10 text-action-text")}><Icon className="size-4" /></span> : null}
+        <div className="flex min-w-0 flex-col">
+          {Icon ? <p className="text-label font-medium tracking-wide text-fg-secondary uppercase">{quiet ? "Status" : "Next step"}</p> : null}
+          <h2 className="text-section">{title}</h2>
+        </div>
+      </div>
       {children}
     </section>
   );
