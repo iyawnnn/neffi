@@ -9,6 +9,7 @@ import type { PageWindow } from "@/modules/pagination";
 import { adminPageWide, EmptyPanel, FilterBar, FilterField, Input, listHref, Meta, Notice, pageHref, PageHeader, Pagination, Panel, RecordTable, RowLink, Section, Status, TabNav, TextLink, type Tone } from "../ui";
 import { KIND_LABEL } from "./format";
 
+const SHORT = { dbc: "DBC", grc: "GRC", none: "Unassigned" } as const;
 const wrap = "break-words [overflow-wrap:anywhere]";
 const TONE: Record<StatusKey, Tone> = { available_blank: "neutral", needs_preparation: "warning", ready: "success", assigned: "attention", shipped: "neutral", given: "neutral", waiting_activation: "warning", delivery_unconfirmed: "warning", activated: "success", retired: "neutral" };
 const TABS: { filter: QueueFilter | undefined; label: string; keys: StatusKey[] }[] = [
@@ -97,7 +98,7 @@ export function InventoryView({ stockView, filter, search, counts, shortage, pag
                 <h2 className="text-section">{available} available blank {available === 1 ? "card" : "cards"}</h2>
                 <p className="text-meta text-fg-secondary">Untouched stock. A card is chosen automatically when an order needs one, so there is nothing to prepare yet.</p>
               </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-body"><TextLink href="/admin/orders/new">Create order</TextLink><TextLink href={listHref(basePath, { status: "available" })}>View the list</TextLink></div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-body">{recordHref ? null : <TextLink href="/admin/orders/new">Create order</TextLink>}<TextLink href={listHref(basePath, { status: "available" })}>View the list</TextLink></div>
             </Panel>
           ) : null}
 
@@ -105,7 +106,7 @@ export function InventoryView({ stockView, filter, search, counts, shortage, pag
             <FilterBar action={basePath} clearHref={filtered ? basePath : undefined} submit="Search">
               {filter ? <input type="hidden" name="status" value={filter} /> : null}
               <FilterField label="Search" grow>
-                <Input name="q" defaultValue={search ?? ""} maxLength={100} placeholder="N-0051, order number, customer or tracking" />
+                <Input name="q" defaultValue={search ?? ""} maxLength={100} placeholder="N-0051, order, name or tracking" />
               </FilterField>
             </FilterBar>
             {queue?.cards.length ? (
@@ -115,10 +116,10 @@ export function InventoryView({ stockView, filter, search, counts, shortage, pag
                 rowKey={(card) => card.id}
                 href={(card) => actionHref(card)}
                 columns={[
-                  { label: "Card", cell: (card) => <><RowLink href={actionHref(card)}>{inventoryReference(card.inventoryNumber)}</RowLink><Meta>{KIND_LABEL[card.kind ?? "none"]}</Meta></> },
+                  { label: "Card", cell: (card) => <><RowLink href={actionHref(card)}><span className="whitespace-nowrap">{inventoryReference(card.inventoryNumber)}</span></RowLink><Meta>{SHORT[card.kind ?? "none"]}</Meta></> },
                   { label: "Status", cell: (card) => <Status tone={TONE[card.statusKey]}>{STATUS_LABEL_BY_KEY[card.statusKey]}</Status> },
                   { label: "Order / Customer", cell: (card) => card.orderNumber ? <><p className={`text-body ${wrap}`}>{card.customer}</p><Meta>Order {card.orderNumber}</Meta></> : <span className="text-fg-secondary">Not assigned</span> },
-                  { label: "Activation", cell: (card) => { const cell = activationFor(card); return cell.href ? <Link href={`${cardHref(card.id)}#activation`} className="relative z-10 font-medium text-action-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand">{cell.label}</Link> : <span className="text-fg-secondary">{cell.label}</span>; } },
+                  { label: "Activation", cell: (card) => { const cell = activationFor(card); return cell.href ? <Link href={`${cardHref(card.id)}#activation`} className="relative z-10 whitespace-nowrap font-medium text-action-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand">{cell.label}</Link> : <span className="text-fg-secondary">{cell.label}</span>; } },
                   { label: "Delivery", cell: (card) => { const delivery = deliveryOf(card); return delivery ? <><p className="text-body">{delivery.label}</p>{delivery.tracking ? <Meta className="font-mono">{delivery.tracking}</Meta> : null}</> : <span className="text-fg-secondary">—</span>; } },
                   { label: "Next action", cell: (card) => <Link href={actionHref(card)} className="relative z-10 font-medium text-action-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand">{operation(card).actionLabel}</Link> },
                 ]}

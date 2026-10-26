@@ -168,7 +168,8 @@ const classifiedExports: Record<string, readonly string[]> = {
     "cancelOrderAction",
     "saveJntDeliveryAction",
     "markJntShippedAction",
-    "correctShipmentDateAction"
+    "correctShipmentDateAction",
+    "allocateAvailableStockAction"
   ],
   "./admin/orders/new/actions.ts": [
     "createOrderAction",
