@@ -35,9 +35,8 @@ export async function allocateDbcCardsInTransaction(tx: Db, input: AllocationInp
     let missing = Math.max(item.quantity - counts.allocated, 0);
     if (!item.active) { missingQuantity += missing; continue; }
     const ready = await tx.select({ id: schema.cards.id }).from(schema.cards)
-      .innerJoin(schema.stockPurchases, eq(schema.stockPurchases.id, schema.cards.stockPurchaseId))
       .where(and(eq(schema.cards.state, "ready"), eq(schema.cards.kind, "dbc"), eq(schema.cards.productId, item.productId), isNull(schema.cards.orderItemId), sql`exists(select 1 from activation_credentials ac where ac.card_id = ${schema.cards.id} and ac.used_at is null and ac.revoked_at is null)`))
-      .orderBy(asc(schema.stockPurchases.receivedOn), asc(schema.cards.id)).limit(missing).for("update", { of: schema.cards, skipLocked: true });
+      .orderBy(asc(schema.cards.createdAt), asc(schema.cards.id)).limit(missing).for("update", { skipLocked: true });
     for (const card of ready) {
       if (!await usableCredential(tx, card.id)) continue;
       await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(eq(schema.cards.id, card.id));
@@ -47,9 +46,8 @@ export async function allocateDbcCardsInTransaction(tx: Db, input: AllocationInp
     }
     if (missing) {
       const blank = await tx.select({ id: schema.cards.id }).from(schema.cards)
-        .innerJoin(schema.stockPurchases, eq(schema.stockPurchases.id, schema.cards.stockPurchaseId))
-        .where(and(eq(schema.cards.state, "blank"), isNull(schema.cards.publicToken), isNull(schema.cards.orderItemId), or(isNull(schema.cards.productId), eq(schema.cards.productId, item.productId)), or(isNull(schema.cards.kind), eq(schema.cards.kind, "dbc"))))
-        .orderBy(asc(schema.stockPurchases.receivedOn), asc(schema.cards.id)).limit(missing).for("update", { of: schema.cards, skipLocked: true });
+        .where(and(eq(schema.cards.state, "blank"), isNull(schema.cards.publicToken), isNull(schema.cards.orderItemId), or(isNull(schema.cards.productId), eq(schema.cards.productId, item.productId)), or(isNull(schema.cards.kind), eq(schema.cards.kind, "dbc")), sql`not exists(select 1 from activation_credentials ac where ac.card_id = ${schema.cards.id})`))
+        .orderBy(asc(schema.cards.createdAt), asc(schema.cards.id)).limit(missing).for("update", { skipLocked: true });
       for (const card of blank) {
         await prepareAllocatedDbc(tx, { actorId: input.actorId, orderId: input.orderId, orderItemId: item.id, productId: item.productId, cardId: card.id, secrets: input.secrets });
         allocatedCardIds.push(card.id);

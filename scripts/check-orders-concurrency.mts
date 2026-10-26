@@ -234,15 +234,28 @@ try {
   });
 
   await check("stock-intake retry racing manual Order retry assigns once", async () => {
-    await receiveStock(dbA, { actorId: owner, receivedOn: "2026-10-25", quantity: 2, intendedKind: "dbc", secrets });
+    await admin.query("UPDATE products SET active=false WHERE id=$1", [allocationProduct]);
+    await admin.query("UPDATE cards SET product_id=$1,kind='dbc' WHERE state='blank' AND product_id IS NULL AND kind IS NULL AND order_item_id IS NULL", [allocationProduct]);
+    const receiptProduct = randomUUID();
+    await admin.query("INSERT INTO products(id,kind,name,price) VALUES($1,'dbc','Synthetic receipt DBC',79900)", [receiptProduct]);
     const orderId = await waiting();
-    const [receipt] = await Promise.all([
-      receiveStock(dbA, { actorId: owner, receivedOn: "2026-10-26", quantity: 1, intendedKind: "dbc", secrets }),
-      allocateDbcCards(dbB, { actorId: owner, orderId, secrets }),
+    assert.deepEqual(await linkedCards(orderId), []);
+    let receiptStockPurchaseId: string | undefined;
+    const [receiptError, retryError] = await lockedScenario("orders", orderId, [
+      () => receiveStock(dbA, { actorId: owner, receivedOn: "2026-10-26", quantity: 1, intendedKind: "dbc", secrets }).then((result) => {
+        assert.equal(result.retryFailed, false);
+        receiptStockPurchaseId = result.stockPurchaseId;
+      }),
+      () => allocateDbcCards(dbB, { actorId: owner, orderId, secrets }),
     ]);
-    assert.equal(receipt.retryFailed, false);
+    assert.equal(receiptError, undefined);
+    assert.equal(retryError, undefined);
+    assert(receiptStockPurchaseId);
+    const { rows: [receivedCard] } = await admin.query("SELECT id FROM cards WHERE stock_purchase_id=$1 AND product_id=$2", [receiptStockPurchaseId, receiptProduct]);
+    assert(receivedCard);
     const assigned = await linkedCards(orderId);
     assert.equal(assigned.length, 1);
+    assert.equal(assigned[0].id, receivedCard.id);
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1", [assigned[0].id])).rows[0].n, 1);
   });
 

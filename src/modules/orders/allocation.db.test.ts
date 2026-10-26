@@ -6,7 +6,7 @@ vi.mock("../activity/record", async (importOriginal) => {
   return { ...original, recordActivity: (...args: Parameters<typeof original.recordActivity>) => audit.fail ? Promise.reject(new Error("Synthetic audit failure")) : original.recordActivity(...args) };
 });
 import * as s from "@/db/schema";
-import { insertAccount, insertProduct, insertStockPurchase } from "@/db/test-fixtures";
+import { insertAccount, insertProduct, insertStockPurchase, syntheticLookup } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { allocateDbcCards } from "./allocation";
 import { createPaidDbcOrder } from "./normal-dbc";
@@ -90,4 +90,35 @@ test("audit failure rolls token, credential and Preparing state back together", 
   } finally { audit.fail = false; }
   expect(await cardById(tx, cardId)).toMatchObject({ state: "blank", publicToken: null, orderItemId: null });
   expect(await tx.select().from(s.activationCredentials).where(eq(s.activationCredentials.cardId, cardId))).toHaveLength(0);
+}));
+
+test.each(["usable", "revoked"] as const)("Blank stock with %s credential history is skipped for virgin stock", (history) => rollback(db, async (tx) => {
+  const owner = await insertAccount(tx, "owner");
+  const product = await insertProduct(tx, "dbc");
+  const stock = await insertStockPurchase(tx);
+  await tx.update(s.stockPurchases).set({ receivedOn: "2020-01-01" }).where(eq(s.stockPurchases.id, stock.id));
+  const [old] = await tx.insert(s.cards).values({ stockPurchaseId: stock.id, productId: product.id, kind: "dbc", createdAt: new Date("2020-01-01") }).returning();
+  const [credential] = await tx.insert(s.activationCredentials).values({ cardId: old.id, lookupHmac: syntheticLookup(history === "usable" ? 9001 : 9002) }).returning();
+  if (history === "revoked") await tx.update(s.activationCredentials).set({ revokedAt: new Date() }).where(eq(s.activationCredentials.id, credential.id));
+  const [virgin] = await virginStock(tx, 1);
+  const result = await createPaidDbcOrder(tx, normalOrderInput(owner.id));
+  expect(result.allocation).toEqual({ allocatedCardIds: [virgin], missingQuantity: 0 });
+  expect(await cardById(tx, old.id)).toMatchObject({ state: "blank", orderItemId: null, publicToken: null });
+  expect(await tx.select().from(s.activationCredentials).where(eq(s.activationCredentials.cardId, old.id))).toHaveLength(1);
+}));
+
+test.each(["ready", "blank"] as const)("%s candidates use card creation order despite backdated stock receipt", (kind) => rollback(db, async (tx) => {
+  const owner = await insertAccount(tx, "owner");
+  await insertProduct(tx, "dbc");
+  const secrets = syntheticCredentialSecrets();
+  const olderReceipt = kind === "ready" ? (await preparedStock(tx, owner.id, secrets)).cardId : (await virginStock(tx, 1))[0];
+  const newerReceipt = kind === "ready" ? (await preparedStock(tx, owner.id, secrets)).cardId : (await virginStock(tx, 1))[0];
+  const old = await cardById(tx, olderReceipt);
+  const fresh = await cardById(tx, newerReceipt);
+  await tx.update(s.stockPurchases).set({ receivedOn: "2020-01-01" }).where(eq(s.stockPurchases.id, old.stockPurchaseId));
+  await tx.update(s.stockPurchases).set({ receivedOn: "2030-01-01" }).where(eq(s.stockPurchases.id, fresh.stockPurchaseId));
+  await tx.update(s.cards).set({ createdAt: new Date("2026-10-02") }).where(eq(s.cards.id, old.id));
+  await tx.update(s.cards).set({ createdAt: new Date("2026-10-01") }).where(eq(s.cards.id, fresh.id));
+  const result = await createPaidDbcOrder(tx, normalOrderInput(owner.id, { secrets }));
+  expect(result.allocation.allocatedCardIds).toEqual([fresh.id]);
 }));
