@@ -163,3 +163,30 @@ test("a malformed card id still passes the owner gate (without a custom destinat
   expect(requireOwner).toHaveBeenCalledWith(undefined);
   expect(getCardDetail).not.toHaveBeenCalled();
 });
+
+test("an activated card shows a compact completed summary instead of the preparation wizard, with Continue on phone demoted", async () => {
+  getCardDetail.mockResolvedValue({ ...base, state: "released", nfcVerifiedAt: new Date(), packageMatchedAt: new Date(), owningAccountId: id, owningAccount: { email: "c@example.test" }, usableCredentialId: null });
+  const html = await render();
+  expect(html).toContain("Card N-0051");
+  for (const text of ["Verified", "Confirmed", "Given to customer", "Claimed", "Customer:"]) expect(html).toContain(text);
+  expect(html).not.toContain('aria-label="Preparation progress"');
+  expect(html).not.toContain("data-nfc-form");
+  expect(html).toContain("<details");
+  expect(html).not.toContain("Show activation code");
+  expect(html).toContain("Copy NFC URL");
+});
+
+test("while preparing, Continue on phone is a prominent card, not a disclosure", async () => {
+  const html = await render();
+  expect(html).toContain('aria-label="Preparation progress"');
+  expect(html).toContain("Continue on phone");
+  expect(html).not.toMatch(/<summary[^>]*>[^<]*<[^>]*>Continue on phone|Continue on phone<\/summary>/);
+});
+
+test("card activity reads in owner wording", async () => {
+  getCardDetail.mockResolvedValue({ ...base, activity: [{ type: "card_nfc_verified", note: null, createdAt: new Date() }, { type: "card_released", note: null, createdAt: new Date() }] });
+  const html = await render();
+  expect(html).toContain("NFC verified");
+  expect(html).toContain("Card released");
+  expect(html).not.toContain("Card nfc verified");
+});

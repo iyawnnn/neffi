@@ -6,7 +6,6 @@ const url = "https://getneffi.com/admin/inventory/cards/3f2b8f64-5717-4562-b3fc-
 
 test("shows the exact workspace route as a QR, a plain link and a copy control", () => {
   const html = renderToStaticMarkup(<ContinueOnPhone url={url} qrSrc="data:image/svg+xml;charset=utf-8,QR" />);
-  expect(html).toContain("Continue on phone");
   expect(html).toContain(`href="${url}"`);
   expect(html).toContain('src="data:image/svg+xml;charset=utf-8,QR"');
   expect(html).toMatch(/alt="[^"]*opens this card workspace[^"]*"/i);

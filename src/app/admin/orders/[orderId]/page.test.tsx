@@ -126,7 +126,7 @@ test("J&T shipped-date input is bounded to the order's creation date and today",
 test("J&T with missing destination asks to complete the details first", async () => {
   getOrderDetail.mockResolvedValue(normal({ deliveryMethod: "courier", shippingFeePending: true, shipments: [{ ...dest, address: null }] }));
   const html = await render();
-  expect(primary(html)).toContain("Complete J&amp;T details");
+  expect(primary(html)).toContain("Enter J&amp;T details");
   expect(primary(html)).toContain('name="recipientName"');
   expect(primary(html)).not.toContain("Mark as shipped");
 });
@@ -145,7 +145,7 @@ test("a confirmed fee shows product and shipping separately, and the receipts ar
 
 test("activated cards complete the guide", async () => {
   getOrderDetail.mockResolvedValue(normal({ status: "completed", cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: id }] }, { releasedCount: 1 }));
-  expect(primary(await render())).toContain("Activated · Complete");
+  expect(primary(await render())).toContain("No further fulfillment action is required");
 });
 
 test("a very long customer name wraps instead of overflowing", async () => {
@@ -190,18 +190,18 @@ test("In person delivery shows method, preparation, handoff state and handoff da
   const html = await render();
   const delivery = html.slice(html.indexOf('id="delivery"'), html.indexOf('id="payments"'));
   expect(delivery).toContain("In person");
-  expect(delivery).toContain("1 of 1 prepared");
+  expect(delivery).toContain("No delivery action remaining.");
   expect(delivery).toContain("Given to customer");
   expect(delivery).toContain("Handoff date");
   expect(delivery).toContain("Oct 26, 2026");
-  expect(delivery).toContain("Waiting for the customer to activate");
+  expect(delivery).not.toContain("What remains");
 });
 
 test("J&T delivery groups recipient, phone, address, fee, tracking, shipped date and status", async () => {
   getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: null }] }, { releasedCount: 1 }));
   const html = await render();
   const delivery = html.slice(html.indexOf('id="delivery"'), html.indexOf('id="payments"'));
-  for (const text of ["Recipient", "Rey Dela Cruz", "Phone", "0917 000 0000", "Address", "1 Long Street, Quezon City", "Shipping fee", "₱120.00", "Tracking number", "JT-9", "Shipped date", "2026-10-27", "Shipment status", "In transit"]) expect(delivery).toContain(text);
+  for (const text of ["Recipient", "Rey Dela Cruz", "Phone", "0917 000 0000", "Address", "1 Long Street, Quezon City", "Shipping fee", "₱120.00", "Tracking number", "JT-9", "Shipped date", "Oct 27, 2026", "Shipment status", "In transit"]) expect(delivery).toContain(text);
 });
 
 test("J&T with a pending fee and no shipment row says what is missing instead of inventing details", async () => {
@@ -228,7 +228,7 @@ test("activity is a timeline of readable events and collapses older ones behind 
   const events = Array.from({ length: 8 }, (_, index) => ({ id: `e${index}`, type: "note", note: `Note ${index}`, createdAt: new Date(`2026-10-${10 + index}T04:00:00Z`) }));
   getOrderDetail.mockResolvedValue(normal({ timeline: events }));
   const html = await render();
-  expect(html).toContain("Show all 8 events");
+  expect(html).toContain("View all activity");
   expect(html).toContain("<time");
   expect(html).toContain("Note 7");
 });
@@ -237,4 +237,38 @@ test("normal orders never show the forbidden legacy money and handover controls"
   getOrderDetail.mockResolvedValue(normal({ deliveryMethod: "courier", shippingFeePending: true, shipments: [dest] }));
   const html = await render();
   for (const gone of ["Paid now", "Record handover", "Record shipping payment", "Record shipment", "Record payment", "Agreed line total", 'type="checkbox"']) expect(html).not.toContain(gone);
+});
+
+test("header reads as title, customer link and a plain-text metadata row without status pills", async () => {
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: id }] }, { releasedCount: 1 }));
+  const html = await render();
+  const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
+  expect(header).toContain("Order 1001");
+  expect(header).toContain(`href="/admin/customers/purchasers/${id}"`);
+  for (const text of ["Completed", "Paid", "In person", "Open support case"]) expect(header).toContain(text);
+  expect(html).not.toMatch(/bg-emerald|rounded-full bg-/);
+});
+
+test("the money summary is four aligned cells", async () => {
+  const html = await render();
+  for (const text of ["Order total", "Net paid", "Balance", "Refund due"]) expect(html).toContain(`>${text}<`);
+  expect(html).toContain("md:grid-cols-4");
+});
+
+test("one payment renders compactly and refunds sit in the danger zone, not the payments card", async () => {
+  getOrderDetail.mockResolvedValue(normal());
+  const html = await render();
+  const payments = html.slice(html.indexOf('id="payments"'), html.indexOf('id="payments"') + 4000);
+  expect(payments).toContain("Payment");
+  expect(payments).toContain("GCash");
+  expect(payments).toContain("₱799.00");
+  expect(payments).not.toContain("Record refund");
+  expect(html.indexOf("Record refund")).toBeGreaterThan(html.indexOf("Activity"));
+});
+
+test("items and fulfillment is one row per card with product, card, preparation, delivery and state", async () => {
+  getOrderDetail.mockResolvedValue(normal());
+  const html = await render();
+  const items = html.slice(html.indexOf('id="items"'), html.indexOf('id="delivery"'));
+  for (const text of ["Product", "Card state", "Neffi Digital Business Card", "N-0051", "Prepared", "Not delivered yet", "Assigned"]) expect(items).toContain(text);
 });

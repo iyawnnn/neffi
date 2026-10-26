@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 // One right-hand sheet for every contextual task: a visible trigger, a title, a line on what it does, and a close
 // control that is always in reach. The icon is an element, not a component: server pages pass it across the client boundary. Focus is trapped while open and Escape closes it.
-export function ActionSheet({ title, description, icon, variant = "outline", destructive = false, trigger, defaultOpen = false, children }: { title: string; description?: string; icon?: ReactNode; variant?: "outline" | "action"; destructive?: boolean; trigger?: string; defaultOpen?: boolean; children: ReactNode }) {
+export function ActionSheet({ title, description, icon, variant = "outline", destructive = false, trigger, defaultOpen = false, children }: { title: string; description?: string; icon?: ReactNode; variant?: "outline" | "action" | "ghost"; destructive?: boolean; trigger?: string; defaultOpen?: boolean; children: ReactNode }) {
   return <Dialog.Root defaultOpen={defaultOpen}>
-    <Dialog.Trigger render={<Button type="button" variant={variant} size="touch" className={cn("text-body md:h-9", variant === "action" && "font-semibold", destructive && "border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive")} />}>
+    <Dialog.Trigger render={<Button type="button" variant={variant} size="touch" className={cn("text-body md:h-9", variant === "action" && "font-semibold", variant === "ghost" && "-ml-2.5 text-fg-secondary hover:text-foreground", destructive && "border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive")} />}>
       {icon}{trigger ?? title}
     </Dialog.Trigger>
     <Dialog.Portal keepMounted>

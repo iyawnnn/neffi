@@ -15,14 +15,15 @@ export function ContinueOnPhone({ url, qrSrc }: { url: string; qrSrc: string }) 
     }
   }
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-body font-medium">Continue on phone</h3>
-      <p className="text-meta text-fg-secondary">Scan to open this card workspace on your phone. You will sign in on your phone; nothing secret is in the QR.</p>
+    <div className="flex items-start gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qrSrc} alt="QR code that opens this card workspace on your phone" width={144} height={144} className="size-36 self-start rounded-lg border bg-white p-2" />
-      <a href={url} className="break-all font-mono text-label text-fg-secondary underline-offset-4 hover:underline">{url}</a>
-      <Button type="button" variant="outline" size="touch" className="self-start md:h-9" onClick={copy}>Copy link</Button>
-      <p role="status" className="text-meta text-fg-secondary">{message}</p>
+      <img src={qrSrc} alt="QR code that opens this card workspace on your phone" width={96} height={96} className="size-24 shrink-0 rounded-lg border bg-white p-1.5" />
+      <div className="flex min-w-0 flex-col gap-2">
+        <p className="text-meta text-fg-secondary">Scan to open this card workspace on your phone. You will sign in on your phone; nothing secret is in the QR.</p>
+        <a href={url} className="break-all font-mono text-label text-fg-secondary underline-offset-4 hover:underline">{url}</a>
+        <Button type="button" variant="outline" size="touch" className="self-start md:h-9" onClick={copy}>Copy link</Button>
+        <p role="status" className="text-meta text-fg-secondary empty:hidden">{message}</p>
+      </div>
     </div>
   );
 }

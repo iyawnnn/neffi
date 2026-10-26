@@ -22,7 +22,7 @@ export function CardUrl({ url, copyLabel = "Copy URL", copied = "Card URL copied
       <Button type="button" variant="outline" size="touch" className="self-start md:h-9" onClick={copy}>
         {copyLabel}
       </Button>
-      <p role="status" className="text-meta text-fg-secondary">{message}</p>
+      <p role="status" className="text-meta text-fg-secondary empty:hidden">{message}</p>
     </div>
   );
 }
