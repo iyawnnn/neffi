@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorize } from "@/auth/access";
 import { db } from "@/db";
+import { env } from "@/config/env";
 import { parsePesos } from "@/lib/money";
 import { OrderError } from "@/modules/orders/errors";
 import { addOrderNote, assignOrder, updateOrderDetails } from "@/modules/orders/order";
@@ -12,10 +13,27 @@ import { recordPayment, recordRefund } from "@/modules/payments/record";
 import { voidPayment, voidRefund } from "@/modules/payments/void";
 import { reserveDbcCards, returnCardToStock, handOverOrder, shipOrder, updateShipment } from "@/modules/orders/fulfillment";
 import { cancelOrder } from "@/modules/orders/cancel";
+import { allocateDbcCards } from "@/modules/orders/allocation";
 import { correctShipmentDate, markJntShipped, saveJntDelivery } from "@/modules/orders/jnt-fulfillment";
 import type { ActionState } from "../../inventory/actions";
 
 const id = z.uuid();
+
+export async function allocateAvailableStockAction(_previous: ActionState | undefined, data: FormData): Promise<ActionState> {
+  const auth = await authorize("owner");
+  if (!auth.ok) return { error: "You aren't allowed to do that." };
+  const parsed = z.object({ orderId: id }).safeParse(Object.fromEntries(data));
+  if (!parsed.success) return { error: "Check the form and try again." };
+  try {
+    const result = await allocateDbcCards(db, { ...parsed.data, actorId: auth.viewer.accountId, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
+    revalidatePath(`/admin/orders/${parsed.data.orderId}`);
+    revalidatePath("/admin/inventory");
+    return { ok: result.allocatedCardIds.length ? `${result.allocatedCardIds.length} cards assigned. ${result.missingQuantity} still need stock.` : "No stock available yet. Receive stock and try again." };
+  } catch (error) {
+    if (error instanceof OrderError) return { error: "Stock changed. Reload the order and try again." };
+    throw error;
+  }
+}
 
 async function run<S extends z.ZodType>(schema: S, data: FormData, act: (input: z.output<S>, actorId: string) => Promise<unknown>, options: { forbidden?: string[]; invalid?: string; locked?: string } = {}): Promise<ActionState> {
   const auth = await authorize("owner");

@@ -26,7 +26,7 @@ const credentialId = "5a2b8f64-5717-4562-b3fc-2c963f66afa7";
 const token = "7M3K9QW2XRTV4BPZ6NDHJ8CFGA";
 const order = { orderId: "9a2b8f64-5717-4562-b3fc-2c963f66afa8", orderNumber: 1005, label: null, reviewUrl: null, status: "in_progress" };
 const base = {
-  id, kind: "dbc", state: "preparing", publicToken: token, nfcVerifiedAt: null, packageMatchedAt: null, createdAt: new Date("2026-10-10"),
+  id, inventoryNumber: 51, kind: "dbc", state: "preparing", publicToken: token, nfcVerifiedAt: null, packageMatchedAt: null, createdAt: new Date("2026-10-10"),
   usableCredentialId: credentialId, credentialCount: 1, credentialRetrievable: true, owningAccount: null, owningAccountId: null,
   purchaser: { id, name: "Maria Santos" }, orderContext: order, activity: [{ type: "card_provisioned", note: `token ${token}`, createdAt: new Date("2026-10-10") }],
 };
@@ -36,7 +36,8 @@ beforeEach(() => { vi.clearAllMocks(); qrInputs.length = 0; getCardDetail.mockRe
 
 test("a card in preparation answers: which card and customer, what is done, what is next, and offers one primary task", async () => {
   const html = await render();
-  expect(html).toContain(`Card ${token.slice(-4)}`);
+  expect(html).toContain("N-0051");
+  expect(html).not.toContain(`Card ${token.slice(-4)}`);
   expect(html).toContain("Maria Santos");
   expect(html).toContain("Order 1005");
   expect(html).toContain("Keep this card with you until preparation is complete.");
@@ -45,7 +46,7 @@ test("a card in preparation answers: which card and customer, what is done, what
   expect(primary(html)).toContain("Confirm NFC test");
   expect(primary(html)).toContain(`data-uri="https://getneffi.com/c/${token}"`);
   for (const step of ["Write NFC", "Confirm NFC test", "Confirm package", "Ready for customer"]) expect(html).toContain(step);
-  expect(html).not.toMatch(/N-\d{4}|sticker|inventory QR/i);
+  expect(html).not.toMatch(/sticker|inventory QR/i);
 });
 
 test("raw internal state names are not the primary presentation", async () => {
@@ -107,11 +108,12 @@ test("an assigned card points to its order for the delivery action", async () =>
   expect(primary(html)).toContain("Open Order 1005");
 });
 
-test("a released card has no code controls or preparation task", async () => {
+test("a released unclaimed card can reveal its current code without reopening preparation", async () => {
   getCardDetail.mockResolvedValue({ ...base, state: "released", nfcVerifiedAt: new Date(), packageMatchedAt: new Date() });
   const html = await render();
   expect(html).toContain("Given to the customer");
-  expect(html).not.toContain("Show activation code");
+  expect(html).toContain('id="activation"');
+  expect(html).toContain("Show activation code");
   expect(html).not.toContain("Retire card");
   expect(html).not.toContain("Replace credential");
 });

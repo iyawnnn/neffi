@@ -64,7 +64,7 @@ test("pages still declare their section marker", () => {
 
 test("dashboard shows open cases and an opening action", async () => {
   requireOwner.mockResolvedValue({ email: "owner@example.test" });
-  dashboard.mockResolvedValue({ inProgress: 0, outstanding: 0, collected: 0, expenses: 0, openSupportCases: 3, stock: { rows: [], inProvisioning: 0 }, recent: [] });
+  dashboard.mockResolvedValue({ inProgress: 0, outstanding: 0, collected: 0, expenses: 0, openSupportCases: 3, stock: { status: [] }, recent: [] });
   expenseReport.mockResolvedValue({ rows: [], categories: {}, total: 0 }); listOrders.mockResolvedValue({ orders: [], next: null }); listCases.mockResolvedValue({ cases: [], next: null }); monthTrends.mockResolvedValue({ collected: [], orders: [] });
   const html = renderToStaticMarkup(await AdminHome());
   expect(html).toContain("Open support cases");
@@ -76,7 +76,7 @@ test("dashboard shows open cases and an opening action", async () => {
 test("dashboard charts use real rows and say so when there are none", async () => {
   requireOwner.mockResolvedValue({ email: "owner@example.test" });
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).format(new Date());
-  dashboard.mockResolvedValue({ inProgress: 1, outstanding: 50000, collected: 120000, expenses: 30000, openSupportCases: 0, stock: { rows: [{ kind: "dbc", state: "ready", count: 4 }, { kind: "dbc", state: "blank", count: 5 }], inProvisioning: 4 }, recent: [] });
+  dashboard.mockResolvedValue({ inProgress: 1, outstanding: 50000, collected: 120000, expenses: 30000, openSupportCases: 0, stock: { status: [{ kind: "dbc", status: "ready", count: 4 }, { kind: "dbc", status: "needs_preparation", count: 4 }, { kind: "dbc", status: "available_blank", count: 1 }] }, recent: [] });
   expenseReport.mockResolvedValue({ rows: [{ spentOn: `${month}-02`, amount: 30000 }], categories: { marketing: 30000, other: 0 }, total: 30000 });
   monthTrends.mockResolvedValue({ collected: [{ day: `${month}-02`, amount: 120000 }], orders: [{ day: `${month}-02`, status: "in_progress", count: 1 }] });
   listOrders.mockResolvedValue({ orders: [], next: null }); listCases.mockResolvedValue({ cases: [], next: null });
@@ -86,7 +86,7 @@ test("dashboard charts use real rows and say so when there are none", async () =
   expect(html).toContain("Collected, expenses and cash surplus by day");
   expect(html).toContain("Orders created by day");
   expect(html).toContain("Orders in progress");
-  expect(html).toContain("In provisioning");
+  expect(html).toContain("Needs preparation");
   expect(html).toContain("Cash surplus");
   expect(html).toContain('aria-label="What is Cash surplus?"');
   expect(html).toContain('aria-label="What is Collected?"');

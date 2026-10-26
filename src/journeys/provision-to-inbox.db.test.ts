@@ -105,8 +105,8 @@ test("real provisioning output flows through sale, gift/bulk claims, publish, pu
     const home = await dashboard(db, "2026-10");
     expect(home.inProgress).toBe(0);
     expect(home.outstanding).toBe(0);
-    expect(home.stock.rows.filter(row => row.state === "released")).toEqual([{ kind: "dbc", state: "released", count: 2 }]);
-    expect(home.stock.rows.filter(row => row.state === "ready")).toEqual([]);
+    expect(home.stock.status.filter(row => row.status === "activated" || row.status === "waiting_activation")).toEqual([{ kind: "dbc", status: "activated", count: 2 }]);
+    expect(home.stock.status.filter(row => row.status === "ready")).toEqual([]);
     const expenses = await expenseReport(db, "2026-10");
     expect(expenses.total).toBe(16_000);
     expect(expenses.rows.filter(row => row.source === "stock").map(row => row.amount)).toEqual([16_000]);

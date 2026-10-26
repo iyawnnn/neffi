@@ -2,13 +2,13 @@ import "server-only";
 import { desc, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../db";
-import { cardStateCounts } from "../inventory/queries";
+import { inventoryStatusCounts } from "../inventory/queries";
 import { expenseReport } from "../expenses/report";
 import { openCaseCount } from "../support/queries";
 
 export async function dashboard(db: Db, month: string) {
   const [report, stock, recent, openSupportCases] = await Promise.all([
-    expenseReport(db, month), cardStateCounts(db),
+    expenseReport(db, month), inventoryStatusCounts(db),
     db.select({ id: schema.activityEvents.id, type: schema.activityEvents.type, note: schema.activityEvents.note, orderId: schema.activityEvents.orderId, cardId: schema.activityEvents.cardId, stockPurchaseId: schema.activityEvents.stockPurchaseId, createdAt: schema.activityEvents.createdAt }).from(schema.activityEvents).orderBy(desc(schema.activityEvents.createdAt), desc(schema.activityEvents.id)).limit(15),
     openCaseCount(db),
   ]);
@@ -22,5 +22,5 @@ export async function dashboard(db: Db, month: string) {
     FROM orders o WHERE status IN ('in_progress', 'completed')
   `);
   const [totals] = (result as { rows: { inProgress: number; outstanding: number; collected: number }[] }).rows;
-  return { ...totals, openSupportCases, expenses: report.total, stock, recent };
+  return { ...totals, openSupportCases, expenses: report.total, stock: { status: stock }, recent };
 }

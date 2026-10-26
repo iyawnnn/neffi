@@ -12,6 +12,7 @@ import { qrSvgDataUri } from "@/modules/cards/qr";
 import { cardUrl } from "@/modules/cards/token";
 import { CardUrl } from "../../card-url";
 import { getCardDetail } from "@/modules/inventory/queries";
+import { inventoryReference } from "@/modules/inventory/operations-view";
 import { adminPage, cardTone, DangerZone, DetailList, Disclosure, inlineLink, LinkButton, NextStep, PageHeader, Panel, Section, Status } from "../../../ui";
 import { MatchPackageForm, NfcCheckForm, ProvisionForm, ReplaceForm, ReserveForm, RetireForm } from "../../forms";
 import { dateTime, KIND_LABEL } from "../../format";
@@ -47,8 +48,8 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
   const sharingQr = dbcUri && live ? qrSvgDataUri(dbcUri) : null;
   const phoneUrl = dbcUri && live ? `${env.cardUrlOrigin}/admin/inventory/cards/${card.id}` : null;
   const phoneQr = phoneUrl ? qrSvgDataUri(phoneUrl) : null;
-  const reference = (dbcToken ?? card.id).slice(-4).toUpperCase();
-  const credentialId = live && isDbc && card.state !== "released" && !card.owningAccountId ? card.usableCredentialId : null;
+  const reference = inventoryReference(card.inventoryNumber);
+  const credentialId = live && isDbc && !card.owningAccountId ? card.usableCredentialId : null;
   const order = card.orderContext;
 
   return (
@@ -110,7 +111,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
               <NextStep title="Confirm the package">
                 <p className="text-body">NFC test confirmed. Now type the code printed on the package that goes with this card.</p>
                 <div className="max-w-xl"><MatchPackageForm cardId={card.id} /></div>
-                {credentialId ? <div className="max-w-xl border-t pt-4"><ActivationCode cardId={card.id} credentialId={credentialId} retrievable={card.credentialRetrievable} /></div> : null}
+                {credentialId ? <div id="activation" className="max-w-xl border-t pt-4"><ActivationCode cardId={card.id} credentialId={credentialId} retrievable={card.credentialRetrievable} /></div> : null}
               </NextStep>
             </div>
           ) : null}
@@ -157,7 +158,7 @@ export default async function CardPage({ params }: PageProps<"/admin/inventory/c
         <aside aria-label="Card details" className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           {phoneUrl && phoneQr ? <Panel padded className="hidden md:block"><ContinueOnPhone url={phoneUrl} qrSrc={phoneQr} /></Panel> : null}
 
-          {credentialId && flow.current !== "package" ? <Panel padded><ActivationCode cardId={card.id} credentialId={credentialId} retrievable={card.credentialRetrievable} /></Panel> : null}
+          {credentialId && flow.current !== "package" ? <div id="activation"><Panel padded><ActivationCode cardId={card.id} credentialId={credentialId} retrievable={card.credentialRetrievable} /></Panel></div> : null}
 
           {sharingQr && dbcUri ? (
             <Panel padded className="flex flex-col gap-3">

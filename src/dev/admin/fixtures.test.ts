@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { cashFlowPoints, expensePoints, orderPoints } from "@/app/admin/chart-data";
-import { accounts, cards, cases, counts, dashboardData, expenses, filterCards, filterOrders, fixturePage, MONTH, orders, purchasers, purchases, report, searchFixtures, trends } from "./fixtures";
+import { accounts, cards, cases, counts, dashboardData, expenses, filterOrders, filterQueue, fixturePage, MONTH, orders, purchasers, purchases, report, searchFixtures, trends } from "./fixtures";
 
 test("October fixtures have fixed counts, valid states, repeat buyers and useful edge cases", () => {
   expect([orders.length, purchasers.length, accounts.length, cards.length, expenses.length, cases.length]).toEqual([102, 43, 43, 63, 32, 23]);
@@ -13,8 +13,8 @@ test("October fixtures have fixed counts, valid states, repeat buyers and useful
   expect(purchasers.some((row) => row.orderCount > 2)).toBe(true);
   expect(orders.some((row) => row.balance > 0 && row.balance < row.orderTotal)).toBe(true);
   expect(orders.some((row) => row.orderTotal >= 2_000_000)).toBe(true);
-  expect(counts.rows.reduce((sum, row) => sum + row.count, 0)).toBe(cards.length);
-  expect(counts.inProvisioning).toBeGreaterThan(0);
+  expect(counts.reduce((sum, row) => sum + row.count, 0)).toBe(cards.length);
+  expect(counts.some((row) => row.status === "needs_preparation")).toBe(true);
   expect(new Set(cards.map((row) => row.state)).size).toBe(5);
   expect(accounts.every((row) => row.email.endsWith("@example.invalid"))).toBe(true);
 });
@@ -55,9 +55,10 @@ test.each([["inventory", cards, 10, 7, 3], ["orders", orders, 20, 6, 2], ["custo
 });
 
 test("filters precede paging and search covers all requested record examples", () => {
-  const rows = filterCards({ kind: "dbc", state: "ready" });
+  const rows = filterQueue("ready");
   expect(fixturePage(rows, undefined, 10).window.page).toBe(1);
-  expect(rows.every((row) => row.kind === "dbc" && row.state === "ready")).toBe(true);
+  expect(rows.every((row) => row.statusKey === "ready")).toBe(true);
+  expect(filterQueue(undefined).some((row) => row.statusKey === "available_blank")).toBe(false);
   expect(filterOrders({ status: "cancelled" }).every((row) => row.status === "cancelled")).toBe(true);
   for (const query of ["260001", "Juan Dela Cruz", "sample.01@example.invalid", "09XX", "0002", "TEST-001"]) expect(searchFixtures(query).length, query).toBeGreaterThan(0);
   expect(fixturePage(searchFixtures("sample"), "3").window.pageCount).toBeGreaterThan(2);

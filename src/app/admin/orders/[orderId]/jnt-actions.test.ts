@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const m = vi.hoisted(() => ({ authorize: vi.fn(), saveJntDelivery: vi.fn(), markJntShipped: vi.fn(), correctShipmentDate: vi.fn(), handOverOrder: vi.fn(), shipOrder: vi.fn() }));
+const m = vi.hoisted(() => ({ allocate: vi.fn(), authorize: vi.fn(), saveJntDelivery: vi.fn(), markJntShipped: vi.fn(), correctShipmentDate: vi.fn(), handOverOrder: vi.fn(), shipOrder: vi.fn() }));
 vi.mock("@/auth/access", () => ({ authorize: m.authorize }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -10,8 +10,10 @@ vi.mock("@/modules/orders/items", () => ({ addOrderItem: vi.fn(), updateOrderIte
 vi.mock("@/modules/payments/record", () => ({ recordPayment: vi.fn(), recordRefund: vi.fn() }));
 vi.mock("@/modules/payments/void", () => ({ voidPayment: vi.fn(), voidRefund: vi.fn() }));
 vi.mock("@/modules/orders/cancel", () => ({ cancelOrder: vi.fn() }));
+vi.mock("@/modules/orders/allocation", () => ({ allocateDbcCards: m.allocate }));
+vi.mock("@/config/env", () => ({ env: { activationCodeSecret: "s".repeat(40), activationCodeEncryptionActiveKeyId: "k1", activationCodeEncryptionKeys: new Map() } }));
 import { OrderError } from "@/modules/orders/errors";
-import { correctShipmentDateAction, handOverOrderAction, markJntShippedAction, saveJntDeliveryAction } from "./actions";
+import { allocateAvailableStockAction, correctShipmentDateAction, handOverOrderAction, markJntShippedAction, saveJntDeliveryAction } from "./actions";
 
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [k, v] of Object.entries(fields)) data.set(k, v); return data; };
@@ -74,4 +76,17 @@ test.each(["0x0", "0y00", "00x", "0,0", "-0"])("a look-alike zero fee (%s) is no
 test.each(["0", "0.0", "0.00", "00"])("a genuine zero fee (%s) is zero", async (fee) => {
   await markJntShippedAction(undefined, form({ orderId: id, trackingNumber: "JT123", shippingFee: fee }));
   expect(m.markJntShipped).toHaveBeenLastCalledWith({}, expect.objectContaining({ shippingFee: 0 }));
+});
+
+test("Allocate available stock is owner-only, uses server secrets, and reports the outcome in plain words", async () => {
+  m.allocate.mockResolvedValue({ allocatedCardIds: ["a", "b"], missingQuantity: 1 });
+  m.authorize.mockResolvedValueOnce({ ok: false, denial: { status: 403, error: "forbidden" } });
+  expect(await allocateAvailableStockAction(undefined, form({ orderId: id }))).toHaveProperty("error");
+  expect(m.allocate).not.toHaveBeenCalled();
+  const result = await allocateAvailableStockAction(undefined, form({ orderId: id }));
+  expect(m.allocate).toHaveBeenCalledWith({}, expect.objectContaining({ orderId: id, actorId: "owner" }));
+  expect(m.allocate.mock.calls[0][1].secrets.lookupSecret).toBe("s".repeat(40));
+  expect(result.ok).toMatch(/2 cards assigned/i);
+  m.allocate.mockResolvedValue({ allocatedCardIds: [], missingQuantity: 3 });
+  expect((await allocateAvailableStockAction(undefined, form({ orderId: id }))).ok).toMatch(/no stock available yet/i);
 });

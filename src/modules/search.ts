@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import type { Db } from "./db";
+import { CARD_ORDER_JOIN_SQL, CARD_STATUS_LABEL_SQL } from "./inventory/queries";
 import { escapeLike } from "./orders/purchasers";
 import { PAGE_SIZE, pageWindow } from "./pagination";
 import type { SearchHit } from "./search-types";
@@ -27,6 +28,9 @@ export async function searchRecords(db: Db, query: string, { perType, limit, off
   const orderNumber = (column: string) => (numberLike ? sql`${sql.raw(column)}::text LIKE ${numberLike}` : sql`false`);
   const hex = /^[0-9a-f-]{4,36}$/i.test(term);
   const suffix = term.length <= 4;
+  // Admin reference "N-0051" (or "n51"): the card's stable inventory number.
+  const referenceMatch = /^n-?0*(\d{1,9})$/i.exec(term);
+  const reference = referenceMatch ? Number(referenceMatch[1]) : null;
 
   const result = await db.execute(sql`
     WITH hits AS (
@@ -45,10 +49,10 @@ export async function searchRecords(db: Db, query: string, { perType, limit, off
         CASE WHEN lower(a.email) = lower(${term}) THEN 0 WHEN a.email ILIKE ${prefix} THEN 1 ELSE 2 END, a.created_at
       FROM accounts a WHERE a.email ILIKE ${pat}
       UNION ALL
-      SELECT 'card', 4, c.id::text, upper(right(coalesce(c.public_token, c.id::text), 4)), coalesce(c.kind::text, 'none'), c.state::text,
-        CASE WHEN c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} THEN 'Card reference' ELSE 'Card ending' END,
-        CASE WHEN c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} THEN 0 ELSE 2 END, c.created_at
-      FROM cards c WHERE c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} OR (${suffix} AND right(coalesce(c.public_token, c.id::text), 4) ILIKE ${pat})
+      SELECT 'card', 4, c.id::text, 'N-' || lpad(c.inventory_number::text, 4, '0'), coalesce(c.kind::text, 'none'), ${CARD_STATUS_LABEL_SQL},
+        CASE WHEN c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} OR c.inventory_number = ${reference ?? -1} THEN 'Card reference' ELSE 'Card ending' END,
+        CASE WHEN c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} OR c.inventory_number = ${reference ?? -1} THEN 0 ELSE 2 END, c.created_at
+      FROM cards c ${CARD_ORDER_JOIN_SQL} WHERE c.public_token = ${term} OR c.id::text = ${term.toLowerCase()} OR c.inventory_number = ${reference ?? -1} OR (${suffix} AND right(coalesce(c.public_token, c.id::text), 4) ILIKE ${pat})
       UNION ALL
       SELECT 'support', 5, sc.id::text, sc.summary, sc.type::text, sc.status::text,
         CASE WHEN ${hex} AND sc.id::text ILIKE ${prefix} THEN 'Case reference' WHEN sc.summary ILIKE ${pat} THEN 'Summary' WHEN ${orderNumber("lo.number")} THEN 'Linked order'

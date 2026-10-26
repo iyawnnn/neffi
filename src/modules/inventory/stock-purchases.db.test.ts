@@ -4,7 +4,7 @@ import { cards, stockPurchases } from "@/db/schema";
 import { insertAccount, insertClaimedCard, insertProvisioningDbc } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { receiveStock } from "./stock-intake";
-import { getCardDetail, listCards } from "./queries";
+import { getCardDetail, listInventoryQueue } from "./queries";
 import { getStockPurchase, listStockPurchases, updateStockPurchase } from "./stock-purchases";
 
 let db: TestDb;
@@ -22,11 +22,11 @@ test("costs stay on their source; quantity and states derive only from Cards", (
   expect((await tx.select().from(stockPurchases))).toHaveLength(1);
 }));
 
-test("filters kind/state without changing keyset pagination", () => rollback(db, async (tx) => {
+test("status filters narrow the queue without changing keyset pagination", () => rollback(db, async (tx) => {
   await insertProvisioningDbc(tx);
   const { card } = await insertClaimedCard(tx);
-  expect((await listCards(tx, { limit: 5, kind: "dbc", state: "released" })).cards.map((c) => c.id)).toEqual([card.id]);
-  expect((await listCards(tx, { limit: 5, kind: "grc" })).cards).toEqual([]);
+  expect((await listInventoryQueue(tx, { limit: 5, filter: "activated" })).cards.map((c) => c.id)).toEqual([card.id]);
+  expect((await listInventoryQueue(tx, { limit: 5, filter: "ready" })).cards).toEqual([]);
 }));
 
 test("Card detail links purchaser and exposes only approved owning Account fields", () => rollback(db, async (tx) => {

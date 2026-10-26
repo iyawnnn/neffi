@@ -6,8 +6,8 @@ vi.mock("@/db", () => ({ db: {} }));
 vi.mock("next/server", () => ({ connection: vi.fn() }));
 vi.mock("@/modules/orders/queries", () => ({ getOrderDetail }));
 vi.mock("@/modules/support/queries", () => ({ casesForOrder: vi.fn().mockResolvedValue([]) }));
-vi.mock("../../inventory/forms", () => ({ ActionForm: ({ children }: { children: React.ReactNode }) => <form>{children}</form> }));
-vi.mock("./actions", () => ({ assignOrderAction: vi.fn(), addOrderNoteAction: vi.fn(), updateOrderDetailsAction: vi.fn(), addOrderItemAction: vi.fn(), updateOrderItemAction: vi.fn(), removeOrderItemAction: vi.fn(), recordPaymentAction: vi.fn(), recordRefundAction: vi.fn(), voidPaymentAction: vi.fn(), voidRefundAction: vi.fn(), reserveDbcCardsAction: vi.fn(), returnCardToStockAction: vi.fn(), handOverOrderAction: vi.fn(), shipOrderAction: vi.fn(), updateShipmentAction: vi.fn(), cancelOrderAction: vi.fn(), saveJntDeliveryAction: vi.fn(), markJntShippedAction: vi.fn(), correctShipmentDateAction: vi.fn() }));
+vi.mock("../../inventory/forms", () => ({ ActionForm: ({ children, submit }: { children: React.ReactNode; submit: string }) => <form>{children}<button>{submit}</button></form> }));
+vi.mock("./actions", () => ({ assignOrderAction: vi.fn(), addOrderNoteAction: vi.fn(), updateOrderDetailsAction: vi.fn(), addOrderItemAction: vi.fn(), updateOrderItemAction: vi.fn(), removeOrderItemAction: vi.fn(), recordPaymentAction: vi.fn(), recordRefundAction: vi.fn(), voidPaymentAction: vi.fn(), voidRefundAction: vi.fn(), reserveDbcCardsAction: vi.fn(), allocateAvailableStockAction: vi.fn(), returnCardToStockAction: vi.fn(), handOverOrderAction: vi.fn(), shipOrderAction: vi.fn(), updateShipmentAction: vi.fn(), cancelOrderAction: vi.fn(), saveJntDeliveryAction: vi.fn(), markJntShippedAction: vi.fn(), correctShipmentDateAction: vi.fn() }));
 import OrderPage from "./page";
 const id = "3f2b8f64-5717-4562-b3fc-2c963f66afa6";
 const detail = { id, number: 1001, status: "in_progress", purchaserId: id, purchaser: { name: "Buyer", contactNumber: null }, deliveryMethod: "pickup", shippingFee: 0, notes: null, assignedToAccountId: id, updatedByAccountId: id, updatedAt: new Date("2026-10-13"), anyReleased: false, hasCommercialDelivery: false, readyDbcCards: [], totals: { orderTotal: 50000, netPaid: 10000, balance: 40000, refundDue: 0, paymentState: "Unpaid" }, items: [{ id, name: "DBC", quantity: 1, unitPrice: 50000, agreedTotal: null, productKind: "dbc", label: null, reviewUrl: null, activeCount: 0, allocatedCount: 0, preparedCount: 0, releasedCount: 0 }], payments: [], refunds: [], cards: [], shipments: [], timeline: [], assignees: [{ id, email: "owner@example.test" }] };
@@ -61,7 +61,7 @@ const normal = (over: Record<string, unknown> = {}, item: Record<string, unknown
   ...detail, clientKey: id, normalPaymentMethod: "gcash", shippingFeePending: false, createdAt: new Date("2026-10-20T04:00:00Z"), deliveryMethod: "local_handoff",
   totals: { ...detail.totals, productSubtotal: 79900, orderTotal: 79900, netPaid: 79900, balance: 0, paymentState: "Paid" },
   items: [{ ...detail.items[0], name: "Neffi Digital Business Card", unitPrice: 79900, quantity: 1, allocatedCount: 1, preparedCount: 1, releasedCount: 0, ...item }],
-  cards: [{ id: "c1", kind: "dbc", state: "reserved", suffix: "AB12", ownerAccountId: null }], payments: [productPayment], shipments: [], ...over,
+  cards: [{ id: "c1", kind: "dbc", state: "reserved", inventoryNumber: 51, ownerAccountId: null }], payments: [productPayment], shipments: [], ...over,
 });
 const primary = (html: string) => { const start = html.indexOf("data-primary-task"); return start < 0 ? "" : html.slice(start, html.indexOf("</section>", start) + 10); };
 
@@ -74,8 +74,15 @@ test("normal order with a stock shortage waits for stock, names the remaining qu
   expect(primary(html)).toContain('href="/admin/inventory"');
 });
 
+test("a stock shortage with cards now available offers Allocate available stock next to Receive stock", async () => {
+  getOrderDetail.mockResolvedValue(normal({ cards: [] }, { quantity: 2, allocatedCount: 0, preparedCount: 0 }));
+  const html = await render();
+  expect(primary(html)).toContain("Allocate available stock");
+  expect(primary(html)).toContain("Receive stock");
+});
+
 test("partial preparation leads with Prepare card straight to the next card and shows progress", async () => {
-  getOrderDetail.mockResolvedValue(normal({ cards: [{ id: "c1", kind: "dbc", state: "reserved", suffix: "AB12", ownerAccountId: null }, { id: "c2", kind: "dbc", state: "preparing", suffix: "CD34", ownerAccountId: null }] }, { quantity: 2, allocatedCount: 2, preparedCount: 1 }));
+  getOrderDetail.mockResolvedValue(normal({ cards: [{ id: "c1", kind: "dbc", state: "reserved", inventoryNumber: 51, ownerAccountId: null }, { id: "c2", kind: "dbc", state: "preparing", inventoryNumber: 52, ownerAccountId: null }] }, { quantity: 2, allocatedCount: 2, preparedCount: 1 }));
   const html = await render();
   expect(primary(html)).toContain(">Prepare card<");
   expect(primary(html)).toContain('href="/admin/inventory/cards/c2"');
@@ -125,7 +132,7 @@ test("J&T with missing destination asks to complete the details first", async ()
 });
 
 test("a confirmed fee shows product and shipping separately, and the receipts are labelled", async () => {
-  getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, totals: { ...normal().totals, orderTotal: 91900, netPaid: 91900 }, payments: [{ ...productPayment, id: "p2", amount: 12000, createdAt: new Date("2026-10-27") }, productPayment], shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", suffix: "AB12", ownerAccountId: null }] }, { releasedCount: 1 }));
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, totals: { ...normal().totals, orderTotal: 91900, netPaid: 91900 }, payments: [{ ...productPayment, id: "p2", amount: 12000, createdAt: new Date("2026-10-27") }, productPayment], shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: null }] }, { releasedCount: 1 }));
   const html = await render();
   expect(html).toContain("Neffi Digital Business Card");
   expect(html).toContain("J&amp;T Shipping");
@@ -137,7 +144,7 @@ test("a confirmed fee shows product and shipping separately, and the receipts ar
 });
 
 test("activated cards complete the guide", async () => {
-  getOrderDetail.mockResolvedValue(normal({ status: "completed", cards: [{ id: "c1", kind: "dbc", state: "released", suffix: "AB12", ownerAccountId: id }] }, { releasedCount: 1 }));
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: id }] }, { releasedCount: 1 }));
   expect(primary(await render())).toContain("Activated · Complete");
 });
 
@@ -147,7 +154,7 @@ test("a very long customer name wraps instead of overflowing", async () => {
 });
 
 test("legacy orders keep their truthful legacy controls", async () => {
-  getOrderDetail.mockResolvedValue({ ...detail, deliveryMethod: "pickup", cards: [{ id: "c1", kind: "dbc", state: "reserved", suffix: "AB12" }], items: [{ ...detail.items[0], allocatedCount: 1, preparedCount: 1 }] });
+  getOrderDetail.mockResolvedValue({ ...detail, deliveryMethod: "pickup", cards: [{ id: "c1", kind: "dbc", state: "reserved", inventoryNumber: 51 }], items: [{ ...detail.items[0], allocatedCount: 1, preparedCount: 1 }] });
   const html = await render();
   expect(html).not.toContain("data-primary-task");
   expect(html).toContain("Record handover");
@@ -157,7 +164,7 @@ test("normal orders hide the generic shipment update until shipped, then offer s
   getOrderDetail.mockResolvedValue(normal({ deliveryMethod: "courier", shipments: [dest] }));
   let html = await render();
   expect(html).not.toContain("Update shipment");
-  getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", suffix: "AB12", ownerAccountId: null }] }, { releasedCount: 1 }));
+  getOrderDetail.mockResolvedValue(normal({ status: "completed", deliveryMethod: "courier", shippingFee: 12000, shipments: [{ ...dest, status: "in_transit", trackingNumber: "JT-9", shippedOn: "2026-10-27" }], cards: [{ id: "c1", kind: "dbc", state: "released", inventoryNumber: 51, ownerAccountId: null }] }, { releasedCount: 1 }));
   html = await render();
   expect(html).toContain("Update shipment");
 });

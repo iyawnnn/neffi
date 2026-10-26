@@ -41,7 +41,7 @@ export function DashboardView({ month, monthLabel, data, report, trends, recentO
   const attention = [
     { label: "Open support cases", value: data.openSupportCases, href: href("/admin/support?status=open"), icon: LifeBuoy },
     { label: "Orders in progress", value: data.inProgress, href: href("/admin/orders?status=in_progress"), icon: ClipboardList },
-    { label: "Cards in provisioning", value: data.stock.inProvisioning, href: href("/admin/inventory?state=blank"), icon: PackageCheck },
+    { label: "Cards needing preparation", value: data.stock.status.filter((row) => row.status === "needs_preparation").reduce((sum, row) => sum + row.count, 0), href: href("/admin/inventory?status=needs_preparation"), icon: PackageCheck },
   ].filter((item) => item.value > 0);
 
   return (
@@ -145,7 +145,7 @@ export function DashboardView({ month, monthLabel, data, report, trends, recentO
         </Section>
 
         <Section className="h-full" title="Inventory" description="Every card by product and where it stands." actions={<TextLink href={href("/admin/inventory")}>Open inventory</TextLink>}>
-          <Panel padded className="flex-1"><InventorySummary rows={data.stock.rows} inProvisioning={data.stock.inProvisioning} basePath={href("/admin/inventory")} className="h-full" /></Panel>
+          <Panel padded className="flex-1"><InventorySummary rows={data.stock.status} basePath={href("/admin/inventory")} className="h-full" /></Panel>
         </Section>
       </div>
 

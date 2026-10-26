@@ -1,34 +1,58 @@
-import { Package } from "lucide-react";
+import Link from "next/link";
+import { Package, PackageSearch } from "lucide-react";
 import type { ReactNode } from "react";
 import { formatPeso } from "@/lib/money";
-import type { cardStateCounts, listCards } from "@/modules/inventory/queries";
+import type { inventoryStatusCounts, listInventoryQueue, QueueCard, QueueFilter } from "@/modules/inventory/queries";
+import { activationCell, inventoryReference, STATUS_LABEL_BY_KEY, toInventoryOperation, type StatusKey } from "@/modules/inventory/operations-view";
 import type { listStockPurchases } from "@/modules/inventory/stock-purchases";
 import type { PageWindow } from "@/modules/pagination";
-import { InventorySummary } from "../inventory-summary";
-import { adminPageWide, cardTone, EmptyPanel, FilterBar, FilterField, Meta, Notice, pageHref, PageHeader, Pagination, Panel, RecordTable, RowLink, Section, Select, Status, TabNav, TextLink } from "../ui";
-import { dateTime, KIND_LABEL, STATE_LABEL } from "./format";
+import { adminPageWide, EmptyPanel, FilterBar, FilterField, Input, listHref, Meta, Notice, pageHref, PageHeader, Pagination, Panel, RecordTable, RowLink, Section, Status, TabNav, TextLink, type Tone } from "../ui";
+import { KIND_LABEL } from "./format";
 
-const STATES = ["blank", "ready", "reserved", "released", "retired"] as const;
+const wrap = "break-words [overflow-wrap:anywhere]";
+const TONE: Record<StatusKey, Tone> = { available_blank: "neutral", needs_preparation: "warning", ready: "success", assigned: "attention", shipped: "neutral", given: "neutral", waiting_activation: "warning", delivery_unconfirmed: "warning", activated: "success", retired: "neutral" };
+const TABS: { filter: QueueFilter | undefined; label: string; keys: StatusKey[] }[] = [
+  { filter: undefined, label: "Tracked cards", keys: [] },
+  { filter: "needs_preparation", label: "Needs preparation", keys: ["needs_preparation"] },
+  { filter: "ready", label: "Ready", keys: ["ready"] },
+  { filter: "assigned", label: "Assigned", keys: ["assigned"] },
+  { filter: "delivered", label: "Delivered", keys: ["shipped", "given", "waiting_activation"] },
+  { filter: "activated", label: "Activated", keys: ["activated"] },
+  { filter: "retired", label: "Retired", keys: ["retired"] },
+  { filter: "available", label: "Available blanks", keys: ["available_blank"] },
+];
 
 export type InventoryViewProps = {
   stockView: boolean;
-  filters: { kind?: "dbc" | "grc" | "none"; state?: typeof STATES[number] };
-  counts: Awaited<ReturnType<typeof cardStateCounts>>;
+  filter?: QueueFilter;
+  search?: string;
+  counts: Awaited<ReturnType<typeof inventoryStatusCounts>>;
+  shortage: number;
   paging: PageWindow;
-  cardPage: Awaited<ReturnType<typeof listCards>> | null;
+  queue: Awaited<ReturnType<typeof listInventoryQueue>> | null;
   purchases: Awaited<ReturnType<typeof listStockPurchases>>;
   actions?: ReactNode;
   basePath?: string;
   recordHref?: (id: string) => string;
 };
 
-export function InventoryView({ stockView, filters, counts, paging, cardPage, purchases, actions, basePath = "/admin/inventory", recordHref }: InventoryViewProps) {
-  const filtered = Boolean(filters.kind || filters.state);
+const deliveryOf = (card: QueueCard) => card.shipped ? { label: card.courier ?? "J&T", tracking: card.tracking } : card.statusKey === "given" ? { label: "In person", tracking: null } : null;
+
+export function InventoryView({ stockView, filter, search, counts, shortage, paging, queue, purchases, actions, basePath = "/admin/inventory", recordHref }: InventoryViewProps) {
   const cardHref = (id: string) => recordHref?.(id) ?? `${basePath}/cards/${id}`;
   const stockHref = (id: string) => recordHref?.(id) ?? `${basePath}/stock/${id}`;
+  const total = (keys: StatusKey[]) => counts.filter((row) => keys.includes(row.status)).reduce((sum, row) => sum + row.count, 0);
+  const everyKey = Object.keys(STATUS_LABEL_BY_KEY) as StatusKey[];
+  const available = total(["available_blank"]);
+  const todo = total(everyKey) - available;
+  const filtered = Boolean(filter || search);
+  const operation = (card: QueueCard) => toInventoryOperation({ id: card.id, kind: card.kind, state: card.state, publicToken: card.publicToken, ownerAccountId: card.ownerAccountId, orderId: card.orderId, deliveryMethod: card.deliveryMethod, hasShippedShipment: card.shipped, hasHandedOver: card.handedOver });
+  const actionHref = (card: QueueCard) => { const { href } = operation(card); return recordHref ? recordHref(card.id) : href.startsWith("/admin/inventory/cards/") ? cardHref(card.id) : href; };
+  const activationFor = (card: QueueCard) => activationCell({ kind: card.kind, ownerAccountId: card.ownerAccountId, usableCredential: card.activation.usable, retrievable: card.activation.retrievable, revoked: card.activation.revoked, retired: card.state === "retired" });
+
   return (
     <main data-admin-section="inventory" className={adminPageWide}>
-      <PageHeader title="Inventory" description="Track physical cards and provisioning." actions={actions} />
+      <PageHeader title="Inventory" description="Every card from blank stock to activation, with the next thing to do." actions={actions} />
       <TabNav label="Inventory views" items={[{ label: "Cards", href: basePath, active: !stockView }, { label: "Stock purchases", href: `${basePath}?view=stock`, active: stockView }]} />
 
       {stockView ? (
@@ -59,43 +83,60 @@ export function InventoryView({ stockView, filters, counts, paging, cardPage, pu
         </Section>
       ) : (
         <>
-          {counts.inProvisioning > 0 ? <Notice tone="warning" title={`${counts.inProvisioning} ${counts.inProvisioning === 1 ? "card is" : "cards are"} in provisioning`} action={<TextLink href={`${basePath}?state=blank`}>Review blank cards</TextLink>}>Token issued, not yet Ready for sale.</Notice> : null}
-          <Section title="Overview" description="Every card by product and where it stands.">
-            <Panel padded><InventorySummary rows={counts.rows} inProvisioning={counts.inProvisioning} full basePath={basePath} /></Panel>
-          </Section>
+          {shortage > 0 ? <Notice tone="warning" title={`${shortage} ${shortage === 1 ? "card" : "cards"} short`} action={<TextLink href="/admin/orders">Open orders</TextLink>}>Paid orders are waiting for stock. Receive stock and they are filled automatically.</Notice> : null}
 
-          <Section title="Cards">
-            <FilterBar action={basePath} clearHref={filtered ? basePath : undefined} submit="Filter">
-              <FilterField label="Product">
-                <Select name="kind" defaultValue={filters.kind ?? ""}><option value="">All</option><option value="dbc">DBC</option><option value="grc">GRC</option><option value="none">Unassigned</option></Select>
-              </FilterField>
-              <FilterField label="State">
-                <Select name="state" defaultValue={filters.state ?? ""}><option value="">All</option>{STATES.map((state) => <option key={state} value={state}>{STATE_LABEL[state]}</option>)}</Select>
+          <nav aria-label="Card queue" className="flex flex-wrap gap-2">
+            {TABS.map((tab) => <Link key={tab.label} href={listHref(basePath, { status: tab.filter })} aria-current={tab.filter === filter ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-lg border px-3 text-meta font-medium nav-interact focus-visible:outline-2 focus-visible:outline-brand ${tab.filter === filter ? "border-action text-foreground" : "border-border text-fg-secondary hover:bg-canvas"}`}>
+              {tab.label} {tab.filter ? total(tab.keys) : todo}
+            </Link>)}
+          </nav>
+
+          {!filter && !search && available > 0 ? (
+            <Panel padded className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <h2 className="text-section">{available} available blank {available === 1 ? "card" : "cards"}</h2>
+                <p className="text-meta text-fg-secondary">Untouched stock. A card is chosen automatically when an order needs one, so there is nothing to prepare yet.</p>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-body"><TextLink href="/admin/orders/new">Create order</TextLink><TextLink href={listHref(basePath, { status: "available" })}>View the list</TextLink></div>
+            </Panel>
+          ) : null}
+
+          <Section title={filter ? TABS.find((tab) => tab.filter === filter)!.label : search ? "Search results" : "Operational cards"} description={filter ? undefined : search ? undefined : "Allocated, prepared and delivered cards stay individually traceable."}>
+            <FilterBar action={basePath} clearHref={filtered ? basePath : undefined} submit="Search">
+              {filter ? <input type="hidden" name="status" value={filter} /> : null}
+              <FilterField label="Search" grow>
+                <Input name="q" defaultValue={search ?? ""} maxLength={100} placeholder="N-0051, order number, customer or tracking" />
               </FilterField>
             </FilterBar>
-            {cardPage?.cards.length ? (
+            {queue?.cards.length ? (
               <RecordTable
                 caption="Cards"
-                rows={cardPage.cards}
+                rows={queue.cards}
                 rowKey={(card) => card.id}
-                href={(card) => cardHref(card.id)}
+                href={(card) => actionHref(card)}
                 columns={[
-                  { label: "Card", cell: (card) => <><RowLink href={cardHref(card.id)}>{KIND_LABEL[card.kind ?? "none"]}</RowLink><Meta className="font-mono break-all">{card.publicToken ?? card.id}</Meta></> },
-                  { label: "State", cell: (card) => <Status tone={cardTone(card.state, card.state === "blank" && Boolean(card.publicToken))}>{card.state === "blank" && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}</Status> },
-                  { label: "Added", cell: (card) => <span className="text-meta text-fg-secondary tabular-nums">{dateTime(card.createdAt)}</span> },
+                  { label: "Card", cell: (card) => <><RowLink href={actionHref(card)}>{inventoryReference(card.inventoryNumber)}</RowLink><Meta>{KIND_LABEL[card.kind ?? "none"]}</Meta></> },
+                  { label: "Status", cell: (card) => <Status tone={TONE[card.statusKey]}>{STATUS_LABEL_BY_KEY[card.statusKey]}</Status> },
+                  { label: "Order / Customer", cell: (card) => card.orderNumber ? <><p className={`text-body ${wrap}`}>{card.customer}</p><Meta>Order {card.orderNumber}</Meta></> : <span className="text-fg-secondary">Not assigned</span> },
+                  { label: "Activation", cell: (card) => { const cell = activationFor(card); return cell.href ? <Link href={`${cardHref(card.id)}#activation`} className="relative z-10 font-medium text-action-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand">{cell.label}</Link> : <span className="text-fg-secondary">{cell.label}</span>; } },
+                  { label: "Delivery", cell: (card) => { const delivery = deliveryOf(card); return delivery ? <><p className="text-body">{delivery.label}</p>{delivery.tracking ? <Meta className="font-mono">{delivery.tracking}</Meta> : null}</> : <span className="text-fg-secondary">—</span>; } },
+                  { label: "Next action", cell: (card) => <Link href={actionHref(card)} className="relative z-10 font-medium text-action-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand">{operation(card).actionLabel}</Link> },
                 ]}
-                mobile={(card) => ({
-                  title: KIND_LABEL[card.kind ?? "none"],
-                  status: <Status tone={cardTone(card.state, card.state === "blank" && Boolean(card.publicToken))}>{card.state === "blank" && card.publicToken ? "In provisioning" : STATE_LABEL[card.state]}</Status>,
-                  subtitle: <span className="font-mono">{card.publicToken ? `•••• ${card.publicToken.slice(-4).toUpperCase()}` : "No token yet"}</span>,
-                  meta: dateTime(card.createdAt),
-                  cta: "View card",
-                })}
+                mobile={(card) => {
+                  const delivery = deliveryOf(card);
+                  return {
+                    title: inventoryReference(card.inventoryNumber),
+                    status: <Status tone={TONE[card.statusKey]}>{STATUS_LABEL_BY_KEY[card.statusKey]}</Status>,
+                    subtitle: card.orderNumber ? `${card.customer ?? ""} · Order ${card.orderNumber}` : KIND_LABEL[card.kind ?? "none"],
+                    meta: <span className={wrap}>{[delivery ? `${delivery.label}${delivery.tracking ? ` ${delivery.tracking}` : ""}` : null, activationFor(card).label].filter(Boolean).join(" · ")}</span>,
+                    cta: operation(card).actionLabel,
+                  };
+                }}
               />
             ) : (
-              <EmptyPanel icon={Package} title={filtered ? "No cards match these filters" : "No cards found"}>{filtered ? "Try a different product or state." : "Receive stock to add blank cards."}</EmptyPanel>
+              <EmptyPanel icon={PackageSearch} title={filtered ? "No cards match" : "Nothing needs doing"}>{filtered ? "Try another status or a different search." : "Receive stock to add blank cards, or create an order."}</EmptyPanel>
             )}
-            <Pagination noun="cards" paging={paging} hrefFor={pageHref(basePath, filters)} />
+            <Pagination noun="cards" paging={paging} hrefFor={pageHref(basePath, { status: filter, q: search })} />
           </Section>
         </>
       )}

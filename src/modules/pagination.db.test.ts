@@ -4,7 +4,7 @@ import { cards, orders, supportCases } from "@/db/schema";
 import { insertAccount, insertOrder, insertReadyDbc, insertStockPurchase } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb } from "@/db/testing";
 import { countAccounts, listAccounts } from "./accounts/directory";
-import { countCards, listCards } from "./inventory/queries";
+import { countInventoryQueue, listInventoryQueue } from "./inventory/queries";
 import { countStockPurchases, listStockPurchases } from "./inventory/stock-purchases";
 import { countOrders, listOrders } from "./orders/queries";
 import { countPurchasers, listPurchaserDirectory } from "./orders/purchasers";
@@ -39,12 +39,12 @@ test("support cases and cards page with real totals", () => rollback(db, async (
   expect(await countCases(tx, { status: "open" })).toBe(2);
   expect((await listCases(tx, { limit: 2, offset: 2 })).cases).toHaveLength(1);
   await insertReadyDbc(tx); await insertReadyDbc(tx);
-  expect(await countCards(tx, { state: "ready" })).toBe(2);
-  expect(await countCards(tx, { kind: "grc" })).toBe(0);
-  const page = await listCards(tx, { limit: 1, offset: 1, kind: "dbc" });
+  expect(await countInventoryQueue(tx, { filter: "ready" })).toBe(2);
+  expect(await countInventoryQueue(tx, { filter: "activated" })).toBe(0);
+  const page = await listInventoryQueue(tx, { limit: 1, offset: 1 });
   expect(page.cards).toHaveLength(1);
   expect(page.next).toBeNull();
-  expect((await listCards(tx, { limit: 1, kind: "dbc" })).next).not.toBeNull();
+  expect((await listInventoryQueue(tx, { limit: 1 })).next).not.toBeNull();
   expect(await tx.select({ id: cards.id }).from(cards)).toHaveLength(2);
 }));
 

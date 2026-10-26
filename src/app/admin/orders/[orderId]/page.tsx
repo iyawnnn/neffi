@@ -8,12 +8,13 @@ import { db } from "@/db";
 import { formatDateTime } from "@/lib/format-date";
 import { formatPeso } from "@/lib/money";
 import { getOrderDetail } from "@/modules/orders/queries";
+import { inventoryReference } from "@/modules/inventory/operations-view";
 import { effectiveItemTotal } from "@/modules/orders/totals";
 import { adminPage, caseTone, inlineLink, quietText, checkLabel, controlClass, DangerZone, Disclosure, fieldLabel, Input, label, LinkButton, NextStep, orderTone, PageHeader, Panel, Section, shipmentTone, StatStrip, Status, Textarea } from "../../ui";
 import { ActionForm } from "../../inventory/forms";
 import { addOrderNoteAction, assignOrderAction, updateOrderDetailsAction, addOrderItemAction, updateOrderItemAction, removeOrderItemAction } from "./actions";
 import { recordPaymentAction, recordRefundAction, voidPaymentAction, voidRefundAction } from "./actions";
-import { reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction, correctShipmentDateAction } from "./actions";
+import { allocateAvailableStockAction, reserveDbcCardsAction, returnCardToStockAction, handOverOrderAction, shipOrderAction, updateShipmentAction, correctShipmentDateAction } from "./actions";
 import { JntDetailsForm, MarkShippedForm } from "./jnt-forms";
 import { activityText, paymentMethodLabel, shipmentStatusLabel } from "./activity-text";
 import { orderNextStep } from "./next-step";
@@ -62,7 +63,7 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
   const primaryTask = () => {
     switch (step.key) {
       case "waiting_for_stock":
-        return <NextStep title="Waiting for stock"><p className="text-body">{step.remaining} {step.remaining === 1 ? "card still needs" : "cards still need"} stock. The order and its payment are recorded; cards are allocated automatically when stock arrives.</p><div><LinkButton icon={PackageSearch} variant="action" href="/admin/inventory">Receive stock</LinkButton></div></NextStep>;
+        return <NextStep title="Waiting for stock"><p className="text-body">{step.remaining} {step.remaining === 1 ? "card still needs" : "cards still need"} stock. The order and its payment are recorded; cards are allocated automatically when stock arrives.</p><div className="flex flex-wrap gap-3"><ActionForm action={allocateAvailableStockAction} submit="Allocate available stock" variant="primary">{hidden}</ActionForm><LinkButton icon={PackageSearch} href="/admin/inventory">Receive stock</LinkButton></div></NextStep>;
       case "prepare_card":
         return <NextStep title="Write and test the NFC card"><p className="text-body">{step.progress}. Use any untouched card and keep it with you until preparation is complete.</p><div><LinkButton variant="action" href={`/admin/inventory/cards/${step.cardId}`}>Prepare card</LinkButton></div></NextStep>;
       case "give_card":
@@ -110,17 +111,17 @@ export default async function OrderPage({ params }: Pick<PageProps<"/admin/order
             {item.reviewUrl ? <a className={`${link} break-all text-meta`} href={item.reviewUrl}>{item.reviewUrl}</a> : null}
           </li>)}
         </ul>
-        {order.cards.length ? <ul className="flex flex-wrap gap-x-6 gap-y-1 border-t bg-canvas/60 px-4 sm:px-5 py-3">{order.cards.map((card) => <li key={card.id}><Link className={`${link} inline-flex min-h-8 items-center gap-2 text-meta`} href={`/admin/inventory/cards/${card.id}`}>{card.kind?.toUpperCase()} {card.suffix ?? card.id.slice(-4)} · {normal ? CARD_STATE[card.state] ?? card.state : card.state}</Link></li>)}</ul> : null}
+        {order.cards.length ? <ul className="flex flex-wrap gap-x-6 gap-y-1 border-t bg-canvas/60 px-4 sm:px-5 py-3">{order.cards.map((card) => <li key={card.id}><Link className={`${link} inline-flex min-h-8 items-center gap-2 text-meta`} href={`/admin/inventory/cards/${card.id}`}>{inventoryReference(card.inventoryNumber)} · {normal ? CARD_STATE[card.state] ?? card.state : card.state}</Link></li>)}</ul> : null}
         {normal && order.deliveryMethod === "courier" ? <p className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t px-4 py-4 text-body sm:px-5">{order.shippingFeePending ? <span className="font-medium">J&amp;T Shipping — To be confirmed</span> : <><span className="font-medium">J&amp;T Shipping</span><span className="tabular-nums">{formatPeso(order.shippingFee)}</span></>}</p> : null}
       </Panel>
       {order.status === "in_progress" && !normal ? <div className="flex flex-wrap gap-2">
         {order.items.filter((item) => item.productKind === "dbc" && !order.clientKey && item.allocatedCount < item.quantity).map((item) => <ActionSheet key={item.id} title={`Reserve DBC cards · ${item.name}`}>
           <p>{item.quantity - item.allocatedCount} card(s) remaining on this line.</p>
           {order.readyDbcCards.some((card) => card.productId === item.productId) ? <ActionForm action={reserveDbcCardsAction} submit="Reserve selected DBCs" variant="primary">{hidden}<input type="hidden" name="orderItemId" value={item.id} />
-            {order.readyDbcCards.filter((card) => card.productId === item.productId).map((card) => <label key={card.id} className={`${checkLabel} items-center border-b`}><input type="checkbox" name="cardId" value={card.id} /><span>DBC {card.suffix} · Received {card.receivedOn}</span></label>)}
+            {order.readyDbcCards.filter((card) => card.productId === item.productId).map((card) => <label key={card.id} className={`${checkLabel} items-center border-b`}><input type="checkbox" name="cardId" value={card.id} /><span>{inventoryReference(card.inventoryNumber)} · Received {card.receivedOn}</span></label>)}
           </ActionForm> : <p>No Ready DBCs for this product. <Link className={link} href="/admin/inventory">Open Inventory</Link></p>}
         </ActionSheet>)}
-        {order.cards.filter((card) => card.state === "reserved").map((card) => <ActionSheet key={card.id} title={`Return DBC ${card.suffix ?? ""} to stock`}><ActionForm action={returnCardToStockAction} submit="Return to stock" confirm={{ field: "confirm", icon: <Undo2 className="size-5" />, title: `Return DBC ${card.suffix ?? ""} to stock?`, description: `The card leaves Order ${order.number} and goes back to Ready stock. For a lost package, replace its credential from Inventory afterward.`, confirmLabel: "Return to stock" }}>{hidden}<input type="hidden" name="cardId" value={card.id} /><p className={quiet}>Returns this DBC to Ready stock. For a lost package, replace its credential from Inventory afterward.</p></ActionForm></ActionSheet>)}
+        {order.cards.filter((card) => card.state === "reserved").map((card) => <ActionSheet key={card.id} title={`Return ${inventoryReference(card.inventoryNumber)} to stock`}><ActionForm action={returnCardToStockAction} submit="Return to stock" confirm={{ field: "confirm", icon: <Undo2 className="size-5" />, title: `Return ${inventoryReference(card.inventoryNumber)} to stock?`, description: `The card leaves Order ${order.number} and goes back to Ready stock. For a lost package, replace its credential from Inventory afterward.`, confirmLabel: "Return to stock" }}>{hidden}<input type="hidden" name="cardId" value={card.id} /><p className={quiet}>Returns this DBC to Ready stock. For a lost package, replace its credential from Inventory afterward.</p></ActionForm></ActionSheet>)}
       </div> : null}
       {order.status === "in_progress" && !order.clientKey ? <div className="flex flex-col gap-3">
         {order.items.map((item) => <Disclosure key={item.id} summary={`Edit ${item.name}${item.label ? ` · ${item.label}` : ""}`}>
