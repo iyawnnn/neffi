@@ -90,6 +90,8 @@ test("signed out with an accepted code: sign in and come back here", async () =>
   expect(html).not.toContain("data-code-form");
   expect(html).not.toContain("neffi-activation-hero-desktop.png");
   expect(html).toContain('data-accepted');
+  expect(html).toContain("data-code-accepted");
+  expect(html).not.toContain('viewBox="166 310 469 180"');
   expect(m.ownedCards).not.toHaveBeenCalled();
 });
 

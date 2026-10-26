@@ -27,7 +27,7 @@ export function AddSceneForm({ profileId, scenes, cancel }: { profileId: string;
       {state?.error ? <p role="alert" className="text-sm text-destructive">{state.error}</p> : null}
       <div className="mt-2 flex flex-col gap-2.5 sm:flex-row sm:justify-end">
         {cancel}
-        <Button type="submit" variant="default" size="touch" className="h-11 rounded-[10px] bg-primary text-primary-foreground font-medium interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none" disabled={pending}>
+        <Button type="submit" variant="default" size="touch" className="h-11 rounded-[10px] bg-primary text-primary-foreground font-medium interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none" loading={pending} loadingText="Adding…">
           Add mode
         </Button>
       </div>
@@ -44,7 +44,7 @@ export function DeleteProfileForm({ profileId, cancel }: { profileId: string; ca
       {state?.error ? <p role="alert" className="text-sm">{state.error}</p> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         {cancel}
-        <Button type="submit" size="touch" variant="destructive" className="min-h-11 rounded-[10px] interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none sm:h-[42px]" disabled={pending}>Delete profile</Button>
+        <Button type="submit" size="touch" variant="destructive" className="min-h-11 rounded-[10px] interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none sm:h-[42px]" loading={pending} loadingText="Deleting…">Delete profile</Button>
       </div>
     </form>
   );

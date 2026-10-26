@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { authClient } from "@/auth/client";
 import { CodeSlots } from "@/components/code-slots";
 import { GoogleLogo } from "@/components/google-icon";
@@ -11,6 +11,7 @@ import { inputClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type Step = "email" | "code";
+type Pending = "google" | "email" | "verify" | "resend";
 
 export { inputClass };
 
@@ -34,7 +35,8 @@ export function SignInForm({
   const [feedback, setFeedback] = useState<
     { text: string; type: "info" | "error" } | undefined
   >(notice ? { text: notice, type: "error" } : undefined);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const busy = pending !== null;
   const otpInputRef = useRef<HTMLInputElement>(null);
 
   const emailValid = isValidEmail(email);
@@ -43,13 +45,13 @@ export function SignInForm({
   async function requestCode(event?: FormEvent) {
     event?.preventDefault();
     if (!emailValid) return;
-    setBusy(true);
+    setPending(step === "code" ? "resend" : "email");
     setFeedback(undefined);
     const { error } = await authClient.emailOtp.sendVerificationOtp({
       email: email.trim(),
       type: "sign-in",
     });
-    setBusy(false);
+    setPending(null);
     if (error) {
       setFeedback({
         text:
@@ -74,14 +76,14 @@ export function SignInForm({
   async function verifyCode(event: FormEvent) {
     event.preventDefault();
     if (!codeValid) return;
-    setBusy(true);
+    setPending("verify");
     setFeedback(undefined);
     const { error } = await authClient.signIn.emailOtp({
       email: email.trim(),
       otp: code.trim(),
     });
     if (error) {
-      setBusy(false);
+      setPending(null);
       setFeedback({
         text:
           error.status === 429
@@ -96,7 +98,7 @@ export function SignInForm({
   }
 
   async function continueWithGoogle() {
-    setBusy(true);
+    setPending("google");
     setFeedback(undefined);
     const { error } = await authClient.signIn.social({
       provider: "google",
@@ -105,7 +107,7 @@ export function SignInForm({
       newUserCallbackURL: next,
     });
     if (error) {
-      setBusy(false);
+      setPending(null);
       setFeedback({
         text: "We could not start Google sign-in. Please try again or use an email code.",
         type: "error",
@@ -164,12 +166,14 @@ export function SignInForm({
             type="button"
             variant="outline"
             size="touch"
-            className="h-[50px] w-full rounded-[10px] border border-border bg-background text-body font-medium text-foreground hover:bg-subtle/60 active:scale-[0.99] transition-all duration-150 gap-3"
+            className="h-[50px] w-full gap-3 rounded-[10px] text-body font-medium text-foreground"
             disabled={busy}
+            loading={pending === "google"}
+            loadingText="Opening Google…"
             onClick={continueWithGoogle}
           >
             <GoogleLogo className="size-5 shrink-0" />
-            <span>Continue with Google</span>
+            Continue with Google
           </Button>
 
           {/* Minimal divider (24px above & below) */}
@@ -211,29 +215,14 @@ export function SignInForm({
             <Button
               type="submit"
               size="touch"
-              variant={emailValid && !busy ? "action" : "outline"}
-              className={cn(
-                "mt-4 h-[50px] w-full rounded-[10px] text-base font-semibold transition-all duration-[220ms]",
-                (!emailValid || busy) &&
-                  "bg-subtle text-fg-secondary/60 border border-border/80 cursor-not-allowed hover:bg-subtle hover:text-fg-secondary/60",
-                emailValid && !busy && "gap-2 shadow-xs"
-              )}
+              variant={emailValid || pending === "email" ? "action" : "outline"}
+              className={cn("mt-4 h-[50px] w-full gap-2 rounded-[10px] text-base font-semibold", !emailValid && pending !== "email" && "bg-subtle text-fg-secondary border-border-strong/70 hover:bg-subtle hover:text-fg-secondary disabled:opacity-100 disabled:shadow-none")}
               disabled={!emailValid || busy}
+              loading={pending === "email"}
+              loadingText="Sending code…"
             >
-              {busy ? (
-                <>
-                  <LoaderCircle
-                    aria-hidden
-                    className="size-4.5 animate-spin motion-reduce:animate-none"
-                  />
-                  Sending code…
-                </>
-              ) : (
-                <>
-                  Continue with email
-                  <ArrowRight aria-hidden className="size-4.5" />
-                </>
-              )}
+              Continue with email
+              <ArrowRight aria-hidden className="size-4.5" />
             </Button>
           </form>
         </div>
@@ -264,29 +253,14 @@ export function SignInForm({
             <Button
               type="submit"
               size="touch"
-              variant={codeValid && !busy ? "action" : "outline"}
-              className={cn(
-                "h-[50px] w-full rounded-[10px] text-base font-semibold transition-all duration-[220ms]",
-                (!codeValid || busy) &&
-                  "bg-subtle text-fg-secondary/60 border border-border/80 cursor-not-allowed hover:bg-subtle hover:text-fg-secondary/60",
-                codeValid && !busy && "gap-2 shadow-xs"
-              )}
+              variant={codeValid || pending === "verify" ? "action" : "outline"}
+              className={cn("h-[50px] w-full gap-2 rounded-[10px] text-base font-semibold", !codeValid && pending !== "verify" && "bg-subtle text-fg-secondary border-border-strong/70 hover:bg-subtle hover:text-fg-secondary disabled:opacity-100 disabled:shadow-none")}
               disabled={!codeValid || busy}
+              loading={pending === "verify"}
+              loadingText="Signing in…"
             >
-              {busy ? (
-                <>
-                  <LoaderCircle
-                    aria-hidden
-                    className="size-4.5 animate-spin motion-reduce:animate-none"
-                  />
-                  Signing in…
-                </>
-              ) : (
-                <>
-                  Sign in
-                  <ArrowRight aria-hidden className="size-4.5" />
-                </>
-              )}
+              Sign in
+              <ArrowRight aria-hidden className="size-4.5" />
             </Button>
 
             <Button
@@ -295,6 +269,8 @@ export function SignInForm({
               size="touch"
               className="h-11 w-full rounded-[10px] text-body font-medium"
               disabled={busy}
+              loading={pending === "resend"}
+              loadingText="Sending…"
               onClick={() => void requestCode()}
             >
               Send a new code

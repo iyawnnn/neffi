@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useLayoutEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowRight, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
+import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { checkCodeAction, claimAction, startOverAction, switchAccountAction } from "./actions";
@@ -97,33 +98,14 @@ export function CodeForm() {
       <Button
         type="submit"
         size="touch"
-        variant={isComplete && !pending ? "action" : "outline"}
-        className={cn(
-          "h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold transition-all duration-[220ms] select-none",
-          !isComplete && !pending && "bg-subtle text-fg-secondary border border-border-strong/70 cursor-not-allowed hover:bg-subtle hover:text-fg-secondary disabled:opacity-100",
-          isComplete && !pending && "gap-2 shadow-xs !text-white bg-action hover:bg-action-hover active:translate-y-px [&_*]:!text-white",
-          pending && "gap-2 bg-action/90 cursor-not-allowed !text-white [&_*]:!text-white"
-        )}
-        disabled={!isComplete || pending}
+        variant={isComplete || pending ? "action" : "outline"}
+        className={cn("h-[52px] w-full gap-2 rounded-xl text-base font-semibold sm:h-[54px]", !isComplete && !pending && "bg-subtle text-fg-secondary border-border-strong/70 hover:bg-subtle hover:text-fg-secondary disabled:opacity-100 disabled:shadow-none")}
+        disabled={!isComplete}
+        loading={pending}
+        loadingText="Checking…"
       >
-        {pending ? (
-          <>
-            <LoaderCircle
-              aria-hidden
-              className="size-4.5 animate-spin motion-reduce:animate-none !text-white shrink-0"
-            />
-            <span className="!text-white">Checking…</span>
-          </>
-        ) : (
-          <>
-            <span className={cn(isComplete ? "!text-white" : "text-fg-secondary")}>
-              Continue
-            </span>
-            {isComplete ? (
-              <ArrowRight aria-hidden className="size-4.5 !text-white shrink-0" />
-            ) : null}
-          </>
-        )}
+        Continue
+        <ArrowRight aria-hidden className="size-4.5" />
       </Button>
     </form>
   );
@@ -146,23 +128,12 @@ export function ClaimForm() {
         type="submit"
         size="touch"
         variant="action"
-        className="h-[52px] sm:h-[54px] w-full rounded-xl text-base font-semibold gap-2 shadow-xs !text-white bg-action hover:bg-action-hover [&_*]:!text-white"
-        disabled={pending}
+        className="h-[52px] w-full rounded-xl text-base font-semibold gap-2 sm:h-[54px]"
+        loading={pending}
+        loadingText="Adding…"
       >
-        {pending ? (
-          <>
-            <LoaderCircle
-              aria-hidden
-              className="size-4.5 animate-spin motion-reduce:animate-none !text-white"
-            />
-            <span className="!text-white">Adding…</span>
-          </>
-        ) : (
-          <>
-            <span className="!text-white">Add to my account</span>
-            <ArrowRight aria-hidden className="size-4.5 !text-white shrink-0" />
-          </>
-        )}
+        Add to my account
+        <ArrowRight aria-hidden className="size-4.5" />
       </Button>
     </form>
   );
@@ -171,14 +142,14 @@ export function ClaimForm() {
 export function SwitchAccountButton() {
   return (
     <form action={switchAccountAction} className="w-full">
-      <Button
-        type="submit"
+      <SubmitButton
         variant="outline"
         size="touch"
-        className="h-[52px] sm:h-[54px] w-full rounded-xl text-body font-medium hover:bg-subtle/60"
+        className="h-[52px] w-full rounded-xl text-body font-medium sm:h-[54px]"
+        pendingText="Switching…"
       >
         Use a different account
-      </Button>
+      </SubmitButton>
     </form>
   );
 }
@@ -186,14 +157,14 @@ export function SwitchAccountButton() {
 export function StartOverButton() {
   return (
     <form action={startOverAction} className="w-full">
-      <Button
-        type="submit"
+      <SubmitButton
         variant="ghost"
         size="touch"
         className="h-11 w-full text-meta font-medium text-fg-secondary hover:text-foreground"
+        pendingText="Starting over…"
       >
         Enter a different code
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

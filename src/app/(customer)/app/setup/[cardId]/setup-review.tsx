@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Image as ImageIcon, Link2, Palette, PanelsTopLeft, UserRound, Waypoints } from "lucide-react";
+import { ArrowUpRight, Check, House, Image as ImageIcon, Link2, Palette, PanelsTopLeft, SlidersHorizontal, UserRound, Waypoints } from "lucide-react";
 import { ButtonLink } from "@/components/app-ui";
 import { ProfileRenderer } from "@/components/profile/profile-renderer";
 import { ACCENTS } from "@/modules/profiles/appearance-options";
@@ -8,6 +8,7 @@ import { PUBLISH_GAP_COPY, type PublishGap } from "@/modules/profiles/rules";
 import type { SceneView } from "@/modules/profiles/scene-view";
 import { PublishButton } from "../../profiles/[profileId]/publish-button";
 import type { publishAction } from "../../profiles/[profileId]/actions";
+import { STEP_TITLES } from "./setup-steps";
 import { SetupView } from "./setup-view";
 
 const layoutNames = { classic: "Classic", editorial: "Editorial", showcase: "Showcase" } as const;
@@ -49,8 +50,17 @@ export function SetupReview({ suffix, cardId, profileId, view, gaps, action }: {
  </SetupView>;
 }
 export function SetupDone({ suffix, profileId, token }: { suffix: string; profileId: string; token: string }) {
- return <SetupView suffix={suffix} step="done">
-   <p className="text-body text-fg-secondary">Tap your card on your phone to try it.</p>
-   <div className="flex flex-col gap-3"><ButtonLink href={`/c/${token}`} target="_blank" rel="noopener noreferrer" variant="action" className="h-12 w-full">View your page</ButtonLink><ButtonLink href={`/app/profiles/${profileId}`} variant="outline" className="w-full">Customize more</ButtonLink><Link href="/app" className="inline-flex min-h-11 items-center justify-center rounded-lg text-body text-fg-secondary focus-visible:outline-2 focus-visible:outline-brand">Go to Home</Link></div>
+ return <SetupView suffix={suffix} showCardSuffix={false}>
+   <div className="flex flex-col items-center pt-4 text-center sm:pt-8">
+     <span aria-hidden className="flex size-14 items-center justify-center rounded-full border border-border bg-background shadow-xs"><Check strokeWidth={2.25} className="size-6 text-foreground" /></span>
+     <p className="mt-5 text-meta text-fg-secondary">Card ending in {suffix}</p>
+     <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">{STEP_TITLES.done}</h1>
+     <p className="mt-2 max-w-xs text-body text-fg-secondary">Tap your card on your phone to try it.</p>
+     <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row">
+       <ButtonLink href={`/c/${token}`} target="_blank" rel="noopener noreferrer" variant="action" className="w-full gap-2 sm:flex-1">View your page<ArrowUpRight aria-hidden /></ButtonLink>
+       <ButtonLink href={`/app/profiles/${profileId}`} variant="outline" className="w-full gap-2 sm:flex-1"><SlidersHorizontal aria-hidden />Customize more</ButtonLink>
+     </div>
+     <Link href="/app" className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-body text-fg-secondary transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-brand"><House aria-hidden className="size-4" />Go to Home</Link>
+   </div>
  </SetupView>;
 }

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Globe, Mail, Phone } from "lucide-react";
+import { ArrowUpRight, Globe, Mail, Phone, UserRoundPlus } from "lucide-react";
 import { LinkKindIcon } from "@/components/social-icons";
 import { Input, Textarea } from "@/components/ui/input";
 import { PUBLIC_FORM_PLACEHOLDERS } from "@/components/public-form-placeholders";
@@ -23,13 +23,17 @@ export function Identity({ identity, intro }: { identity: ViewIdentity; intro: s
   );
 }
 
+// Filled actions use the profile accent with the shared Neffi CTA sheen; text is --pf-on-accent, white on every light-mode accent.
+const actionClass = (action: PrimaryAction) => `pf-action min-h-12${action.filled ? " neffi-cta" : ""}`;
+const actionLabel = (action: PrimaryAction) => action.type === "contact" ? <><UserRoundPlus aria-hidden className="pf-action-icon" size={18} />{action.label}</> : action.label;
+
 export function PrimaryActions({ actions, visitorActions }: { actions: PrimaryAction[]; visitorActions?: VisitorActions }) {
   return <div className="pf-primary">{actions.map(action => action.type === "contact" && !visitorActions ? (
-    <button key={action.id} disabled className="pf-action min-h-12" data-filled={action.filled}>{action.label}</button>
+    <button key={action.id} disabled className={actionClass(action)} data-filled={action.filled}>{actionLabel(action)}</button>
   ) : (
     <a key={action.id} href={action.type === "contact" ? visitorActions!.saveContactHref : action.url}
       target={action.type === "booking" ? "_blank" : undefined} rel={action.type === "booking" ? "noopener noreferrer" : undefined}
-      className="pf-action min-h-12" data-filled={action.filled}>{action.label}</a>
+      className={actionClass(action)} data-filled={action.filled}>{actionLabel(action)}</a>
   ))}</div>;
 }
 

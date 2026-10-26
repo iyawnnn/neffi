@@ -5,6 +5,7 @@ import { CircleHelp } from "lucide-react";
 import { getViewer } from "@/auth/access";
 import { authErrorMessage } from "@/auth/messages";
 import { safeNext } from "@/auth/policy";
+import { AuthHero } from "@/components/auth-hero";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
@@ -26,22 +27,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
       <main data-auth-card className="flex w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background shadow-xs md:grid md:grid-cols-[48%_52%] md:max-w-[1080px]">
         {/* HERO REGION (mobile banner / desktop left panel) */}
         <div data-auth-hero className="relative w-full overflow-hidden bg-[#FAF9F5] border-b border-border/50 aspect-[16/9] min-h-[185px] max-h-[225px] md:aspect-auto md:h-full md:max-h-none md:border-b-0 md:border-r md:border-border/60">
-          {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
-          <picture className="block h-full w-full">
-            <source
-              media="(min-width: 768px)"
-              srcSet="/images/neffi-signin-hero-desktop.png"
-              width={1440}
-              height={1500}
-            />
-            <img
-              src="/images/neffi-signin-hero-mobile.png"
-              alt=""
-              width={1536}
-              height={1024}
-              className="h-full w-full object-cover object-center scale-[1.06] origin-center md:scale-100 md:object-top lg:object-center select-none pointer-events-none"
-            />
-          </picture>
+          <AuthHero kind="signin" />
         </div>
 
         {/* AUTH REGION */}

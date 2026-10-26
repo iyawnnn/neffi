@@ -60,7 +60,7 @@ export function ActivationCode({ cardId, credentialId, retrievable }: { cardId: 
           </div>
         </>
       ) : (
-        <Button type="button" variant="outline" size="touch" className="gap-2 self-start md:h-9" onClick={show} disabled={pending}><Eye aria-hidden className="size-4" />{pending ? "Working…" : "Show activation code"}</Button>
+        <Button type="button" variant="outline" size="touch" className="gap-2 self-start md:h-9" onClick={show} loading={pending} loadingText="Revealing…"><Eye aria-hidden className="size-4" />Show activation code</Button>
       )}
       <p role="status" className="text-meta text-fg-secondary">{message}</p>
       {error ? <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-meta text-destructive"><CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{error}</p> : null}
@@ -95,7 +95,7 @@ function ExistingCode({ cardId, credentialId }: { cardId: string; credentialId: 
       {done ? <p role="status" className="text-meta">Saved. Reload the card to show the code.</p> : (
         <>
           <label className={fieldLabel}>Code from the package<Input name="code" required autoComplete="off" spellCheck={false} autoCapitalize="off" className="font-mono" value={value} onChange={(e) => setValue(e.target.value)} /></label>
-          <Button type="submit" variant="outline" size="touch" className="self-start md:h-9" disabled={pending}>{pending ? "Working…" : "Save existing code"}</Button>
+          <Button type="submit" variant="outline" size="touch" className="self-start md:h-9" loading={pending} loadingText="Saving…">Save existing code</Button>
         </>
       )}
       {error ? <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-meta text-destructive"><CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{error}</p> : null}

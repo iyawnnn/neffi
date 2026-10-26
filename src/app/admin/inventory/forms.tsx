@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Ban, CircleAlert, CircleCheck, KeyRound, Loader2 } from "lucide-react";
+import { Ban, CircleAlert, CircleCheck, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, type Confirmation } from "../confirm-dialog";
@@ -52,7 +52,10 @@ function Reveal({ reveal }: { reveal: NonNullable<ActionState["reveal"]> }) {
 }
 
 // `primary` is the Vermilion main action of a screen; `default` is the quiet secondary; `destructive` is red.
-type ActionFormProps = { action: Action; submit: string; variant?: "default" | "primary" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean; confirm?: Confirmation; className?: string };
+type ActionFormProps = { action: Action; submit: string; variant?: "default" | "primary" | "destructive" | "outline"; children?: ReactNode; available?: boolean; provisioning?: boolean; confirm?: Confirmation; className?: string; /** Label while the action runs; defaults to the submit verb in -ing form ("Receive stock" → "Receiving…"). */ pendingText?: string };
+
+const PENDING_VERBS: Record<string, string> = { Create: "Creating", Save: "Saving", Receive: "Receiving", Confirm: "Confirming", Provision: "Provisioning", Replace: "Replacing", Reserve: "Reserving", Retire: "Retiring", Add: "Adding", Record: "Recording", Void: "Voiding", Remove: "Removing", Cancel: "Cancelling", Delete: "Deleting", Assign: "Assigning", Allocate: "Allocating", Return: "Returning", Correct: "Correcting", Give: "Giving", Open: "Opening", Resolve: "Resolving", Reopen: "Reopening", Link: "Linking", Resend: "Resending", Send: "Sending", Initiate: "Initiating", Secure: "Securing", Mark: "Updating", Wait: "Updating" };
+const pendingLabelFor = (submit: string) => { const verb = PENDING_VERBS[submit.split(" ")[0]]; return verb ? `${verb}…` : "Working…"; };
 const buttonVariant = { default: "outline", outline: "outline", primary: "action", destructive: "destructive" } as const;
 
 export function ActionForm(props: ActionFormProps) {
@@ -62,7 +65,8 @@ export function ActionForm(props: ActionFormProps) {
   return <ActionFormContent key={visit} {...props} />;
 }
 
-function ActionFormContent({ action, submit, variant = "default", children, available = true, provisioning = false, confirm, className }: ActionFormProps) {
+function ActionFormContent({ action, submit, variant = "default", children, available = true, provisioning = false, confirm, className, pendingText }: ActionFormProps) {
+  const pendingLabel = pendingText ?? pendingLabelFor(submit);
   const [state, formAction, pending] = useActionState(action, undefined);
   // Holds the form while its confirmation is open, so confirming submits exactly the form that asked.
   const [asking, setAsking] = useState<HTMLFormElement | null>(null);
@@ -85,13 +89,13 @@ function ActionFormContent({ action, submit, variant = "default", children, avai
             onClick={confirm ? (event) => { const form = event.currentTarget.form; if (form?.reportValidity()) setAsking(form); } : undefined}
             variant={buttonVariant[variant]}
             size="touch"
-            className={cn("w-full text-body sm:w-auto sm:self-start md:h-9", variant === "primary" && "font-semibold")}
-            disabled={pending}
+            className={cn("w-full text-body font-medium sm:w-auto sm:self-start md:h-9", variant === "primary" && "font-semibold")}
+            loading={pending}
+            loadingText={pendingLabel}
           >
-            {pending ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
-            {pending ? "Working…" : submit}
+            {submit}
           </Button>
-          {confirm ? <ConfirmDialog open={asking !== null} onOpenChange={(open) => { if (!open) setAsking(null); }} confirmation={{ confirmLabel: submit, ...confirm }} destructive={variant === "destructive"} pending={pending} onConfirm={() => {
+          {confirm ? <ConfirmDialog open={asking !== null} onOpenChange={(open) => { if (!open) setAsking(null); }} confirmation={{ confirmLabel: submit, pendingText: pendingLabel, ...confirm }} destructive={variant === "destructive"} pending={pending} onConfirm={() => {
             accepted.current = true;
             try { if (confirmedSubmit.current) asking?.requestSubmit(confirmedSubmit.current); }
             finally { accepted.current = false; setAsking(null); }

@@ -1,14 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 // `field` names a hidden input the form submits as "on" once the owner confirms: the server contract for consequential
 // actions still expects that flag, and the dialog is where the owner gives it.
-export type Confirmation = { title: string; description: ReactNode; confirmLabel?: string; dismissLabel?: string; icon?: ReactNode; field?: string };
+export type Confirmation = { title: string; description: ReactNode; confirmLabel?: string; dismissLabel?: string; pendingText?: string; icon?: ReactNode; field?: string };
 
 // Icon, title, one sentence on the consequence, then Cancel and the confirming action. Destructive confirmations are
 // red; ordinary state changes stay Vermilion, so only truly irreversible actions look dangerous.
@@ -28,11 +28,11 @@ export function ConfirmDialog({ open, onOpenChange, confirmation, destructive = 
             type="button"
             variant={destructive ? "danger" : "action"}
             size="touch"
-            disabled={pending}
+            loading={pending}
+            loadingText={confirmation.pendingText}
             onClick={onConfirm}
             className="text-body font-semibold md:h-9"
           >
-            {pending ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
             {confirmation.confirmLabel ?? "Confirm"}
           </Button>
         </DialogFooter>

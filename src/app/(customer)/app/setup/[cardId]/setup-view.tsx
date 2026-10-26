@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 
 import { GOALS, NO_GOAL } from "@/modules/profiles/goals";
 import { SetupProgress } from "@/components/setup-header";
@@ -36,7 +36,7 @@ export function GoalFields({ goal, disabled = false }: { goal?: string | null; d
           </label>
         ))}
       </fieldset>
-      <Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={disabled}>Continue <ArrowRight aria-hidden className="size-4" /></Button>
+      <SubmitButton variant="action" size="touch" className="h-12 w-full" disabled={disabled} pendingText="Continuing…">Continue <ArrowRight aria-hidden className="size-4" /></SubmitButton>
     </>
   );
 }

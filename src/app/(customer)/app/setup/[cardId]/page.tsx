@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireAccount } from "@/auth/access";
-import { Button } from "@/components/ui/button";
 import { db } from "@/db";
 import { ownedCards } from "@/modules/cards/owned";
 import { getOwnedProfile, ownedProfiles } from "@/modules/profiles/profiles";
@@ -11,6 +9,7 @@ import { sceneBlocks } from "@/db/schema";
 import { env } from "@/config/env";
 import { imageUrl } from "@/integrations/media/cloudinary";
 import { sceneForEditing } from "@/modules/profiles/editor";
+import { ChooseProfile } from "./choose-profile";
 import { SetupReview, SetupDone } from "./setup-review";
 import { SetupAppearance } from "./setup-appearance";
 import { SetupLinks } from "./setup-links";
@@ -39,14 +38,7 @@ export default async function SetupPage({ params, searchParams }: PageProps<"/ap
     return (
       <SetupView suffix={card.publicToken.slice(-4)}>
         <h1 className="text-2xl font-semibold tracking-tight">Show one of your profiles on this card</h1>
-        {profiles.map(profile => (
-          <form key={profile.id} action={chooseProfileAction}>
-            <input type="hidden" name="cardId" value={card.id} />
-            <input type="hidden" name="profileId" value={profile.id} />
-            <Button type="submit" variant="action" size="touch" className="h-12 w-full">Use {profile.fullName ?? "Untitled profile"}</Button>
-          </form>
-        ))}
-        <Link href="?step=goal" className="inline-flex min-h-11 items-center font-medium underline underline-offset-4">Create a new profile</Link>
+        <ChooseProfile cardId={card.id} profiles={profiles} action={chooseProfileAction} />
       </SetupView>
     );
   }

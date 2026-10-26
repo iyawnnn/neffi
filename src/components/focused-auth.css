@@ -6,6 +6,7 @@
   .focused-auth [data-auth-hero] { height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; }
   .focused-auth [data-auth-hero] picture { position: absolute; inset: 0; }
   .focused-auth [data-auth-body] { padding-block: 0.75rem; }
+  .focused-auth [data-auth-body][data-accepted] { padding-block: 1.75rem; }
   .focused-auth [data-auth-help] { margin-top: 0.5rem; }
   .focused-auth [data-auth-return] { margin-top: 0.5rem; }
   .focused-auth [data-auth-fields] { margin-top: 0.75rem; gap: 0.75rem; }

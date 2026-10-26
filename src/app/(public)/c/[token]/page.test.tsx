@@ -76,3 +76,10 @@ test("unavailable copy names no reason and no internal state", () => {
   expect(text).toContain("This Neffi isn’t available right now");
   expect(text).not.toMatch(/disabled|draft|unpublish|claim|activat|token|profile|account|owner|error|404/i);
 });
+
+test("the unavailable page carries a decorative Neffi illustration and a primary-style owner action", () => {
+  const html = renderToStaticMarkup(<Unavailable manageHref="/app/cards/c1" />);
+  expect(html).toMatch(/<svg[^>]*aria-hidden="true"[^>]*viewBox="0 0 260 150"/);
+  expect(html).toContain("neffi-cta");
+  expect(renderToStaticMarkup(<Unavailable />)).not.toContain("<a ");
+});

@@ -308,3 +308,33 @@ test("invalid OTP verification renders with destructive styling and error access
   expect(otpInput.getAttribute("aria-invalid")).toBe("true");
   expect(otpInput.getAttribute("aria-describedby")).toBe("code-error");
 });
+
+test("Google button shows a busy state and disables the form while redirecting", async () => {
+  m.signInSocial.mockReturnValue(new Promise(() => {}));
+  await act(async () => {
+    root.render(<SignInForm next="/app" />);
+  });
+  const buttons = () => [...host.querySelectorAll<HTMLButtonElement>("button")];
+  await act(async () => {
+    buttons().find((b) => b.textContent?.includes("Continue with Google"))?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const google = buttons().find((b) => b.textContent?.includes("Opening Google…"))!;
+  expect(google.disabled).toBe(true);
+  expect(google.getAttribute("aria-busy")).toBe("true");
+});
+
+test("email code submit shows Sending code… while the request is in flight", async () => {
+  m.sendVerificationOtp.mockReturnValue(new Promise(() => {}));
+  await act(async () => {
+    root.render(<SignInForm next="/app" />);
+  });
+  await act(async () => {
+    changeInput(host.querySelector<HTMLInputElement>("input#email")!, "alex@example.test");
+  });
+  await act(async () => {
+    host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  const submit = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  expect(submit.textContent).toContain("Sending code…");
+  expect(submit.disabled).toBe(true);
+});

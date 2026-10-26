@@ -10,7 +10,6 @@ import {
   Download,
   HelpCircle,
   IdCard,
-  LoaderCircle,
   Nfc,
   X,
 } from "lucide-react";
@@ -372,21 +371,13 @@ function CardEditorInner({
               <Button
                 type="submit"
                 size="touch"
-                disabled={!isDirty || saving}
+                disabled={!isDirty}
                 variant={isDirty || saving ? "action" : "outline"}
+                loading={saving}
+                loadingText="Saving…"
                 className="w-full sm:w-auto"
               >
-                {saving ? (
-                  <>
-                    <LoaderCircle
-                      aria-hidden
-                      className="size-4 animate-spin motion-reduce:animate-none"
-                    />
-                    Saving…
-                  </>
-                ) : (
-                  "Save changes"
-                )}
+                Save changes
               </Button>
             </div>
           </form>

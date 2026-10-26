@@ -72,7 +72,7 @@ const unread = sql<number>`count(${schema.formSubmissions.id}) filter (where ${s
 
 export async function ownedProfiles(db: Db, accountId: string) {
   return db
-    .select({ id: schema.profiles.id, fullName: schema.profiles.fullName, status: schema.profiles.status, unread })
+    .select({ id: schema.profiles.id, fullName: schema.profiles.fullName, headline: schema.profiles.headline, status: schema.profiles.status, unread })
     .from(schema.profiles)
     .leftJoin(schema.formSubmissions, eq(schema.formSubmissions.profileId, schema.profiles.id))
     .where(eq(schema.profiles.accountId, accountId))
