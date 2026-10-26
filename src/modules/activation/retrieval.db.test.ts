@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeAll, expect, test, vi } from "vitest";
-import { accounts, activationCredentials, activityEvents, cards } from "@/db/schema";
+import { accounts, activationCredentials, activityEvents, cards, orderItems, orders } from "@/db/schema";
 import { insertAccount, insertReleasedDbc, syntheticCredentialSecrets } from "@/db/test-fixtures";
 import { createTestDb, rollback, type TestDb, type TestTx } from "@/db/testing";
 import { activationLookup } from "./code";
@@ -40,6 +40,18 @@ test("fresh OWNER reveal audits the exact credential before returning its code",
   expect(history).toHaveLength(1);
   expect(history[0]).toMatchObject({ type: "activation_code_viewed", actorAccountId: f.actor.id, cardId: f.card.id, activationCredentialId: f.input.credentialId, note: null });
   expect(JSON.stringify(history)).not.toContain(f.code);
+}));
+
+test("unclaimed Released card on a Completed order still allows reveal and legacy adoption", () => rollback(db, async (tx) => {
+  const f = await fixture(tx);
+  const [item] = await tx.select().from(orderItems).where(eq(orderItems.id, f.card.orderItemId!));
+  await tx.update(orders).set({ status: "completed", completedAt: new Date() }).where(eq(orders.id, item.orderId));
+  expect(await revealActivationCode(tx, f.input)).toEqual({ status: "available", credentialId: f.input.credentialId, code: f.code });
+  await tx.update(activationCredentials).set({ revokedAt: new Date() }).where(eq(activationCredentials.id, f.input.credentialId));
+  const code = "PQR8JKMN";
+  const [legacy] = await tx.insert(activationCredentials).values({ cardId: f.card.id, lookupHmac: activationLookup(secrets.lookupSecret, code) }).returning();
+  await saveExistingActivationCode(tx, { ...f.input, credentialId: legacy.id, code });
+  expect(await revealActivationCode(tx, { ...f.input, credentialId: legacy.id })).toEqual({ status: "available", credentialId: legacy.id, code });
 }));
 
 test("customer, missing actor, changed role and stale credential cannot read or audit", () => rollback(db, async (tx) => {

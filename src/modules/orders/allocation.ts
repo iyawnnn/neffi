@@ -17,7 +17,7 @@ export async function allocationDeficit(db: Db, orderId: string): Promise<number
   return facts.items.reduce((missing, item) => missing + (item.productKind === "dbc" ? Math.max(item.quantity - item.allocatedCount, 0) : 0), 0);
 }
 
-export async function allocateDbcCardsInTransaction(tx: Db, input: AllocationInput): Promise<AllocationResult> {
+export async function allocateDbcCardsInTransaction(tx: Db, input: AllocationInput & { orderItemId?: string }): Promise<AllocationResult> {
   const [actor] = await tx.select({ id: schema.accounts.id }).from(schema.accounts)
     .where(and(eq(schema.accounts.id, input.actorId), eq(schema.accounts.role, "owner")));
   if (!actor) throw new OrderError("invalid_input");
@@ -25,7 +25,7 @@ export async function allocateDbcCardsInTransaction(tx: Db, input: AllocationInp
   if (order.status !== "in_progress") throw new OrderError("wrong_status");
   const items = await tx.select({ id: schema.orderItems.id, productId: schema.orderItems.productId, quantity: schema.orderItems.quantity, active: schema.products.active })
     .from(schema.orderItems).innerJoin(schema.products, eq(schema.products.id, schema.orderItems.productId))
-    .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.orderItems.productKind, "dbc")))
+    .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.orderItems.productKind, "dbc"), input.orderItemId ? eq(schema.orderItems.id, input.orderItemId) : undefined))
     .orderBy(asc(schema.orderItems.createdAt), asc(schema.orderItems.id)).for("update", { of: schema.orderItems });
   const allocatedCardIds: string[] = [];
   let missingQuantity = 0;

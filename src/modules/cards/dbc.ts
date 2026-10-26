@@ -7,6 +7,7 @@ import type { CredentialSecrets } from "../activation/encryption";
 import { recordActivity } from "../activity/record";
 import type { Db } from "../db";
 import { activeProductId, CardError, lockCard } from "./card";
+import { withPreparationCard } from "./preparation";
 import { generateCardToken } from "./token";
 
 type Actor = { actorId: string; cardId: string };
@@ -44,9 +45,8 @@ export async function provisionDbc(
 
 // The OWNER confirms the private code physically packaged with this DBC belongs to this Card. Only then is it Ready.
 export async function matchPackage(db: Db, input: Actor & { activationCode: string; activationSecret: string }): Promise<void> {
-  await db.transaction(async (tx) => {
-    const card = await lockCard(tx, input.cardId);
-    if (card.kind !== "dbc" || card.state !== "blank" || !card.publicToken) throw new CardError("wrong_state");
+  await withPreparationCard(db, input, async (tx, { card, orderId }) => {
+    if (card.kind !== "dbc" || (card.state !== "blank" && card.state !== "preparing") || !card.publicToken) throw new CardError("wrong_state");
     if (!card.nfcVerifiedAt) throw new CardError("checks_incomplete");
 
     const code = normalizeActivationCode(input.activationCode);
@@ -54,8 +54,8 @@ export async function matchPackage(db: Db, input: Actor & { activationCode: stri
     if (!code || !credential || !sameLookup(credential.lookupHmac, activationLookup(input.activationSecret, code))) {
       throw new CardError("code_mismatch");
     }
-    await tx.update(schema.cards).set({ state: "ready", packageMatchedAt: new Date() }).where(eq(schema.cards.id, card.id));
-    await recordActivity(tx, { type: "card_ready", actorAccountId: input.actorId, cardId: card.id });
+    await tx.update(schema.cards).set({ state: card.state === "preparing" ? "reserved" : "ready", packageMatchedAt: new Date() }).where(eq(schema.cards.id, card.id));
+    await recordActivity(tx, { type: card.state === "preparing" ? "card_reserved" : "card_ready", actorAccountId: input.actorId, orderId: orderId ?? undefined, cardId: card.id });
   });
 }
 
@@ -65,12 +65,11 @@ export async function replaceProvisioningCredential(
   db: Db,
   input: Actor & { credentialId: string; reason: string; secrets: CredentialSecrets },
 ): Promise<{ credentialId: string; activationCode: string }> {
-  return db.transaction(async (tx) => {
-    const card = await lockCard(tx, input.cardId);
-    if (card.kind !== "dbc" || !card.publicToken || (card.state !== "blank" && card.state !== "ready")) throw new CardError("wrong_state");
+  return withPreparationCard(db, input, async (tx, { card, orderId }) => {
+    if (card.kind !== "dbc" || !card.publicToken || (card.state !== "blank" && card.state !== "ready" && card.state !== "preparing" && card.state !== "reserved")) throw new CardError("wrong_state");
 
-    if (card.state === "ready") {
-      await tx.update(schema.cards).set({ state: "blank", packageMatchedAt: null }).where(eq(schema.cards.id, card.id));
+    if (card.state === "ready" || card.state === "reserved") {
+      await tx.update(schema.cards).set({ state: card.state === "ready" ? "blank" : "preparing", packageMatchedAt: null }).where(eq(schema.cards.id, card.id));
     }
     if (!(await revokeUsableCredential(tx, card.id, input.credentialId))) throw new CardError("credential_changed");
     const { credentialId, code } = await issueActivationCredential(tx, card.id, input.secrets);
@@ -78,6 +77,7 @@ export async function replaceProvisioningCredential(
       type: "activation_credential_replaced",
       actorAccountId: input.actorId,
       cardId: card.id,
+      orderId: orderId ?? undefined,
       note: `reason: ${input.reason}`,
     });
     return { credentialId, activationCode: code };

@@ -7,6 +7,7 @@ import pg from "pg";
 import * as schema from "../src/db/schema";
 import { randomCrockford } from "../src/lib/crockford";
 import { issueActivationCredential } from "../src/modules/activation/credentials";
+import { revealActivationCode } from "../src/modules/activation/retrieval";
 import { consumeQuota, hmacHex } from "../src/auth/otp-quota";
 import { initiateRecovery, completeRecovery } from "../src/modules/accounts/recovery";
 import { submitSupportRequest } from "../src/modules/support/intake";
@@ -171,6 +172,42 @@ try {
     const { rows: [row] } = await admin.query("SELECT owner_account_id, (SELECT count(*)::int FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL) AS usable FROM cards WHERE id=$1", [f.cardId]);
     assert.equal(row.usable, row.owner_account_id ? 0 : 1);
   });
+  await check("R7 claim, reveal and revoke serialize on one released Card", async () => {
+    const f = await fixture();
+    let claimStatus = "", revealStatus = "", reissued = false;
+    const errors = await lockedScenario("cards", f.cardId, [
+      () => claimCard(dbA, { credentialId: f.credentialId, accountId: customer }).then((result) => { claimStatus = result.status; }),
+      () => revealActivationCode(dbB, { actorId: owner, cardId: f.cardId, credentialId: f.credentialId, secrets }).then((result) => { revealStatus = result.status; }),
+      () => reissueActivationCode(dbA, { ...f, verificationNote: "Synthetic purchase verified", secrets }).then(() => { reissued = true; }),
+    ]);
+    if (errors[2]) assert.equal(errorCode(errors[2]), "card_claimed");
+    assert(!errors[0] && !errors[1]);
+    assert(["claimed", "unavailable"].includes(claimStatus));
+    assert(["available", "unavailable"].includes(revealStatus));
+    const { rows: [card] } = await admin.query("SELECT owner_account_id FROM cards WHERE id=$1", [f.cardId]);
+    const { rows: [history] } = await admin.query("SELECT used_at,revoked_at,encrypted_code FROM activation_credentials WHERE id=$1", [f.credentialId]);
+    assert.equal(Boolean(history.used_at), claimStatus === "claimed");
+    assert.equal(Boolean(history.revoked_at), reissued);
+    assert.equal(history.encrypted_code, null);
+    assert.equal(card.owner_account_id, claimStatus === "claimed" ? customer : null);
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [f.cardId])).rows[0].n, reissued ? 1 : 0);
+  });
+  await check("R7 released Support retirement vs claim leaves no active old card", async () => {
+    const f = await fixture();
+    let claimStatus = "";
+    const errors = await lockedScenario("cards", f.cardId, [
+      () => retireAffectedCard(dbA, f),
+      () => claimCard(dbB, { credentialId: f.credentialId, accountId: customer }).then((result) => { claimStatus = result.status; }),
+    ]);
+    if (errors[0]) assert.equal(errorCode(errors[0]), "card_unavailable");
+    assert.equal(errors[1], undefined);
+    assert(["claimed", "unavailable"].includes(claimStatus));
+    assert.deepEqual((await admin.query("SELECT state,owner_account_id,profile_id FROM cards WHERE id=$1", [f.cardId])).rows[0], errors[0]
+      ? { state: "released", owner_account_id: customer, profile_id: null }
+      : { state: "retired", owner_account_id: null, profile_id: null });
+    if (errors[0]) assert.equal(claimStatus, "claimed");
+    assert.equal((await admin.query("SELECT count(*)::int AS n FROM activation_credentials WHERE card_id=$1 AND used_at IS NULL AND revoked_at IS NULL", [f.cardId])).rows[0].n, 0);
+  });
   for (const action of ["connect", "disable"] as const) await check(`R8 reset vs customer ${action} cannot reconnect after reset`, async () => {
     const f = await fixture();
     await claimCard(dbA, { credentialId: f.credentialId, accountId: customer });
@@ -326,7 +363,7 @@ try {
     assert.equal((await admin.query("SELECT count(*)::int AS n FROM auth_otp_quotas WHERE key=$1", [key])).rows[0].n, 0);
   });
   assert.equal(failures.length, 0, `${failures.length} support concurrency checks failed`);
-  console.log("All R1–R20 support races passed (26 scenarios). No remote database accessed.");
+  console.log("All R1–R20 support races passed (28 scenarios). No remote database accessed.");
 } finally {
   await Promise.all(pools.map((pool) => pool.end()));
   await Promise.all(clients.map((client) => client.end()));

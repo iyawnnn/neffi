@@ -177,6 +177,13 @@ test("issuance actions pass lookup and encryption secrets to the service", async
   }
 });
 
+test("retiring failed Preparing stock supplies secrets for automatic replacement", async () => {
+  await actions.retireCardAction(undefined, form(RETIRE));
+  expect(services.retireCard).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ secrets: {
+    lookupSecret: "s".repeat(40), activeKeyId: "test-v1", encryptionKeys: new Map([["test-v1", Buffer.alloc(32, 7)]]),
+  } }));
+});
+
 test("explicit reveal authorizes first, passes server secrets, and returns only the audited code", async () => {
   const fields = { cardId: CARD, credentialId: ITEM };
   authorize.mockResolvedValueOnce({ ok: false, denial: { status: 403, error: "forbidden" } });

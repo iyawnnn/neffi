@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "../../db/schema";
 import { recordActivity } from "../activity/record";
@@ -14,9 +14,9 @@ export async function cancelOrder(db: Db, input: { orderId: string; actorId: str
   await mutateOrder(db, input, async (tx) => {
     const facts = await loadOrderFacts(tx, input.orderId);
     if (facts.anyReleased || facts.hasCommercialDelivery) throw new OrderError("already_released");
-    const reserved = await tx.select({ id: schema.cards.id }).from(schema.cards).innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
-      .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.cards.kind, "dbc"), eq(schema.cards.state, "reserved"))).orderBy(asc(schema.cards.id));
-    for (const card of reserved) await returnCardToStock(tx, { ...input, cardId: card.id });
+    const allocated = await tx.select({ id: schema.cards.id }).from(schema.cards).innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
+      .where(and(eq(schema.orderItems.orderId, input.orderId), eq(schema.cards.kind, "dbc"), inArray(schema.cards.state, ["preparing", "reserved"]))).orderBy(asc(schema.cards.id));
+    for (const card of allocated) await returnCardToStock(tx, { ...input, cardId: card.id });
     await tx.update(schema.orders).set({ status: "cancelled", cancelledAt: new Date(), cancellationReason: reason.data ?? null }).where(eq(schema.orders.id, input.orderId));
     await recordActivity(tx, { type: "order_cancelled", actorAccountId: input.actorId, orderId: input.orderId, note: reason.data });
   });

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "../../db/schema";
 import { usableCredential } from "../activation/credentials";
@@ -17,18 +17,27 @@ export async function reserveDbcCards(db: Db, input: Mutation & { orderItemId: s
     if (!item || item.productKind !== "dbc") throw new OrderError("invalid_input");
     const facts = await loadOrderFacts(tx, input.orderId);
     if (input.cardIds.length > item.quantity - facts.items.find((f) => f.id === item.id)!.allocatedCount) throw new OrderError("item_full");
-    const reserved = await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(and(inArray(schema.cards.id, input.cardIds), eq(schema.cards.state, "ready"), eq(schema.cards.kind, "dbc"), eq(schema.cards.productId, item.productId))).returning({ id: schema.cards.id });
-    if (reserved.length !== input.cardIds.length) throw new OrderError("card_unavailable");
-    for (const card of reserved) await recordActivity(tx, { type: "card_reserved", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
+    for (const cardId of [...input.cardIds].sort()) {
+      const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state, kind: schema.cards.kind, productId: schema.cards.productId, orderItemId: schema.cards.orderItemId })
+        .from(schema.cards).where(eq(schema.cards.id, cardId)).for("update");
+      if (!card || card.state !== "ready" || card.kind !== "dbc" || card.productId !== item.productId || card.orderItemId) throw new OrderError("card_unavailable");
+      await tx.update(schema.cards).set({ state: "reserved", orderItemId: item.id }).where(eq(schema.cards.id, card.id));
+      await recordActivity(tx, { type: "card_reserved", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
+    }
   });
 }
 
 export async function returnCardToStock(db: Db, input: Mutation & { cardId: string }): Promise<void> {
   await mutateOrder(db, input, async (tx) => {
-    const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state }).from(schema.cards).innerJoin(schema.orderItems, eq(schema.orderItems.id, schema.cards.orderItemId))
-      .where(and(eq(schema.cards.id, input.cardId), eq(schema.cards.kind, "dbc"), eq(schema.orderItems.orderId, input.orderId))).for("update", { of: schema.cards });
-    if (!card || card.state !== "reserved") throw new OrderError("card_unavailable");
-    await tx.update(schema.cards).set({ state: "ready", orderItemId: null }).where(eq(schema.cards.id, card.id));
+    const [snapshot] = await tx.select({ itemId: schema.cards.orderItemId }).from(schema.cards).where(eq(schema.cards.id, input.cardId));
+    if (!snapshot?.itemId) throw new OrderError("card_unavailable");
+    const [item] = await tx.select({ id: schema.orderItems.id }).from(schema.orderItems)
+      .where(and(eq(schema.orderItems.id, snapshot.itemId), eq(schema.orderItems.orderId, input.orderId))).for("no key update");
+    if (!item) throw new OrderError("card_unavailable");
+    const [card] = await tx.select({ id: schema.cards.id, state: schema.cards.state, orderItemId: schema.cards.orderItemId }).from(schema.cards)
+      .where(eq(schema.cards.id, input.cardId)).for("update");
+    if (!card || card.orderItemId !== item.id || (card.state !== "reserved" && card.state !== "preparing")) throw new OrderError("card_unavailable");
+    await tx.update(schema.cards).set({ state: card.state === "preparing" ? "blank" : "ready", orderItemId: null }).where(eq(schema.cards.id, card.id));
     await recordActivity(tx, { type: "card_returned", actorAccountId: input.actorId, orderId: input.orderId, cardId: card.id });
   });
 }

@@ -32,6 +32,8 @@ const MESSAGES: Record<CardErrorCode, string> = {
   item_full: "That order item already has all of its cards.",
   checks_incomplete: "Complete every physical check first.",
   uri_mismatch: "The address you read back doesn't match the expected one.",
+  retry: "That card just changed. Reload it and try again.",
+  secrets_required: "That card can't be retired from here.",
 };
 
 const text = (max: number) => z.string().trim().max(max);
@@ -143,7 +145,7 @@ export async function matchPackageAction(_previous: ActionState | undefined, dat
     data,
     async ({ cardId, activationCode }, actorId) => {
       await matchPackage(db, { actorId, cardId, activationCode, activationSecret: env.activationCodeSecret });
-      return { ok: "Package matched. The card is Ready." };
+      return { ok: "Package matched." };
     },
     cardPage,
   );
@@ -204,7 +206,7 @@ export async function retireCardAction(_previous: ActionState | undefined, data:
     z.object({ cardId: id, reason, confirm: checked }),
     data,
     async ({ cardId, reason }, actorId) => {
-      await retireCard(db, { actorId, cardId, reason });
+      await retireCard(db, { actorId, cardId, reason, secrets: { lookupSecret: env.activationCodeSecret, activeKeyId: env.activationCodeEncryptionActiveKeyId, encryptionKeys: env.activationCodeEncryptionKeys } });
       return { ok: "Card retired." };
     },
     cardPage,
