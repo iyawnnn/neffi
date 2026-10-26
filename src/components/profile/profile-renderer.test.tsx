@@ -168,3 +168,11 @@ test("long content and image presentation retain their content and intrinsic dim
     expect(host.querySelector("img")?.className).toContain(isLogo ? "object-contain" : "object-cover");
   }
 });
+
+test("the filled Save contact action carries an icon and the shared CTA sheen, with on-accent text", () => {
+  const save = render().querySelector<HTMLElement>('a[href="/c/TOKEN/contact"]')!;
+  expect(save.textContent).toBe("Save contact");
+  expect(save.className).toContain("neffi-cta");
+  expect(save.querySelector("svg.pf-action-icon")).toBeTruthy();
+  expect(save.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+});

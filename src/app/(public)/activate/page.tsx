@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertCircle, CircleHelp, CircleUser } from "lucide-react";
+import { AlertCircle, Check, CircleHelp, CircleUser } from "lucide-react";
 import { getViewer } from "@/auth/access";
-import { NeffiLogo } from "@/components/neffi-logo";
+import { AuthHero } from "@/components/auth-hero";
 import { SignInForm } from "../sign-in/sign-in-form";
 import {
   ClaimForm,
@@ -115,30 +115,19 @@ export default async function ActivatePage({ searchParams }: PageProps<"/activat
             {/* HERO REGION (mobile top feature panel with rounded corners / desktop left split panel) */}
             {!challenge ? <div className="w-full p-3.5 sm:p-4 pb-0 md:p-0 md:h-full">
               <div data-auth-hero className="relative w-full overflow-hidden rounded-xl border border-border/70 bg-[#FAF9F5] aspect-[4/3] min-h-[220px] max-h-[340px] md:aspect-auto md:h-full md:max-h-none md:rounded-none md:border-0 md:border-r md:border-border/60">
-                {/* Responsive Hero Artwork: mobile asset (< 768px) and desktop asset (>= 768px) */}
-                <picture className="block h-full w-full">
-                  <source
-                    media="(min-width: 768px)"
-                    srcSet="/images/neffi-activation-hero-desktop.png"
-                    width={1672}
-                    height={941}
-                  />
-                  <img
-                    src="/images/neffi-activation-hero-mobile.png"
-                    alt=""
-                    width={1024}
-                    height={1536}
-                    className="h-full w-full object-cover object-[center_28%] md:object-center select-none pointer-events-none"
-                  />
-                </picture>
+                <AuthHero kind="activate" />
               </div>
             </div> : null}
 
             {/* FORM & ONBOARDING REGION (right panel on desktop) */}
             <div data-auth-body data-accepted={challenge ? "" : undefined} className={`relative flex flex-col justify-center px-5 pt-5 pb-7 sm:px-6 sm:pt-6 sm:pb-8 ${challenge ? "md:px-8 md:py-9" : "md:px-8 md:py-10 lg:px-14"}`}>
               <div className="w-full max-w-[420px] mx-auto flex flex-col">
-                {challenge ? <NeffiLogo aria-label="Neffi" className="mx-auto mb-7 h-auto w-20 text-foreground" /> : null}
-                {challenge && viewer ? <p className="mb-2 text-center text-meta font-medium text-action-text">Code accepted</p> : null}
+                {challenge ? (
+                  <span data-code-accepted className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full border border-border/70 bg-subtle/60 text-foreground">
+                    <Check aria-hidden strokeWidth={2.25} className="size-5" />
+                  </span>
+                ) : null}
+                {challenge && viewer ? <p className="mb-2 text-center text-meta font-medium text-fg-secondary">Code accepted</p> : null}
                 {/* Intro heading & supporting text */}
                 <div className="flex flex-col items-center text-center gap-2">
                   <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem] text-center">

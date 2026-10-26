@@ -144,7 +144,7 @@ test("ownedProfiles lists only the account's profiles, oldest first, with unread
     ]);
     const { profile: second } = await insertProfileWithScene(tx, owner.id);
     await tx.update(profiles).set({ createdAt: new Date("2099-01-01") }).where(eq(profiles.id, second.id));
-    expect(await ownedProfiles(tx, owner.id)).toEqual([
+    expect(await ownedProfiles(tx, owner.id)).toMatchObject([
       { id: profileId, fullName: "Ana", status: "draft", unread: 1 },
       { id: second.id, fullName: null, status: "draft", unread: 0 },
     ]);

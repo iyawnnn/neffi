@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { LoaderCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -9,9 +10,9 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
         // Vermilion: at most one per screen, for the brand moment (activate, set up, publish).
-        action: "bg-action text-white hover:bg-action-hover hover:text-white active:brightness-95 focus-visible:border-action focus-visible:ring-action/30 [&_svg]:text-white",
+        action: "neffi-cta bg-action text-white hover:bg-action-hover hover:text-white active:brightness-95 focus-visible:border-action focus-visible:ring-action/30 [&_svg]:text-white",
         outline:
-          "border-border bg-background hover:border-border-strong hover:bg-canvas hover:text-foreground active:bg-subtle aria-expanded:bg-canvas aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "neffi-cta-soft border-border bg-background hover:border-border-strong hover:bg-canvas hover:text-foreground active:bg-subtle aria-expanded:bg-canvas aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
@@ -44,18 +45,41 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & {
+  // Pending state: disables the button, shows a spinner and, when given, swaps the label for loadingText
+  // without changing the button's width.
+  loading?: boolean
+  loadingText?: string
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading = false,
+  loadingText,
+  children,
+  disabled,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, className }), loading && "disabled:opacity-100")}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading ? <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
+      {loading && loadingText ? (
+        <span className="inline-grid">
+          <span aria-hidden className="invisible col-start-1 row-start-1">{children}</span>
+          <span className="col-start-1 row-start-1">{loadingText}</span>
+        </span>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   )
 }
 

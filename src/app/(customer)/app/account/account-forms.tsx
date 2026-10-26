@@ -96,20 +96,11 @@ export function ChangeEmailForm() {
               type="submit"
               size="touch"
               variant="action"
-              disabled={confirming}
-              className="h-12 w-full rounded-[10px] px-6 text-base font-semibold active:bg-action-hover sm:w-auto sm:text-body"
+              loading={confirming}
+              loadingText="Changing email…"
+              className="h-12 w-full rounded-[10px] px-6 text-base font-semibold sm:w-auto sm:text-body"
             >
-              {confirming ? (
-                <>
-                  <LoaderCircle
-                    aria-hidden
-                    className="size-4 animate-spin motion-reduce:animate-none"
-                  />
-                  Changing email…
-                </>
-              ) : (
-                "Change email"
-              )}
+              Change email
             </Button>
             <Button
               size="touch"
@@ -154,20 +145,11 @@ export function ChangeEmailForm() {
                 type="submit"
                 size="touch"
                 variant="action"
-                disabled={requesting}
-                className="h-12 w-full shrink-0 rounded-[10px] px-6 text-base font-semibold shadow-2xs active:bg-action-hover sm:w-auto sm:text-body"
+                loading={requesting}
+                loadingText="Sending code…"
+                className="h-12 w-full shrink-0 rounded-[10px] px-6 text-base font-semibold sm:w-auto sm:text-body"
               >
-                {requesting ? (
-                  <>
-                    <LoaderCircle
-                      aria-hidden
-                      className="size-4 animate-spin motion-reduce:animate-none"
-                    />
-                    Sending code…
-                  </>
-                ) : (
-                  "Send code"
-                )}
+                Send code
               </Button>
             </div>
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { LoaderCircle } from "lucide-react";
 import { authClient } from "@/auth/client";
 import { Button } from "@/components/ui/button";
 
@@ -27,17 +26,11 @@ export function AccountActions({ googleLinked }: { googleLinked: boolean }) {
       variant="outline"
       size="touch"
       className="h-11 w-full border-border bg-background px-4 font-medium text-foreground transition-colors duration-200 hover:border-border-strong hover:bg-canvas active:bg-subtle sm:w-auto"
-      disabled={busy}
+      loading={busy}
+      loadingText="Connecting…"
       onClick={connectGoogle}
     >
-      {busy ? (
-        <>
-          <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-          Connecting…
-        </>
-      ) : (
-        "Connect Google"
-      )}
+      Connect Google
     </Button>
   );
 }

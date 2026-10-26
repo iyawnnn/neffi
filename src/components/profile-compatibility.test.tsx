@@ -47,7 +47,7 @@ const full: SceneView = { ...base, identity: { ...base.identity, phone: "+63 917
 
 test("visitor mode: Save contact is a link and the form is live", () => {
   const html = renderToStaticMarkup(<ProfileRenderer view={full} visitorActions={visitor} />);
-  expect(html).toMatch(/<a\b[^>]*href="\/c\/TOKEN\/contact"[^>]*>Save contact<\/a>/);
+  expect(html).toMatch(/<a\b[^>]*href="\/c\/TOKEN\/contact"[^>]*>(?:<svg[^>]*>.*?<\/svg>)?Save contact<\/a>/);
   expect(html).toContain('name="website"');
   for (const [tag] of html.matchAll(/<(?:input|textarea|button)\b[^>]*>/g)) expect(tag).not.toMatch(/\sdisabled(?:[=\s>])/i);
   expect(html).not.toContain("Visitors can send you a message here.");

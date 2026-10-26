@@ -227,6 +227,48 @@
   }
 }
 
+/* Primary CTA material, extracted from the Home hero CTA (HERO_PRIMARY_CLASS + PRIMARY_CTA_REFLECTIONS): a top highlight,
+   a soft lower inner shade, one fixed diagonal sheen and a small corner glow. Static; pointer-inert. */
+@utility neffi-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), inset 0 -12px 16px -12px rgb(0 0 0 / 0.35), 0 1px 2px rgb(17 17 19 / 0.14);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+  &::before {
+    inset: 0;
+    background: linear-gradient(115deg, transparent 58%, rgb(255 255 255 / 0.1) 66%, transparent 74%);
+  }
+  &::after {
+    top: -2rem;
+    right: -1.5rem;
+    width: 5rem;
+    height: 5rem;
+    border-radius: 9999px;
+    background: radial-gradient(closest-side, rgb(255 255 255 / 0.3), transparent);
+  }
+  &:active:not(:disabled) {
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.25), inset 0 -12px 16px -12px rgb(0 0 0 / 0.25), 0 0 0 rgb(0 0 0 / 0);
+  }
+}
+
+/* Secondary (white) button material, from HERO_SECONDARY_CLASS: Snow surface, soft top light, inner edge highlight. */
+@utility neffi-cta-soft {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.75), transparent 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255), inset 0 -8px 12px -10px rgb(17 17 19 / 0.08), 0 1px 1px rgb(17 17 19 / 0.04);
+
+  &:active:not(:disabled) {
+    box-shadow: inset 0 1px 2px rgb(17 17 19 / 0.12);
+  }
+}
+
 /* Light travelling the full rim of the marketing dock's key actions (an SVG dash on a pathLength-normalised rounded rect). */
 @theme {
   --animate-cta-trace: cta-trace 8s linear infinite;

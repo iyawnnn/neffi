@@ -96,7 +96,7 @@ export function SetupEditor({ step, cardId, suffix, goal, profile, view, imageUr
           </>}
         </fieldset>
         {state?.error && <p role="alert" className="text-body text-destructive">{state.error}</p>}
-        <div className="flex flex-col gap-3"><Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={busy}>{pending ? "Saving..." : "Continue"}</Button>{step === "photo" && <Link href="?step=contact" className="inline-flex min-h-11 items-center justify-center rounded-lg text-body text-fg-secondary focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>}</div>
+        <div className="flex flex-col gap-3"><Button type="submit" variant="action" size="touch" className="h-12 w-full" disabled={busy} loading={pending} loadingText="Saving…">Continue</Button>{step === "photo" && <Link href="?step=contact" className="inline-flex min-h-11 items-center justify-center rounded-lg text-body text-fg-secondary focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>}</div>
       </SetupForm>
     </SetupView>
     <SetupPreviewDialog view={preview} open={previewOpen} onOpenChange={setPreviewOpen} />

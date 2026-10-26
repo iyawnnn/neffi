@@ -29,7 +29,7 @@ export function SetupAppearance({ step, cardId, suffix, goal, view, action }: Pr
         {step === "look" ? <LayoutPicker view={preview} value={values.layout} recommended={(goal ? GOALS[goal] : NO_GOAL).layout} disabled={pending} onChange={layout => setValues({ ...values, layout })} /> : <><ModeToggle value={values.mode} disabled={pending} onChange={mode => setValues({ ...values, mode })} /><AccentPicker value={values.accent} disabled={pending} onChange={accent => setValues({ ...values, accent })} /></>}
       </div>
       {state?.error && <p ref={error} tabIndex={-1} role="alert" className="text-body text-destructive outline-none">{state.error}</p>}
-      <Button type="submit" variant="action" size="touch" disabled={pending} className="h-12 w-full">{pending ? "Saving..." : "Continue"}</Button>
+      <Button type="submit" variant="action" size="touch" className="h-12 w-full" loading={pending} loadingText="Saving…">Continue</Button>
       <Link href={`?step=${next}`} className="inline-flex min-h-11 items-center justify-center rounded-lg text-body text-fg-secondary focus-visible:outline-2 focus-visible:outline-brand">Skip for now</Link>
     </SetupForm>
   </SetupView>;

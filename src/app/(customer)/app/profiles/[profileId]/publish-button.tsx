@@ -14,7 +14,7 @@ export function PublishButton({ profileId, cardId, action: publish, disabled = f
       {cardId && <input type="hidden" name="cardId" value={cardId} />} 
       {state?.error ? <p ref={error} tabIndex={-1} role="alert" className="text-body text-destructive outline-none">{state.error}</p> : null}
       {state?.gaps?.length ? <ul className="list-inside list-disc text-sm">{state.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul> : null}
-      <Button type="submit" size="touch" variant="action" className="h-12 w-full rounded-[10px] font-semibold interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none" disabled={pending || disabled}>Publish</Button>
+      <Button type="submit" size="touch" variant="action" className="h-12 w-full rounded-[10px] font-semibold interact duration-[220ms] motion-reduce:transform-none motion-reduce:transition-none" disabled={disabled} loading={pending} loadingText="Publishing…">Publish</Button>
     </form>
   );
 }
