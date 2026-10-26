@@ -22,6 +22,8 @@ test.each(["classic", "editorial", "showcase"] as const)("a Published %s card us
   m.load.mockResolvedValue({ ...view, appearance: { ...view.appearance, layout } });
   const html = await render();
   expect(html).toContain(`data-layout="${layout}"`);
+  expect(html).toContain("data-profile-intro");
+  expect(html.indexOf("data-profile-intro")).toBeLessThan(html.indexOf(`data-layout="${layout}"`));
   expect(m.load).toHaveBeenCalledWith({}, published, "cached");
   expect(html).toContain('href="/c/TOKEN/contact"');
   expect(html).not.toContain("/app/");
@@ -63,6 +65,10 @@ test("only this segment disables prefetch and its metadata carries no profile da
   expect(prefetch).toBe("force-disabled");
   expect(metadata).toEqual({ title: "Neffi", robots: { index: false, follow: false } });
 });
+test("the unavailable page never plays the Profile intro", () => {
+  expect(renderToStaticMarkup(<Unavailable />)).not.toContain("data-profile-intro");
+});
+
 test("unavailable copy names no reason and no internal state", () => {
   const html = renderToStaticMarkup(<Unavailable />);
   expect(html).toContain('aria-label="Neffi"');

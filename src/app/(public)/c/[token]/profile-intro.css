@@ -1,0 +1,15 @@
+.neffi-profile-intro {
+  animation: neffi-profile-reveal 800ms ease-out both;
+}
+
+@keyframes neffi-profile-reveal {
+  0%, 35% { opacity: 1; visibility: visible; }
+  99% { opacity: 0; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+.neffi-profile-intro[data-seen] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .neffi-profile-intro { display: none; }
+}
