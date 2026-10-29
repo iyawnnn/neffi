@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
-  LoaderCircle,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -210,22 +209,14 @@ export function SupportForm({
           size="touch"
           variant="action"
           disabled={pending}
+          loading={pending}
+          loadingText="Sending…"
           className={cn(
             "h-11 w-full rounded-[10px] text-body font-semibold !text-white bg-action hover:bg-action-hover active:translate-y-px transition-all duration-[220ms] shadow-xs [&_*]:!text-white",
             pending && "cursor-not-allowed opacity-80"
           )}
         >
-          {pending ? (
-            <>
-              <LoaderCircle
-                aria-hidden
-                className="size-4 animate-spin motion-reduce:animate-none !text-white"
-              />
-              <span className="!text-white">Sending…</span>
-            </>
-          ) : (
-            <span className="!text-white">Send request</span>
-          )}
+          <span className="!text-white">Send request</span>
         </Button>
       </form>
     </div>

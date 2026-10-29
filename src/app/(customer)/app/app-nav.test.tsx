@@ -4,9 +4,26 @@ import { expect, test, vi } from "vitest";
 const m = vi.hoisted(() => ({ pathname: "/app" }));
 vi.mock("next/navigation", () => ({ usePathname: () => m.pathname }));
 vi.mock("@/auth/actions", () => ({ signOutAction: vi.fn() }));
-import { AppHeader, AppNav } from "./app-nav";
+import { AppContent, AppHeader, AppNav } from "./app-nav";
 
 const ACCOUNT = { name: "Ian Macabulos", email: "ian@example.test" };
+
+test.each(["/app", "/app/profiles", "/app/profiles/profile-id", "/app/cards"])("%s keeps dock clearance even with a retained hidden setup page", (pathname) => {
+  m.pathname = pathname;
+  const html = renderToStaticMarkup(<AppContent><main data-setup hidden /><main>Current page</main></AppContent>);
+  expect(html).toContain("pb-[calc(env(safe-area-inset-bottom)+6.625rem)]");
+  expect(html).toContain("md:pb-0");
+  expect(html).not.toContain("has-[main[data-setup]]:pb-0");
+});
+
+test("focused setup reserves no dock space", () => {
+  m.pathname = "/app/setup/card-id";
+  try {
+    const html = renderToStaticMarkup(<AppContent><main data-setup /></AppContent>);
+    expect(html).toContain("pb-0");
+    expect(html).not.toContain("6.625rem");
+  } finally { m.pathname = "/app"; }
+});
 
 test("setup has a compact exit header and no app navigation", () => {
   m.pathname = "/app/setup/test-card";

@@ -6,21 +6,22 @@ import { identitySchema } from "@/modules/profiles/rules";
 import { detailsDirty, identityPhone, type DetailsProfile } from "./identity-values";
 
 const profile: DetailsProfile = { id: "p1", fullName: "Ana", headline: null, company: null, bio: null, phone: null, email: null, website: null, location: null };
+const button = (html: string, label: string) => [...html.matchAll(/<button\b[\s\S]*?<\/button>/g)].map(match => match[0]).find(markup => markup.includes(label))!;
 
 test("pristine, dirty and saving footer states expose correct status and action availability", () => {
   const pristine = renderToStaticMarkup(<EditorFooter dirty={false} saving={false} onCancel={vi.fn()} />);
   expect(pristine).toContain("All changes saved");
-  expect(pristine).toMatch(/<button\b[^>]*disabled[^>]*>Save changes<\/button>/);
-  expect(pristine.match(/<button\b[^>]*>Save changes<\/button>/)?.[0]).not.toContain("bg-action");
+  expect(button(pristine, "Save changes")).toContain("disabled");
+  expect(button(pristine, "Save changes")).not.toContain("bg-action");
   const dirty = renderToStaticMarkup(<EditorFooter dirty saving={false} onCancel={vi.fn()} />);
   expect(dirty).toContain("Unsaved changes");
   expect(dirty).not.toContain('disabled=""');
-  expect(dirty.match(/<button\b[^>]*>Save changes<\/button>/)?.[0]).toContain("bg-action");
+  expect(button(dirty, "Save changes")).toContain("bg-action");
   const saving = renderToStaticMarkup(<EditorFooter dirty saving onCancel={vi.fn()} />);
   expect(saving).toContain("Saving changes…");
   expect(saving).toContain("Saving…");
   expect([...saving.matchAll(/ disabled=""/g)]).toHaveLength(2);
-  expect(saving).not.toContain("bg-action");
+  expect(button(saving, "Saving…")).toContain("bg-action");
 });
 
 test("failed saves stop loading and preserve all entered values and the unsaved baseline", () => {

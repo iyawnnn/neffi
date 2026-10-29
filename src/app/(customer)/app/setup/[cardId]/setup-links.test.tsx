@@ -18,7 +18,7 @@ async function mount(goal: keyof typeof GOALS | null = null, blocks = [] as type
  await act(async () => root.render(<SetupLinks suffix="TEST" goal={goal} profileId="p1" sceneId="s1" blocks={blocks} view={setupDraft(null, { fullName: "Ana" })} />));
  return { host, close: async () => { await act(async () => root.unmount()); host.remove(); } };
 }
-const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === text || b.getAttribute("aria-label") === text)!;
+const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => (b.querySelector(":scope > .inline-grid > span:not([aria-hidden='true'])")?.textContent?.trim() ?? b.textContent?.trim()) === text || b.getAttribute("aria-label") === text)!;
 test.each([null, "networking", "freelance", "business", "student"] as const)("%s starts with calm collapsed categories and writes nothing", async goal => {
  const { host, close } = await mount(goal);
  try {
@@ -79,6 +79,10 @@ test("existing hidden items stay listed; Remove uses intentional existing confir
  const { host, close } = await mount(null, [{ ...item, visible: false }]);
  try {
   expect(host.textContent).toContain("Hidden");
+  const actions = host.querySelector('[role="group"][aria-label="Actions for LinkedIn"]');
+  expect(actions?.querySelectorAll("button")).toHaveLength(2);
+  expect(actions?.querySelector('[aria-label="Edit LinkedIn"]')).toBeTruthy();
+  expect(actions?.querySelector('[aria-label="Remove LinkedIn"]')).toBeTruthy();
   m.mutate.mockResolvedValue({ ok: true, blockId: "l1" });
   await act(async () => button("Remove LinkedIn").click());
   await act(async () => document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click());

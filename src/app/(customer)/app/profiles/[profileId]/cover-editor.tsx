@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { LoaderCircle, Minus, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { Minus, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
@@ -192,7 +192,7 @@ export function CoverEditor({
           {message ? <p role="alert" className="mt-3 text-meta text-destructive">{message}</p> : null}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <Button type="button" size="touch" variant="outline" disabled={!!busy} onClick={() => { setRemoveOpen(false); onBusyChange?.(false); }}>Cancel</Button>
-            <Button type="button" size="touch" variant="danger" disabled={!!busy} onClick={() => void remove()}>{busy === "remove" ? "Removing cover..." : "Remove"}</Button>
+            <Button type="button" size="touch" variant="danger" disabled={!!busy} loading={busy === "remove"} loadingText="Removing cover..." onClick={() => void remove()}>Remove</Button>
           </div>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -273,7 +273,7 @@ function CropDialog({ image, busy, message, returnFocus, onChange, onCancel, onS
         {loadError || message ? <p role="alert" className="mt-3 text-meta text-destructive">{loadError ? "We couldn't load that image. Cancel and try again." : message}</p> : null}
         <p id={helpId} className="mt-2 text-label text-fg-secondary">Use arrow keys to reposition. Hold Shift for finer adjustments.</p>
         <div className="mt-6 flex flex-col gap-2">
-          <Button type="button" size="touch" variant="action" disabled={busy || !loaded} onClick={onSave}>{busy ? <><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Saving cover...</> : "Save cover"}</Button>
+          <Button type="button" size="touch" variant="action" disabled={busy || !loaded} loading={busy} loadingText="Saving cover..." onClick={onSave}>Save cover</Button>
           <Button type="button" size="touch" variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button>
         </div>
       </Dialog.Popup>

@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();});
 async function render(cover: CoverEditorImage|null=null){await act(async()=>root.render(<CoverEditor profileId="p1" cover={cover} onBusyChange={m.busy} />));}
-const button=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(n=>n.textContent===name)!;
+const button=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(n=>(n.querySelector(":scope > .inline-grid > span:not([aria-hidden='true'])")?.textContent??n.textContent)===name)!;
 async function sourceLoaded(){const image=document.querySelector('[role="dialog"] img');if(image)await act(async()=>image.dispatchEvent(new Event('load')));}
 async function click(name:string){await act(async()=>button(name).click());if(name==='Reposition')await sourceLoaded();}
 async function upload(file=new File(["image"],"cover.png",{type:"image/png"})){

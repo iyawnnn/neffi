@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { CodeSlots } from "@/components/code-slots";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,23 +105,15 @@ export function RecoveryForm() {
         type="submit"
         size="touch"
         variant="action"
-        disabled={pending || !canSubmit}
-        className="mt-6 h-12 w-full rounded-[10px] text-base font-semibold shadow-xs transition-all duration-[220ms] disabled:bg-subtle disabled:text-fg-secondary/60 disabled:border-border/60 disabled:shadow-none disabled:cursor-not-allowed"
+        disabled={!canSubmit}
+        loading={pending}
+        loadingText="Completing…"
+        className={`mt-6 h-12 w-full rounded-[10px] text-base font-semibold shadow-xs transition-all duration-[220ms] ${!pending ? "disabled:bg-subtle disabled:text-fg-secondary/60 disabled:border-border/60 disabled:shadow-none disabled:cursor-not-allowed" : ""}`}
       >
-        {pending ? (
-          <>
-            <LoaderCircle
-              aria-hidden
-              className="size-4.5 animate-spin motion-reduce:animate-none"
-            />
-            Completing…
-          </>
-        ) : (
-          <>
-            Complete recovery
-            <ArrowRight aria-hidden className="size-4.5" />
-          </>
-        )}
+        <>
+          Complete recovery
+          <ArrowRight aria-hidden className="size-4.5" />
+        </>
       </Button>
     </form>
   );

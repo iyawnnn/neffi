@@ -80,11 +80,11 @@ export function SetupLinks({ suffix, goal, profileId, sceneId, blocks, view, act
           <h2 id="setup-added-items" className="text-body font-semibold">Added links</h2>
           {blocks.length ? <ul className="mt-3 divide-y">{blocks.map(item => {
             const detail = itemDetails(item);
-            return <li key={item.id} className="min-w-0 py-3">
+            return <li key={item.id} className="grid min-w-0 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
               <div className="flex min-w-0 items-start gap-3">{detail.icon}<div className="min-w-0 flex-1"><p className="text-body font-medium">{detail.label}</p><p className="mt-0.5 text-meta text-fg-secondary [overflow-wrap:anywhere]">{detail.description}</p>{!item.visible && <span className="text-label text-fg-secondary">Hidden</span>}</div></div>
-              <div className="mt-1 flex justify-end gap-1">
-                <Button type="button" size="touch" variant="ghost" aria-label={`Edit ${detail.label}`} onClick={event => controls.edit(item, event.currentTarget)} className="gap-1.5 px-3 text-meta"><Pencil aria-hidden className="size-3.5" />Edit</Button>
-                <Button type="button" variant="ghost" size="touch" aria-label={`Remove ${detail.label}`} className="gap-1.5 px-3 text-meta text-destructive hover:text-destructive" onClick={event => controls.remove(item, event.currentTarget)}><Trash2 aria-hidden className="size-3.5" />Remove</Button>
+              <div role="group" aria-label={`Actions for ${detail.label}`} className="flex justify-self-end rounded-lg border border-border bg-background p-0.5">
+                <Button type="button" size="touch" variant="ghost" aria-label={`Edit ${detail.label}`} onClick={event => controls.edit(item, event.currentTarget)} className="gap-1.5 px-2.5 text-meta"><Pencil aria-hidden className="size-3.5" />Edit</Button>
+                <Button type="button" variant="ghost" size="touch" aria-label={`Remove ${detail.label}`} className="gap-1.5 px-2.5 text-meta text-destructive hover:text-destructive" onClick={event => controls.remove(item, event.currentTarget)}><Trash2 aria-hidden className="size-3.5" />Remove</Button>
               </div>
             </li>;
           })}</ul> : <p className="mt-2 text-meta text-fg-secondary">Nothing added yet. You can skip this step.</p>}

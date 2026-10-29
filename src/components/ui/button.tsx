@@ -56,25 +56,38 @@ function Button({
   className,
   variant = "default",
   size = "default",
-  loading = false,
+  loading,
   loadingText,
   children,
   disabled,
   ...props
 }: ButtonProps) {
+  const hasLoadingState = loading !== undefined || loadingText !== undefined
+  const isLoading = Boolean(loading)
+
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }), loading && "disabled:opacity-100")}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
+      className={cn(buttonVariants({ variant, size, className }), isLoading && "disabled:opacity-100")}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
-      {loading ? <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
-      {loading && loadingText ? (
-        <span className="inline-grid">
-          <span aria-hidden className="invisible col-start-1 row-start-1">{children}</span>
-          <span className="col-start-1 row-start-1">{loadingText}</span>
+      {hasLoadingState ? (
+        <span className="inline-grid gap-[inherit]">
+          <span
+            aria-hidden={isLoading || undefined}
+            className={cn("col-start-1 row-start-1 inline-flex items-center justify-center gap-[inherit]", isLoading && "invisible")}
+          >
+            {children}
+          </span>
+          <span
+            aria-hidden={!isLoading || undefined}
+            className={cn("col-start-1 row-start-1 inline-flex items-center justify-center gap-[inherit]", !isLoading && "invisible")}
+          >
+            <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+            {loadingText ?? children}
+          </span>
         </span>
       ) : (
         children

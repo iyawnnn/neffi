@@ -14,8 +14,8 @@ export function EditorFooter({ dirty, saving, disabled = false, sticky = true, s
       </p> : null}
       <div className="grid grid-cols-2 gap-3 sm:ml-auto sm:flex">
         <Button type="button" variant="outline" size="touch" disabled={saving || disabled} onClick={onCancel} className={motion}>Cancel</Button>
-        <Button type="submit" variant={dirty && !saving && !disabled ? "action" : "outline"} size="touch" disabled={!dirty || saving || disabled} className={`gap-2 disabled:border-border disabled:bg-subtle disabled:text-fg-faint disabled:opacity-100 ${motion}`}>
-          {saving ? <><LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />Saving…</> : "Save changes"}
+        <Button type="submit" variant={dirty && !disabled ? "action" : "outline"} size="touch" disabled={!dirty || saving || disabled} loading={saving} loadingText="Saving…" className={`gap-2 ${!saving ? "disabled:border-border disabled:bg-subtle disabled:text-fg-faint disabled:opacity-100" : ""} ${motion}`}>
+          Save changes
         </Button>
       </div>
     </footer>
