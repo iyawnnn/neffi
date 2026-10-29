@@ -10,8 +10,8 @@ Money is integer PHP centavos; owners enter pesos (for example `1,500.50`), each
 
 | Value | Definition |
 |---|---|
-| Item total | `agreed_total`, or `quantity × unit_price` |
-| Order total | Sum of item totals + shipping fee |
+| Item total | `agreed_total`, or `quantity × unit_price` (normal DBC orders have no agreed total) |
+| Order total | Sum of item totals + shipping fee; none while the shipping fee is pending |
 | Received | Sum of **non-voided** payments |
 | Sale refunded | Non-voided refunds without a support case |
 | After-sale refunded | Non-voided refunds linked to a support case (Completed orders only) |
@@ -24,7 +24,11 @@ Money is integer PHP centavos; owners enter pesos (for example `1,500.50`), each
 
 ## Payments
 
-In Progress orders only. `0 < amount ≤ balance`; the default is the balance; overpayment is refused. Methods: GCash, bank transfer, cash. The date defaults to today (Asia/Manila). A reference is optional and hidden for cash. Partial and later payments are allowed.
+**Normal DBC orders** ([orders](orders-and-fulfillment.md#normal-dbc-orders)) record the product payment at creation and the shipping fee at *Mark as shipped*, both with the order's one method: GCash, Maya, MariBank, GoTyme or Bank transfer. They accept no other ordinary payments and never use cash.
+
+**GRC and historical DBC orders:** In Progress only. `0 < amount ≤ balance`; the default is the balance; overpayment is refused. The date defaults to today (Asia/Manila). A reference is optional and hidden for cash. Partial and later payments are allowed. The server accepts the five methods above plus Cash; the owner payment and refund form currently offers Cash, GCash and Bank transfer. The same form is used for Support corrections on Completed orders.
+
+The `payment_method` enum keeps `cash` for these compatibility paths and for historical rows.
 
 ## Refunds
 

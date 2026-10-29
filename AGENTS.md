@@ -14,8 +14,8 @@ These rules apply to every coding agent. `CLAUDE.md` imports this file.
 
 ### Where truth lives
 
-- **This repository** is authoritative for engineering: architecture, implemented behavior, authentication and authorization, routes and APIs, schema, security, technical decisions, runbooks, tests, milestone status and code.
-- **Notion (Neffi — Business Hub)** is authoritative for business and product intent: what Neffi sells and why, customer experience, pricing, packaging, operations, marketing, the product roadmap and approved product decisions.
+- **This repository** is authoritative for what Neffi does today: implemented product behavior (including prices, payment methods and order flow as shipped), architecture, authentication and authorization, routes and APIs, schema, security, technical decisions, runbooks, environment state, tests, milestone status and code.
+- **Notion (Neffi — Business Hub)** holds business and product context aligned to the shipped product: positioning, brand, pricing presentation, packaging, operations and marketing context, the product roadmap and future product planning.
 - **Obsidian** holds the maintainer's personal notes. It is never required and never consulted.
 
 See [`docs/README.md`](docs/README.md#sources-of-truth) for the full rule.
@@ -32,8 +32,11 @@ Everything needed to implement Neffi is in this repository. Read Notion (read-on
 
 ### Rules
 
-- Never use any of these as a specification: historical milestone plans (`docs/superpowers/plans/`), design records (`docs/superpowers/specs/`), Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI Build Handoff), or the engineering details of other Notion pages.
-- If a product decision you need is in neither this repository nor Notion, stop and ask. Do not invent business rules.
-- If an approved Notion decision disagrees with implemented behavior, report it as drift. Do not silently change code to match Notion, and do not treat the code as overriding the decision.
-- Current engineering milestone status is maintained only in [`docs/roadmap.md`](docs/roadmap.md). Do not restate it elsewhere.
+- The shipped implementation and verified Production behavior are current truth. If Notion, an older document or a historical decision disagrees, verify the code, then report the drift so the documents are updated. Never change code to match stale documentation. Deliberate product changes update code and the current docs together.
+- Never use any of these as a specification: historical milestone plans (`docs/superpowers/plans/`), design records (`docs/superpowers/specs/`), dated evidence (`docs/verification/`, dated audits in `docs/testing/` and `docs/legal/`), Notion engineering pages (including archived ones), or the engineering details of other Notion pages. Implemented historical documents carry a banner pointing to the current docs; do not rewrite their bodies.
+- If a product decision you need is in neither the implementation, this repository nor Notion, stop and ask. Do not invent business rules.
+- Current engineering milestone and environment status is maintained only in [`docs/roadmap.md`](docs/roadmap.md). Do not restate it elsewhere.
+- Never print, log, copy into documents or query activation codes, `activation_credentials.encrypted_code`, OTPs, tokens, connection strings or key values. Use variable names and aggregate counts only.
+- Live database changes (migrations, seeds, resets, data fixes) need explicit approval and a ready restore branch ([operations](docs/operations.md#database-migrations)). Never point local tools at Production credentials.
+- `.superpowers/` and `.worktrees/` are local, untracked working areas. Nothing in them is canonical.
 - Follow the [security rules](README.md#security-rules) and the runbooks in [`docs/operations.md`](docs/operations.md).

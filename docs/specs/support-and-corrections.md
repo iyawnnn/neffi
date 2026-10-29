@@ -19,7 +19,7 @@ The Order workspace remains terminal. Its **Open support case** action leads to 
 - **Void payment:** keeps the original row and may expose **Balance due after correction**, also included in dashboard outstanding.
 - **Record corrected payment:** greater than zero and capped at the current balance. It cannot overpay or add a payment to an already settled order.
 
-Money is never deleted or rewritten beyond the one-way void metadata. Completed orders never reopen. Items, prices, shipping fee and delivery method stay locked. Methods remain cash, GCash and bank transfer; dates default to today in Asia/Manila. Sale refunds retain their M8 rules on In Progress/Cancelled orders.
+Money is never deleted or rewritten beyond the one-way void metadata. Completed orders never reopen. Items, prices, shipping fee and delivery method stay locked. Payment methods follow [money and costs](money-and-costs.md#payments); dates default to today in Asia/Manila. Sale refunds retain their M8 rules on In Progress/Cancelled orders.
 
 ## Card corrections
 
@@ -30,13 +30,13 @@ All card actions are DBC-only and transactional:
 - **Issue new code:** only a linked Released, unclaimed DBC. Revoke any usable credential and issue a new one. The old credential stays revoked or used.
 - **Reset ownership:** only a linked Released, claimed DBC. Clear owner, routing and disabled flag, keep the old used credential immutable, revoke any usable credential and issue a new one. The former Account keeps its Profile; no Account merge or Profile move occurs. The card remains offline until claimed and connected again.
 
-Reissue and reset require **I verified the purchase and the requester's claim** and a verification note (1–500 characters). Notes describe the offline checks without copying identity documents or secrets. The new code is revealed once in the issuing action response for delivery outside Neffi. Copy it before closing the sheet or leaving the page. It is never stored raw, logged, placed in URLs or revalidation keys, or reconstructed on reload. Issuing it clears the package-match timestamp by the existing credential guard; claim does not depend on that timestamp. The card's permanent URL is unchanged through reset and reissue. A replacement is a different physical card with its own URL and code.
+Reissue and reset require **I verified the purchase and the requester's claim** and a verification note (1–500 characters). Notes describe the offline checks without copying identity documents or secrets. The new code is shown in the issuing action response for delivery outside Neffi. Like every usable credential it is also stored as an encrypted envelope, so an owner can reveal it again from the card page until it is claimed or revoked ([0016](../decisions/0016-retrievable-encrypted-activation-credentials.md)). It is never logged or placed in URLs or revalidation keys. Issuing it clears the package-match timestamp by the existing credential guard; claim does not depend on that timestamp. The card's permanent URL is unchanged through reset and reissue. A replacement is a different physical card with its own URL and code.
 
 GRC replacements are a commercial case note and optional shipment, with no GRC Card workflow.
 
 ## Paid replacements and shipping exceptions
 
-**New replacement order** opens ordinary order creation with the purchaser prefilled. Creation locks the active case first and writes `support_order_linked` Activity linking the case to the new Order. Revenue, payment and fulfillment are ordinary M8 behavior; the original order stays intact.
+**New replacement order** opens normal DBC order creation ([orders](orders-and-fulfillment.md#normal-dbc-orders)) with the purchaser prefilled. Creation locks the active case first and writes `support_order_linked` Activity linking the case to the new Order. Revenue, payment and fulfilment follow the normal order rules; the original order stays intact.
 
 Support shipments require an active case linked to an In Progress or Completed order; Cancelled is refused. They record a replacement/re-send in transit, with shipped date defaulting to Manila today and optional recipient, address, courier, tracking and cost. Updates affect only that case's shipment and do not edit the shipped date. They never count toward commercial completion; courier cost appears once in Expenses. The original shipment's failed/returned/lost status is updated from its existing order workspace, including on Completed orders.
 

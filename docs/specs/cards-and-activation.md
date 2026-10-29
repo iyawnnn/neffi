@@ -1,6 +1,6 @@
 # Spec: Cards, inventory and activation
 
-For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [domain model](../architecture/domain-model.md).
+For current engineering milestone status, see [the roadmap](../roadmap.md). Related: [0001](../decisions/0001-permanent-card-url.md), [0004](../decisions/0004-two-qr-codes.md), [0005](../decisions/0005-activation-credentials.md), [0016](../decisions/0016-retrievable-encrypted-activation-credentials.md), [domain model](../architecture/domain-model.md) (canonical card states and transitions), [operations runbook](../operations.md#physical-card-provisioning).
 
 ## Purpose
 
@@ -13,21 +13,28 @@ Owner (receives stock, provisions, tests, sells, releases); customer (activates)
 ## Inventory
 
 - A **Stock Purchase** records a batch (supplier, reference, date, optional purchase and inbound-shipping cost). Receiving creates N Blank cards. Quantity and state breakdown are always counted from Card rows; nobody types totals.
-- Card states: Blank, Ready, Reserved, Released, Retired. Cards are never deleted once past Blank.
-- A card kind is decided when it is provisioned or reserved; "Decide later" stock is allowed.
+- Card states: Blank, Preparing, Ready, Reserved, Released, Retired ([transitions](../architecture/domain-model.md#state-machines)). Cards are never deleted once past Blank.
+- Every card has a permanent inventory number, shown to owners as `N-XXXX`. It identifies the card in Admin only; the NFC URL identifies the physical tag.
+- A card kind is decided when it is provisioned, allocated or reserved; "Decide later" stock is allowed.
 
-## DBC provisioning (owner, independent of any order)
+## DBC preparation (owner)
 
-1. **Provision** a Blank card: it receives a permanent random token and a first activation credential; the raw code is shown once.
-2. **Write and test the tag**: the NFC value is exactly `<CARD_URL_ORIGIN>/c/<token>`; the tag stays writable. **Record the NFC check** with the address read back from the tag. The server accepts it only if it equals the card's URL exactly.
-3. **Match the package**: the owner types the code printed on the label sealed with the card; the server compares it with the card's usable credential. A match makes the card **Ready**.
-4. **Replace credential** (before release only): revokes the unused code, issues a new one, returns a Ready card to Blank, and requires the package match again. A used or revoked credential is never restored.
+Cards are prepared for a paid order, or ahead of time as stock.
 
-Rules: a DBC cannot be Ready without both `nfc_verified_at` and `package_matched_at` (database constraint). Issuing any new usable credential clears the package match. Physical evidence is never recorded unless the check was really performed. Cards provisioned against a development origin are engineering units and must never be sold.
+1. **Allocation** ([orders](orders-and-fulfillment.md#normal-dbc-orders)): a paid normal DBC order takes Ready cards of its product first. For the rest it takes unused Blank cards, gives each a permanent random token and a first activation credential, and moves it to **Preparing** against the order item. Allocation runs when the order is created, when stock is received (up to 20 waiting orders) and from **Allocate available stock** on the Order.
+2. **Provision** (stock path): a Blank card can be given its token and first credential on its own. It stays Blank (*in provisioning*) until it is matched.
+3. **Get the code**: the issuing response shows the code, and afterwards an OWNER can **Show**, **Copy** and **Hide** the current code on the card page until it is claimed or revoked. Each reveal records `activation_code_viewed` ([0016](../decisions/0016-retrievable-encrypted-activation-credentials.md)).
+4. **Write and test the tag**: the NFC value is exactly `<CARD_URL_ORIGIN>/c/<token>`; the tag stays writable. **Record the NFC check** with the address read back from the tag. The server accepts it only if it equals the card's URL exactly.
+5. **Match the package**: after the NFC check, the owner types the code printed on the label sealed with the card; the server compares it with the card's usable credential. A match moves Preparing to **Reserved** for its order, or Blank to **Ready** stock.
+6. **Replace credential** (before release only, with a reason): revokes the unused code, issues a new one, moves Ready to Blank or Reserved to Preparing, and requires the package match again. A used or revoked credential is never restored.
 
-## Reserve and release (from an Order — see [orders and fulfilment](orders-and-fulfillment.md))
+**Legacy credentials.** Credentials issued before migration `0021` have only the HMAC and cannot be shown. On the card page the owner can type the existing package code; if it matches, an envelope is stored and `activation_code_adopted` is recorded. A wrong code changes nothing.
 
-Reserve moves specific Ready DBCs of the item's product to Reserved against an order item. A Reserved card can return to Ready. Release moves Reserved to Released and requires the package match and a still-usable credential. Retire removes a Blank, Ready or reserved-GRC card that failed or must not be sold, revoking any unused credential first. Retired is final.
+Rules: a DBC cannot be Ready without both `nfc_verified_at` and `package_matched_at` (database constraint), and Preparing cannot become Reserved without them and a usable credential. Issuing any new usable credential clears the package match. Physical evidence is never recorded unless the check was really performed. Cards provisioned against a development origin are engineering units and must never be sold.
+
+## Return and release (from an Order — see [orders and fulfilment](orders-and-fulfillment.md))
+
+Returning a card to stock, or cancelling its order, moves Preparing to Blank and Reserved to Ready. Release (Hand over or Mark as shipped) moves Reserved to Released and requires the package match and a still-usable credential. Retire removes a Blank, Ready, Preparing or reserved-GRC card that failed or must not be sold, revoking any unused credential first; retiring a Preparing card re-runs allocation for its item. Retired is final.
 
 ## Activation (customer)
 
@@ -35,7 +42,7 @@ Reserve moves specific Ready DBCs of the item's product to Reserved against an o
 2. Sign in with Google or an email code if needed.
 3. **Add to my account** claims the card in one transaction: lock the Card, mark the credential used (only if still unused and unrevoked), set `owner_account_id`, record Activity. Claim creates no Profile.
 
-Code outcomes: *invalid* (unknown), *yours* (already your card; goes to `/app`), *claimable* (unused, unrevoked, DBC, Released, no owner), *unavailable* (anything else: used elsewhere, revoked, unsold, retired). Messages are generic and reveal nothing about other Accounts. Limits: 20 checks per IP and 10 claims per Account per 10 minutes.
+Code outcomes: *invalid* (unknown), *yours* (already your card; goes to `/app`), *claimable* (unused, unrevoked, DBC, Released, no owner), *unavailable* (anything else: used elsewhere, revoked, unsold, retired). Messages are generic and reveal nothing about other Accounts. Limits: code checks 20 per IP (IPv6 /64) per 10 minutes and 50 per 24 hours, then 100 per 10 minutes globally; claims 10 per Account per 10 minutes ([0005](../decisions/0005-activation-credentials.md)).
 
 After a claim, `/app` shows the card under **Ready to set up** until a Profile is connected. Setup can resume without the code. A successful claim redirects straight into guided setup for that card ([spec](profile-customization-onboarding.md#81-where-it-sits)).
 
@@ -55,4 +62,4 @@ No customer transfer or unclaim button; no GRC activation; no customer-visible c
 
 Help links are implemented from activation states and Card detail to `/support`. Activation links carry only a topic, never the typed code. Signed-in Card context links only the requesting Account's owned Card. Activation codes remain out of band and are blocked in owner reply/resolution email bodies; claim, provisioning and resolver behavior are unchanged.
 
-An active Support Case permits retirement of an affected Released DBC and a verified free replacement against its original item. Retirement clears owner and routing; the old URL remains permanently unavailable. Reissue is for a linked unclaimed Released DBC; wrong-account reset clears a claimed card's owner/routing while leaving the former Account's Profile untouched. Both require offline purchase/claim verification, confirmation and a required note; the new code is revealed once for delivery outside Neffi. Old credentials stay used or revoked, and the same card keeps its permanent URL. See [support and corrections](support-and-corrections.md).
+An active Support Case permits retirement of an affected Released DBC and a verified free replacement against its original item. Retirement clears owner and routing; the old URL remains permanently unavailable. Reissue is for a linked unclaimed Released DBC; wrong-account reset clears a claimed card's owner/routing while leaving the former Account's Profile untouched. Both require offline purchase/claim verification, confirmation and a required note; the new code is delivered outside Neffi and stays retrievable by an owner until claimed or revoked. Old credentials stay used or revoked, and the same card keeps its permanent URL. See [support and corrections](support-and-corrections.md).

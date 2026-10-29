@@ -1,5 +1,7 @@
 # Owner Operations Redesign — design for review
 
+> **Historical record.** Implemented in PR #50 (2026-10-26). This document is not a specification. Current behavior: [domain model](../../architecture/domain-model.md), [cards and activation](../../specs/cards-and-activation.md), [orders and fulfilment](../../specs/orders-and-fulfillment.md), [0016](../../decisions/0016-retrievable-encrypted-activation-credentials.md).
+
 Date: 2026-10-25
 
 Status: Proposed; implementation is not authorized by this document.

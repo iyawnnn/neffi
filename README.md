@@ -13,7 +13,7 @@ Milestone status: [`docs/roadmap.md`](docs/roadmap.md).
 
 Start at [`docs/README.md`](docs/README.md), the map of which document is authoritative for what.
 
-- [`PRODUCT.md`](PRODUCT.md): how Neffi behaves today (engineering summary). Product and business intent live in Notion; see the [sources of truth](docs/README.md#sources-of-truth).
+- [`PRODUCT.md`](PRODUCT.md): how Neffi behaves today (engineering summary). The shipped implementation is current truth; Notion holds aligned business context. See the [sources of truth](docs/README.md#sources-of-truth).
 - [`docs/architecture/`](docs/architecture/): system and domain model. [`docs/database/erd.md`](docs/database/erd.md) is the generated schema reference.
 - [`docs/specs/`](docs/specs/): feature contracts. [`docs/decisions/`](docs/decisions/): long-lived decisions.
 - [`docs/operations.md`](docs/operations.md): runbooks for migrations, seed, auth, card provisioning, deploys and verification.
@@ -40,6 +40,7 @@ Start at [`docs/README.md`](docs/README.md), the map of which document is author
    - `RESEND_API_KEY`, `AUTH_EMAIL_FROM`: the development/Preview send-only key and sender (see the [auth runbook](docs/operations.md#authentication-runbook))
    - optional `SUPPORT_REPLY_TO`: valid support reply email; a verified Resend sending domain is required for M9B live two-inbox acceptance
    - `ACTIVATION_CODE_SECRET`: at least 32 random characters (`openssl rand -base64 32`); keys the activation-code lookup hash
+   - `ACTIVATION_CODE_ENCRYPTION_KEYS`, `ACTIVATION_CODE_ENCRYPTION_ACTIVE_KEY_ID`: a flat JSON object of key IDs to base64 32-byte keys (each from `openssl rand -base64 32`), and the ID that encrypts new codes. They are separate from the HMAC secret; see [key custody](docs/operations.md#activation-code-key-custody)
    - `CARD_URL_ORIGIN`: bare origin written onto NFC cards, e.g. `http://localhost:3000` (see [card provisioning](docs/operations.md#physical-card-provisioning))
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: the development Cloudinary account (the secret stays server-only)
    - optional `NEXT_PUBLIC_SENTRY_DSN`: Sentry stays disabled without it

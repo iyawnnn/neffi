@@ -1,6 +1,6 @@
 # 0005 — Activation credentials are one-time and HMAC-only
 
-**Status:** Accepted (M4, M5; 2026-10-19 revision). Supersedes the earlier development code format.
+**Status:** Accepted (M4, M5; 2026-10-19 revision). Supersedes the earlier development code format. **Partially superseded by [0016](0016-retrievable-encrypted-activation-credentials.md) (2026-10-26):** usable codes are now also stored as an encrypted envelope and can be revealed again by an OWNER. Code format, one usable credential, non-consuming checks, atomic claim and the rate limits below remain in force.
 
 ## Decision
 

@@ -6,22 +6,19 @@ Start with [PRODUCT.md](../PRODUCT.md) for how Neffi behaves today. Then read th
 
 | Source | Authoritative for |
 |---|---|
-| This repository | Engineering: architecture, implemented and technical product behavior, authentication and authorization, routes and APIs, schema, security, technical decisions, runbooks, tests, engineering milestone status, code |
-| Notion — Neffi Business Hub | Business and product intent: company and brand, product definitions, customer experience, pricing and business model, packaging, suppliers and operations, sales and marketing, product roadmap and backlog, approved business and product decisions |
+| This repository | What Neffi does today: implemented product behavior (prices, payment methods, order and card flows as shipped), architecture, authentication and authorization, routes and APIs, schema, security, technical decisions, runbooks, environment state, tests, engineering milestone status, code |
+| Notion — Neffi Business Hub | Business and product context aligned to the shipped product: company and brand, positioning, pricing presentation, packaging, suppliers and operations, sales and marketing, product roadmap and backlog, future product planning. Links to this repository for implementation detail |
 | Obsidian | Nothing. It holds the maintainer's personal research and notes and is never needed to implement Neffi |
 
-A Notion decision counts as approved when it is recorded in "Neffi — Locked Plan" or marked Locked on its page. Shared research pages in Notion (NFC, market and competitors) are reference material, not decisions.
-
-For DBC and GRC product intent, use Notion Step 1 — Product Catalog and Step 2 — Product Definitions.
+Shared research pages in Notion (NFC, market and competitors) are reference material, not decisions.
 
 ## When sources disagree
 
-- **Business or product intent:** Notion is authoritative. The repository follows through a spec or decision record.
-- **Implemented technical behavior, schema, security or APIs:** the repository is authoritative. Technical statements in Notion are informational.
-- **An approved Notion decision and the implementation disagree:** this is drift. Do not silently change either side. Report it, and list it under [Known drift](#known-drift) if the same change does not resolve it. Resolve it with a spec or decision record plus implementation, or with a revised Notion decision.
-- **Within the repository:** precedence is implemented behavior, schema and tests first, then later approved decisions that intentionally changed earlier behavior, then the documents in the map below, then historical milestone plans.
+- **Shipped implementation and verified Production behavior are current truth.** If Notion, an older document or a historical decision disagrees, verify the code, treat the implementation as current, and update the current documents (list Notion items under [Known drift](#known-drift) until Notion is updated manually). Never change code to match stale documentation.
+- **Deliberate product changes** update code and current documentation together; Notion is then aligned.
+- **Within the repository:** precedence is implemented behavior, schema and tests first, then later decisions that intentionally changed earlier behavior, then the documents in the map below, then historical records. Superseded decisions stay as history and name their successor.
 
-Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI Build Handoff) are historical reference, and so are the engineering details of other Notion pages. Do not rebuild behavior from them or from old plans.
+Notion engineering pages (including the archived engineering references and developer handoff) are historical reference, and so are the engineering details of other Notion pages. Do not rebuild behavior from them or from old plans.
 
 ## Authority map
 
@@ -45,13 +42,13 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 
 ## Specs
 
-- [Cards and activation](specs/cards-and-activation.md): inventory, provisioning, release, claim, credentials
+- [Cards and activation](specs/cards-and-activation.md): inventory, preparation, provisioning, credentials and reveal, release, claim
 - [Profiles and the public card](specs/profiles-and-public-card.md): Profiles, Scenes, Blocks, Forms, Inbox, `/c/{token}`
 - [Profile layouts, appearance and guided setup](specs/profile-customization-onboarding.md): Classic/Editorial/Showcase, Light/Dark, accents, Goals, guided setup
 - [Profile mode editor](specs/profile-mode-editor.md): the Scene/Profile mode content editor
 - [Google Review Card](specs/google-review-card.md): the simple GRC model
-- [Orders and fulfilment](specs/orders-and-fulfillment.md)
-- [Money and costs](specs/money-and-costs.md): payments, refunds, voids, expenses, stock costs
+- [Orders and fulfilment](specs/orders-and-fulfillment.md): normal paid DBC orders (₱799, allocation, In person/J&T), GRC and historical orders
+- [Money and costs](specs/money-and-costs.md): payments and methods, refunds, voids, expenses, stock costs
 - [Accounts and access](specs/accounts-and-access.md): sign-in, roles, authorization, the owner Account view
 - [Support and corrections](specs/support-and-corrections.md): owner cases, Completed-order money, replacements, shipping and verified card recovery
 - [Marketing homepage](specs/marketing-homepage.md): section order, approved copy, section status and what each marketing page owns
@@ -65,7 +62,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | [0002](decisions/0002-purchaser-account-card-profile.md) | Purchaser, Account, Card and Profile are separate |
 | [0003](decisions/0003-profile-scene-model.md) | Profile owns identity and appearance; Scenes change content focus |
 | [0004](decisions/0004-two-qr-codes.md) | Package activation QR vs digital Sharing QR |
-| [0005](decisions/0005-activation-credentials.md) | One-time, HMAC-only activation credentials |
+| [0005](decisions/0005-activation-credentials.md) | One-time activation credentials (storage clauses superseded by 0016) |
 | [0006](decisions/0006-grc-simple-commercial-line.md) | Google Review Card is a simple commercial line (supersedes the earlier lifecycle design) |
 | [0007](decisions/0007-price-snapshots-single-active-product.md) | Price snapshots; one active product per kind |
 | [0008](decisions/0008-append-only-money.md) | Append-only money; derived totals |
@@ -76,6 +73,7 @@ Notion engineering pages (Steps 4, 6, 7 and 8, Supporting Engineering Notes, AI 
 | [0013](decisions/0013-universal-layouts-profile-appearance.md) | Universal layouts are presentations of one Profile model; appearance is Layout + Mode + Accent |
 | [0014](decisions/0014-guided-setup-and-goal.md) | Guided setup builds the first Profile; Goal only recommends |
 | [0015](decisions/0015-showcase-cover-image.md) | Showcase may show an optional cover image; the accent band is the fallback |
+| [0016](decisions/0016-retrievable-encrypted-activation-credentials.md) | Usable activation codes are retrievable through an audited, encrypted envelope |
 
 ## Status
 
@@ -83,18 +81,17 @@ Current engineering milestone status, launch gates and deferred scope are mainta
 
 ## Milestone plans
 
-[`superpowers/plans/`](superpowers/plans/) holds one implementation plan per milestone (M1–M11) plus documentation plans. They record the decisions and implementation sequence as they were at the time, including Notion as the spec and the earlier "TapCard" name. They are history, not specifications. Task evidence stays in the ignored local ledger. The main historical drift is the earlier GRC order-fulfilment lifecycle, which [decision 0006](decisions/0006-grc-simple-commercial-line.md) superseded. [`superpowers/specs/`](superpowers/specs/) holds design records. Once a design is implemented, its normative wording lives in the documents above.
+[`superpowers/plans/`](superpowers/plans/) holds one implementation plan per milestone (M1–M11) plus documentation plans. They record the decisions and implementation sequence as they were at the time, including Notion as the spec and the earlier "TapCard" name. They are history, not specifications. Task evidence stays in the ignored local ledger. The main historical drift is the earlier GRC order-fulfilment lifecycle, which [decision 0006](decisions/0006-grc-simple-commercial-line.md) superseded. [`superpowers/specs/`](superpowers/specs/) holds design records. Once a design is implemented, its normative wording lives in the documents above; for example, the 2026-10-25 owner-operations design and plan are implemented history whose current behavior is in the domain model, the cards and orders specs and [0016](decisions/0016-retrievable-encrypted-activation-credentials.md). Historical documents get at most a status banner or a dated addendum; their bodies are not rewritten.
 
 ## Known drift
 
-These Notion statements disagree with the repository or are stale. Notion is not edited from the repository, so reconciliation is manual.
+The shipped implementation is current truth. These Notion statements (pages last edited 2026-10-17) disagree with it. Notion is not edited from the repository, so reconciliation is manual; remove each item once Notion matches.
 
-- Older Notion material still describes the superseded GRC lifecycle (Blank, Reserved, encode and test, Released) and a narrow GRC provisioning capability in M4. [Decision 0006](decisions/0006-grc-simple-commercial-line.md) is authoritative.
-- Engineering status in Notion lags the repository: the hub callout, the AI Build Handoff, Locked Plan step 9, and Step 9, whose Milestone Progress Record is stale (for example, M7 and M10 are still marked "Not started"). [roadmap.md](roadmap.md) is authoritative.
-- Step 7 says OWNER MFA/step-up is enabled, the Locked Plan's Step 7 section proposes TOTP/step-up before commercial launch, and Step 8 lists Turnstile and migration rehearsal as M10 deliverables. MFA/step-up and Turnstile are deferred ([roadmap](roadmap.md#deliberately-deferred)).
-- Older examples use `tapcard.ph` or `neffi.ph`; the permanent origin is now `https://getneffi.com`. Follow [Production configuration](operations.md#production-setup-infrastructure-acceptance) for `CARD_URL_ORIGIN` and OAuth callbacks.
-- "Quick Demo" and "Standard vs Custom package" are not part of the implemented product.
-- Notion lists three starter goals (Network, Get Clients, Show My Work). The maintainer approved four Goals (Networking / Professional, Freelance / Creative, Business / Sales, Student / Job Seeking) in [0014](decisions/0014-guided-setup-and-goal.md). Notion's working theme names (Minimal, Professional, Creator) are replaced by Classic, Editorial and Showcase ([0013](decisions/0013-universal-layouts-profile-appearance.md)). The optional Showcase cover image ([0015](decisions/0015-showcase-cover-image.md)) is not yet recorded in Notion. Update Notion manually.
-- The hub and the AI Build Handoff refer to `docs/superpowers/plans/2026-10-14-neffi-ui-design-system-overhaul.md`, which exists only on the parked `feat/ui-design-system` branch.
+- **Normal DBC orders:** Notion describes a catalog price with an optional negotiated total, "Paid now / Not yet paid", GCash/Bank Transfer/Cash, and pickup/local/courier (J&T or LBC). Shipped: fixed ₱799, paid at creation with GCash, Maya, MariBank, GoTyme or bank transfer, In person or J&T, shipping fee possibly pending ([orders](specs/orders-and-fulfillment.md)).
+- **Card handling:** Notion lists five inventory states and manual Ready → Reserved. Shipped: six states including Preparing, automatic allocation, `N-XXXX` references and owner-retrievable codes ([domain model](architecture/domain-model.md), [0016](decisions/0016-retrievable-encrypted-activation-credentials.md)).
+- **Domain and Production:** Notion says the domain is not locked and Production is unconfigured. `https://getneffi.com` is live ([roadmap](roadmap.md#environment-state)).
+- **Guided setup:** Notion lists three starter goals (Network, Get Clients, Show My Work) and working theme names. Shipped: four Goals ([0014](decisions/0014-guided-setup-and-goal.md)), Classic/Editorial/Showcase layouts ([0013](decisions/0013-universal-layouts-profile-appearance.md)) and the optional Showcase cover ([0015](decisions/0015-showcase-cover-image.md)).
+- Older and archived Notion engineering pages (for example Decisions → Engineering References → Archive → Developer Handoff) keep old milestone status, the superseded GRC lifecycle ([0006](decisions/0006-grc-simple-commercial-line.md) is authoritative), OWNER MFA/Turnstile as delivered (both are [deferred](roadmap.md#deliberately-deferred)), and `tapcard.ph`/`neffi.ph` examples. They are history.
+- Older Notion material refers to a UI design-system overhaul plan that exists only on the parked `feat/ui-design-system` branch.
 
 For pending acceptance, use [roadmap.md](roadmap.md), not historical plans.
