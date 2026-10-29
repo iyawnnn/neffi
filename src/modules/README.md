@@ -5,13 +5,13 @@ Neffi is one modular monolith. Business rules live in domain modules under `src/
 | Module | Owns |
 |---|---|
 | `accounts` | Owner-role operator service; read-only directory (unchanged projection); verified recovery initiation/cancel/completion, secure account and security notices |
-| `activation` | Activation code format and HMAC lookup; credential issue, revoke and usable lookup; code check and atomic claim |
+| `activation` | Activation code format and HMAC lookup; credential issue (with encrypted envelope), revoke and usable lookup; owner reveal and legacy-code adoption ([0016](../../docs/decisions/0016-retrievable-encrypted-activation-credentials.md)); code check and atomic claim |
 | `activity` | `recordActivity` and the `ActivityType` set (immutable history) |
-| `cards` | Tokens and URLs; DBC provisioning, NFC check, package match, credential replacement; resolver for `/c/{token}`; customer routing, disable and enable; Sharing QR; legacy manual GRC utilities |
+| `cards` | Tokens and URLs; DBC provisioning, preparation of allocated cards, NFC check, package match, credential replacement, retirement; resolver for `/c/{token}`; customer routing, disable and enable; Sharing QR; legacy manual GRC utilities |
 | `expenses` | Manual expenses and the combined cost report (manual, stock and courier costs, each counted once) |
 | `forms` | Native Forms, public submission storage and deduplication, owner notification email |
-| `inventory` | Stock intake and edits, derived card counts and lists |
-| `orders` | Products and pricing, purchasers, order creation and edits, fulfilment, cancellation, derived order facts and totals, system completion, dashboard |
+| `inventory` | Stock intake and edits (which also allocates waiting orders), derived card counts, preparation queues and `N-XXXX` inventory references |
+| `orders` | Products and pricing (`policy.ts` holds the fixed DBC price and normal payment methods), purchasers, normal paid DBC orders, automatic card allocation, GRC/historical order creation and edits, In person and J&T fulfilment, cancellation, derived order facts and totals, system completion, dashboard |
 | `payments` | Capped append-only payments and refunds, and reasoned voids |
 | `support` | Case lifecycle, assignment, immutable links, notes and queries; Completed-order money corrections, support shipments, Released DBC retirement/replacement, verified reissue/reset |
 | `profiles` | Profiles, Scenes, Blocks, publishing, appearance, the public Scene view and cache |

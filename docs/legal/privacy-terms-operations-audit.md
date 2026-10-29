@@ -123,3 +123,11 @@ These are business or engineering follow-ups. They do not appear as placeholders
 10. **Provider data locations**: Neon is in Singapore; confirm regions for Vercel functions, Cloudinary, Resend and Sentry before adding cross-border detail.
 11. **Mail routing**: incoming branded mail is routed by the DNS provider; reassess whether that needs disclosure once the setup is final.
 12. **Consumer law review**: Consumer Act and Internet Transactions Act applicability was not re-read from an official source.
+
+## Addendum (2026-10-29)
+
+Repository changes after this audit, recorded without rewriting the sections above:
+
+- **Payment-method drift (§4, item 9) is resolved in the schema.** Migration `0019` added Maya, MariBank and GoTyme. Normal DBC orders use GCash, Maya, MariBank, GoTyme or bank transfer, with no cash. The `cash` value remains for historical rows and the general payment form ([money and costs](../specs/money-and-costs.md#payments)).
+- **Activation-code storage (§1) changed.** Since migration `0021`, a usable activation code is stored as a keyed HMAC plus an AES-256-GCM envelope that an OWNER can reveal, with each reveal recorded. The envelope is cleared when the code is used or revoked ([0016](../decisions/0016-retrievable-encrypted-activation-credentials.md)). The public Privacy and Terms pages make no storage claim, so no public copy changed. Re-check this matrix at the next privacy review.
+- **Public profile intro.** `/c/{token}` stores a non-personal `sessionStorage` flag (`neffi:profile-intro-seen:v1`) to skip the intro on repeat views in a tab ([profiles spec](../specs/profiles-and-public-card.md#public-card-ctoken)). §3 should list it at the next review.

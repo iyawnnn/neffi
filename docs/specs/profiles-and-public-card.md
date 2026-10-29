@@ -35,6 +35,7 @@ On every request the server reads the Card by token. The page renders only if th
 - The shown Scene's visible Blocks render grouped by role, preserving stored position order within each group ([rendering contract](profile-customization-onboarding.md#6-rendering-contract)). Visitors can follow links, call or email, open booking links, send the Form, and **Save contact** (`/c/{token}/contact` returns a vCard only when the shown Scene has a Contact Block with Save Contact).
 - If the signed-in viewer owns the Card, they see the same page plus **Edit** and **Switch scene**; for an unavailable card they get a **Manage this card** link. Other signed-in users see the ordinary visitor view.
 - Scene content is cached per `(profile, scene, content_version)`. Card state, routing and publish status are never cached. Pages are `noindex`.
+- **First-view intro.** An available page starts with a brief full-screen Neffi logo that fades out over 800 ms. It is server-rendered and animated by CSS only, so the Profile is usable without hydration or JavaScript. It is skipped when `prefers-reduced-motion: reduce` is set, and on later views in the same browser tab via the `sessionStorage` flag `neffi:profile-intro-seen:v1`. The flag holds no personal or secret data; if storage fails, the intro is skipped.
 - The **Sharing QR** on the Card page encodes exactly `/c/{token}`. The package activation QR is a different, common QR ([0004](../decisions/0004-two-qr-codes.md)).
 
 ## Layouts, appearance and guided setup

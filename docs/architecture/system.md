@@ -8,12 +8,16 @@ One Next.js 16 App Router **modular monolith** (TypeScript, React 19, Tailwind a
 
 | Surface | Routes | Access |
 |---|---|---|
-| Public | landing, `/activate`, `/c/{token}` (+ `/contact` vCard), `/sign-in` | Anyone. `/activate` needs a code; `/c` shows only what the Card's state allows |
+| Marketing | `/`, `/product`, `/pricing`, `/guide`, `/help`, `/privacy`, `/terms` | Anyone ([marketing UI](marketing-ui.md)) |
+| Public | `/activate`, `/c/{token}` (+ `/contact` vCard; unavailable cards rewrite to `/c-unavailable`), `/sign-in`, `/support`, `/support/recover` | Anyone. `/activate` needs a code; `/c` shows only what the Card's state allows |
 | Customer | `/app/*` (Home, Profiles, Cards, Account, Inbox, setup) | Verified Account |
 | Owner | `/admin/*` | Verified Account with role OWNER |
 | API | `/api/auth/*`, `/api/forms/{id}/submissions`, `/api/health` | As stated per route |
+| Development previews | `/dev/*` (email, profile, appearance, setup and admin previews) | Local development only; 404 in every other environment |
 
 Admin, customer and operational pages are dynamic, `noindex` and never shared-cached. Pages that read the database call `await connection()` first and export `instant = false`.
+
+**Owner area.** `/admin` uses its own shell (`src/app/admin/admin-frame.tsx`, `shell.tsx`): grouped navigation from `nav-sections.ts` (Overview, Operations, Service, System) as a sidebar on desktop and a menu sheet on small screens, an account menu, and a command palette with quick actions and records search. Admin routes provide `loading.tsx` skeletons. Submit buttons show a pending state through the shared `Button` `loading`/`loadingText` props (`src/components/ui/button.tsx`). The customer app's conventions are in [customer UI](customer-ui.md).
 
 ## Stack and integrations
 
@@ -56,7 +60,7 @@ Admin, customer and operational pages are dynamic, `noindex` and never shared-ca
 
 M9B recovery locks case → Account `FOR UPDATE` → proof; it never locks Card/credential rows. Resolve checks pending recovery under the case lock. Wrong attempts commit as returned failures; the third cancels. Occupied addresses and owner targets are refused, and no business records move. See [0012](../decisions/0012-support-controlled-account-recovery.md). Public support adds HMAC quotas, honeypot, bounded fields and an indexed 24-hour acknowledgement rule. Notices expose only event/time/reference/support guidance, and email attempts record opaque result events without bodies. No outbox or automatic retry is introduced.
 
-- No secret in client bundles, URLs, logs, Sentry or browser storage. Activation codes and OTPs are stored only as keyed HMACs.
+- No secret in client bundles, URLs, logs, Sentry or browser storage. OTPs and recovery codes are stored only as keyed HMACs. Activation codes are stored as a keyed HMAC plus, while usable, an AES-256-GCM envelope that only an OWNER can reveal, with every reveal audited ([0016](../decisions/0016-retrievable-encrypted-activation-credentials.md); key handling in [operations](../operations.md#activation-code-key-custody)).
 - Same-origin checks, bounded fields, body caps and HMAC quotas protect public writes. Intake/forms use honeypots; recovery completion also has a per-proof attempt counter. IPs are stored only as HMACs in quota counters.
 - Customer-supplied URLs are https only and validated again at render time. No customer HTML, CSS or script.
 - M10 enforces static CSP/nosniff, daily HMAC quotas (IPv6 /64), non-blocking quota cleanup and shared Sentry SQL-parameter scrubbing. Inbox cursors retain database timestamp microseconds. OWNER MFA/step-up remains deferred until team growth or Production setup; Turnstile awaits distributed-abuse evidence. No speculative indexes were added.

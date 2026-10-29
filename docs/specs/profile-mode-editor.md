@@ -235,6 +235,8 @@ Edit DTO options: include safe content in the server-rendered editor data (alrea
 
 ## 19. Expected files affected during implementation
 
+> Sections 19–22 are implementation-time planning kept as history. Sections 1–18 describe the implemented editor.
+
 Paths below are prospective; this spec pass changes documentation only.
 
 | File/area | Expected responsibility |

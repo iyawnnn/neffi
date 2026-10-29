@@ -8,36 +8,36 @@ A person performs every step: one Neffi owner and one "customer" (a person with 
 
 | Prerequisite | How to confirm | PASS / FAIL |
 |---|---|---|
-| The build that includes the **Sharing QR on `/admin/inventory/cards/{id}`** is deployed to Production | Open any provisioned DBC on `/admin/inventory/cards/{id}`: a "Sharing QR" block with "Download QR (SVG)" is visible | |
+| The current `main` build is deployed to Production | Open any provisioned DBC on `/admin/inventory/cards/{id}`: a "Sharing QR" block with "Download QR (SVG)" is visible | |
 | Your owner account opens the owner area | Sign in at `https://getneffi.com/sign-in`, open `/admin`: the dashboard loads, not "not found". Owner access is granted once, before launch, by the operator (see [operations](../operations.md)); it is not part of fulfilling an order | |
-| A Digital Business Card product with the launch price exists | `/admin/settings` → Products & Pricing shows a Digital Business Card price (₱799 per locked pricing) | |
+| The Digital Business Card price is set | `/admin/settings` → Products & Pricing shows the Digital Business Card at **Fixed price ₱799** | |
 | The printed common package insert is on hand | The insert carries the one shared Package QR for `https://getneffi.com/activate` | |
 
-## Owner provisioning
+## Paid order and allocation
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 1 | `/admin/inventory` | Click **Receive stock**, set date and quantity (for example 1), Intended product **Digital Business Card**, then **Receive stock** | "Received 1 cards." and a **View stock purchase** link | |
-| 2 | Stock purchase page → the new card | Open the Blank card | Card page shows "Blank" and the **Provision this card** next step | |
-| 3 | `/admin/inventory/cards/{id}` | Click **Provision Digital Business Card**, then confirm **Provision card** | A box titled **Activation code — shown once** shows a code in `XXXX-XXXX` form with **Copy activation code**, plus the card URL `https://getneffi.com/c/…` | |
-| 4 | Same box | Write or print the activation code onto the package's private code sticker **now**. Do not reload first | The code is on the sticker. It exists nowhere else visible | |
-| 5 | Same page | Reload the page | The code is no longer shown anywhere. Progress shows "Card provisioned: Complete" and the next steps "Pending" | |
-| 6 | Same page → Card details | Find **Card URL** and the **Copy URL** button | The URL is exactly `https://getneffi.com/c/` followed by 26 characters | |
+| 1 | `/admin/inventory` | If no unused blank card is in stock: **Receive stock**, set date and quantity (for example 1), intended product **Digital Business Card**, then **Receive stock** | "Received 1 cards." and a **View stock purchase** link | |
+| 2 | `/admin/orders/new` | Enter the purchaser, quantity 1, the payment method used (GCash, Maya, MariBank, GoTyme or Bank transfer) and delivery (**In person**, or **J&T** with recipient details; the J&T fee may be left for later). Click **Create paid order** | The order page opens with the order number, one ₱799 payment recorded, and no "Waiting for stock" panel | |
+| 3 | Order page → **Prepare card** | Open the allocated card from the order | The card page shows its `N-XXXX` reference, the order, and the next step **Write and test the NFC card** | |
+| 4 | Card page → activation code | Click **Show activation code**, write or print the code on the package's private code sticker, then click **Hide** | The code appears as `XXXX-XXXX` and disappears after **Hide**. It is on the sticker | |
+| 5 | Same page | Reload, then click **Show activation code** again and **Hide** | The code is hidden after reload and shows the same value again. It stays retrievable until the card is claimed | |
+| 6 | Same page → card details | Find the card URL and **Copy link** | The URL is exactly `https://getneffi.com/c/` followed by 26 characters | |
 
 ## NFC writing
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 7 | Card page → **Physical NFC check** | Tap **Copy URL**. In NFC Tools: Write → Add a record → URL → paste → Write to the physical card. Do **not** lock the tag | NFC Tools reports a successful write | |
-| 8 | NFC Tools | Read the card | The read-back URL is identical to the Card URL | |
+| 7 | Card page → **Physical NFC check** | Copy the URL. In NFC Tools: Write → Add a record → URL → paste → Write to the physical card. Do **not** lock the tag | NFC Tools reports a successful write | |
+| 8 | NFC Tools | Read the card | The read-back URL is identical to the card URL | |
 | 9 | Phone | Tap the card on a phone (NFC on) | The phone offers to open `https://getneffi.com/c/…`. It shows "This Neffi isn't available right now", which is correct before sale | |
-| 10 | Card page → NFC form | Paste the read-back URL, tick the three confirmations, click **Confirm NFC check** | "NFC check recorded." Progress: "NFC written/tested: Complete". The next step changes to **Match the activation package** | |
+| 10 | Card page → NFC form | Paste the read-back URL, tick the confirmations, click **Confirm NFC test** | The NFC step shows complete and the next step changes to **Confirm the package** | |
 
 ## Sharing QR printing
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 11 | Card page → Card details → **Sharing QR** | Click **Download QR (SVG)** | A file named `neffi-sharing-qr-<the same 26 characters>.svg` downloads | |
+| 11 | Card page → card details → **Sharing QR** | Click **Download QR (SVG)** | A file named `neffi-sharing-qr-<the same 26 characters>.svg` downloads | |
 | 12 | Phone camera | Scan the QR shown on screen (or the downloaded file) | It opens the same `https://getneffi.com/c/…` URL as the NFC tag, never `/activate` | |
 | 13 | Sticker printer | Print the SVG as the card-back sticker and apply it to the **same** card | The printed sticker scans to the same URL | |
 
@@ -52,26 +52,26 @@ A person performs every step: one Neffi owner and one "customer" (a person with 
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 16 | Card page → **Match the activation package** | Type the code from the sticker **in the package**, click **Match package** | "Package matched. The card is Ready." | |
-| 17 | Same | (Negative, optional on a second card) Type a wrong code | Refused; the card stays not Ready | |
+| 16 | Card page → **Confirm the package** | Type the code from the sticker **in the package**, click **Confirm package** | The card is prepared and reserved for its order; the order's next step becomes hand-over (In person) or shipping (J&T) | |
+| 17 | Same | (Negative, optional on a second card) Type a wrong code | Refused; the card stays in preparation | |
 
-## Ready inventory
+## Prepared card
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 18 | Card page | Review progress | Provisioned, NFC, package match and **Ready for sale** are all Complete. Credential: "One unused credential" | |
-| 19 | `/admin/inventory` | Filter or look for Ready DBCs | The card is counted as Ready | |
+| 18 | Card page | Review progress | NFC written/tested and package confirmed are complete; the card is assigned to the order. Credential: one unused credential | |
+| 19 | `/admin/inventory` | Look at the queues | The card is counted with the order, not as free Ready stock | |
 | 20 | Phone | Tap the card | Still "This Neffi isn't available right now" (not yet released) | |
 
-## Order / release
+## Release
 
 | # | Page / route | Action | Expected result | PASS / FAIL |
 |---|---|---|---|---|
-| 21 | `/admin/orders/new` | **New order**: purchaser name, one Digital Business Card item, delivery method, shipping fee; tick **Paid now** if the test payment was received; **Create order** | Order page opens with the order number | |
-| 22 | Order page | If not paid at creation: **Record payment** for the full total | The balance shows as settled | |
-| 23 | Order page → DBC item | Choose the Ready card and click **Reserve selected DBCs** | The card shows as Reserved on the order and on its card page | |
-| 24 | Customer `/activate` (customer's phone) | Before release, try the code | "This code can't be used…" (activation is not possible before release) | |
-| 25 | Order page | **Record handover** (pickup or local) or **Record shipment** (courier, with tracking) | The card becomes Released. Once paid and released, the order completes itself | |
+| 21 | Customer `/activate` (customer's phone) | Before release, try the code | "This code can't be used…" (activation is not possible before release) | |
+| 22 | Order page (**In person** orders) | After physically giving the package: **Ready for handoff** → **Give card to customer** | The card becomes Released and the order completes itself | |
+| 23 | Order page (**J&T** orders) | **Enter J&T details** (recipient, phone, address, fee) and save, hand the package to J&T, then **Mark as shipped** with the tracking number | The shipping fee is recorded as a payment with the order's method, the card becomes Released, and the order completes itself | |
+| 24 | Order page | Review payments | The ₱799 product payment (and, for J&T, the shipping payment) are listed; balance is settled | |
+| 25 | Card page | Review the card | The card shows it is waiting for customer activation | |
 
 ## Customer Google sign-in
 

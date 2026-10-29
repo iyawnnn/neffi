@@ -1,5 +1,7 @@
 # Owner Operations Redesign Implementation Plan
 
+> **Historical record.** Implemented in PR #50 (2026-10-26). This plan is not a specification. Current behavior: [domain model](../../architecture/domain-model.md), [cards and activation](../../specs/cards-and-activation.md), [orders and fulfilment](../../specs/orders-and-fulfillment.md), [0016](../../decisions/0016-retrievable-encrypted-activation-credentials.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. This document is a review deliverable, not authorization to start implementation.
 
 **Goal:** Make paid DBC orders drive automatic stock allocation, guided physical preparation and one clear delivery action, with secure owner code retrieval and simpler customer/public utility screens.
