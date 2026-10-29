@@ -61,7 +61,7 @@ Notion engineering pages (including the archived engineering references and deve
 | [0001](decisions/0001-permanent-card-url.md) | Permanent `/c/{token}` indirection |
 | [0002](decisions/0002-purchaser-account-card-profile.md) | Purchaser, Account, Card and Profile are separate |
 | [0003](decisions/0003-profile-scene-model.md) | Profile owns identity and appearance; Scenes change content focus |
-| [0004](decisions/0004-two-qr-codes.md) | Package activation QR vs digital Sharing QR |
+| [0004](decisions/0004-two-qr-codes.md) | Common package activation QR vs the card's Sharing QR (digital SVG, and a printed card-back sticker on the current physical card) |
 | [0005](decisions/0005-activation-credentials.md) | One-time activation credentials (storage clauses superseded by 0016) |
 | [0006](decisions/0006-grc-simple-commercial-line.md) | Google Review Card is a simple commercial line (supersedes the earlier lifecycle design) |
 | [0007](decisions/0007-price-snapshots-single-active-product.md) | Price snapshots; one active product per kind |
