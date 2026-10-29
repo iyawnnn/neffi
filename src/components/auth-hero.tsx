@@ -17,7 +17,7 @@ const HEROES = {
 // actually shown) while keeping the art-directed <picture>; fetchPriority makes the visible hero the LCP candidate.
 export function AuthHero({ kind }: { kind: keyof typeof HEROES }) {
   const { desktop, mobile, className } = HEROES[kind];
-  const common = { alt: "", sizes: "(min-width: 768px) 540px, min(100vw, 440px)", quality: 80, fetchPriority: "high" as const };
+  const common = { alt: "", sizes: "(min-width: 768px) 540px, min(100vw, 440px)", fetchPriority: "high" as const };
   const { props: { srcSet: desktopSrcSet } } = getImageProps({ ...common, ...desktop });
   const { props: image } = getImageProps({ ...common, ...mobile });
   return (
