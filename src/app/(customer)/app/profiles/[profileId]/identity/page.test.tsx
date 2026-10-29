@@ -18,7 +18,8 @@ test("identity shows two sections, prefilled fields, parent navigation and prist
   expect(html).toContain("https://images.test/photo/asset");
   for (const value of ["Ana", "Designer", "Neffi", "Hello", "+63", "9171234567", "ana@e.test", "https://ana.example/", "Manila"]) expect(html).toContain(value);
   expect(html).toContain("Save changes");
-  expect(html).toMatch(/<button\b[^>]*disabled[^>]*>Save changes<\/button>/);
+  const save = [...html.matchAll(/<button\b[^>]*>[\s\S]*?<\/button>/g)].find(([button]) => button.includes("Save changes"))?.[0];
+  expect(save).toContain('disabled=""');
   expect(html).toContain('href="/app/profiles/p1"');
   expect(html).toContain("Shared information across all profile modes.");
   expect(html).toContain("Back to profile");

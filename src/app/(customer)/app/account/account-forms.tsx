@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowRight, Laptop, LoaderCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Laptop } from "lucide-react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { GoogleLogo } from "@/components/google-icon";
 import { Button } from "@/components/ui/button";
@@ -248,19 +248,11 @@ export function RemoveGoogleForm() {
                 type="submit"
                 size="touch"
                 disabled={pending}
+                loading={pending}
+                loadingText="Disconnecting…"
                 className="h-11 w-full bg-destructive px-5 font-semibold text-white shadow-2xs transition-colors duration-200 hover:bg-destructive/90 active:bg-destructive/95 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
               >
-                {pending ? (
-                  <>
-                    <LoaderCircle
-                      aria-hidden
-                      className="size-4 animate-spin motion-reduce:animate-none"
-                    />
-                    Disconnecting…
-                  </>
-                ) : (
-                  "Disconnect Google"
-                )}
+                Disconnect Google
               </Button>
             </form>
           </AlertDialog.Popup>

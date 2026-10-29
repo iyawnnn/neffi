@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 async function render(image = false, fullName?: string) { await act(async () => root.render(<ImageUpload profileId="p1" fullName={fullName} hasImage={image} image={image ? "https://example.com/photo" : null} logo={false} />)); }
-const button = (text: string) => [...host.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent === text)!;
+const button = (text: string) => [...host.querySelectorAll<HTMLButtonElement>("button")].find(node => (node.querySelector(":scope > .inline-grid > span:not([aria-hidden='true'])")?.textContent ?? node.textContent) === text)!;
 async function file(file: File) {
   const input = host.querySelector<HTMLInputElement>('input[type="file"]')!;
   Object.defineProperty(input, "files", { value: [file], configurable: true });

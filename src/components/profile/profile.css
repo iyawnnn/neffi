@@ -46,6 +46,9 @@
 .pf-action[data-filled="true"]:hover { color: var(--pf-on-accent); opacity: 0.9; }
 .pf-action { gap: 0.5rem; }
 .pf-action[data-filled="true"]:active { transform: translateY(1px); opacity: 1; }
+.pf-action.pf-save-contact { border-color: var(--action); background: var(--action); color: white; }
+.pf-action.pf-save-contact:hover { background: var(--action-hover); color: white; opacity: 1; }
+.pf-profile .pf-save-contact:focus-visible { outline-color: var(--action); }
 .pf-action-icon { flex-shrink: 0; }
 .pf-socials { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.375rem; margin-block: -0.5rem; }
 .pf-social { display: inline-flex; width: 2.75rem; align-items: center; justify-content: center; border-radius: 0.75rem; }

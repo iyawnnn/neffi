@@ -98,8 +98,8 @@ export function CodeForm() {
       <Button
         type="submit"
         size="touch"
-        variant={isComplete || pending ? "action" : "outline"}
-        className={cn("h-[52px] w-full gap-2 rounded-xl text-base font-semibold sm:h-[54px]", !isComplete && !pending && "bg-subtle text-fg-secondary border-border-strong/70 hover:bg-subtle hover:text-fg-secondary disabled:opacity-100 disabled:shadow-none")}
+        variant="action"
+        className="h-[52px] w-full gap-2 rounded-xl text-base font-semibold sm:h-[54px]"
         disabled={!isComplete}
         loading={pending}
         loadingText="Checking…"

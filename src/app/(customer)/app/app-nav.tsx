@@ -3,7 +3,7 @@
 import { Bell, ChevronDown, CircleUser, House, LayoutDashboard, LogOut, Nfc, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { signOutAction } from "@/auth/actions";
 import { NeffiLogo } from "@/components/neffi-logo";
 import { SetupHeader } from "@/components/setup-header";
@@ -131,6 +131,12 @@ function AccountMenu({ account, owner, current }: { account: HeaderAccount; owne
       </DropdownMenu>
     </>
   );
+}
+
+// Hidden setup pages may remain mounted after navigation; clearance follows the active route, just like the dock.
+export function AppContent({ children }: { children: ReactNode }) {
+  const setup = usePathname().startsWith("/app/setup/");
+  return <div data-app-content className={cn("flex flex-1 flex-col md:pb-0", setup ? "pb-0" : "pb-[calc(env(safe-area-inset-bottom)+6.625rem)]")}>{children}</div>;
 }
 
 // Equal-width implicit columns accommodate another primary section without changing the shell.

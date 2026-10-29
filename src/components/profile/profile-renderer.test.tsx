@@ -169,7 +169,13 @@ test("long content and image presentation retain their content and intrinsic dim
   }
 });
 
-test("the filled Save contact action carries an icon and the shared CTA sheen, with on-accent text", () => {
+test("Save contact alone uses the Neffi primary treatment across layouts and modes", () => {
+  for (const layout of ["classic", "editorial", "showcase"] as const) for (const mode of ["light", "dark"] as const) {
+    const host = render({ ...full, appearance: { ...full.appearance, layout, mode } });
+    expect(host.querySelectorAll(".pf-save-contact")).toHaveLength(1);
+    expect(host.querySelector(".pf-save-contact")?.getAttribute("href")).toBe("/c/TOKEN/contact");
+    expect(host.querySelector('a[target="_blank"].pf-save-contact')).toBeNull();
+  }
   const save = render().querySelector<HTMLElement>('a[href="/c/TOKEN/contact"]')!;
   expect(save.textContent).toBe("Save contact");
   expect(save.className).toContain("neffi-cta");

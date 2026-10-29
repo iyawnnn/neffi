@@ -22,7 +22,7 @@ async function render(accent = "#0C0C0D") {
   view.appearance = { layout: "editorial", mode: "dark", accent, cover: coverFixture };
   await act(async () => root.render(<AppearanceForm profileId="p1" view={view} accentColor={accent} />));
 }
-const button = (text: string) => [...host.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent === text)!;
+const button = (text: string) => [...host.querySelectorAll<HTMLButtonElement>("button")].find(node => (node.querySelector(":scope > .inline-grid > span:not([aria-hidden='true'])")?.textContent ?? node.textContent) === text)!;
 const preview = () => host.querySelector('[data-appearance-preview] .pf-profile') as HTMLElement;
 async function choose(value: string) { await act(async () => host.querySelector<HTMLInputElement>(`input[type="radio"][value="${value}"]`)!.click()); }
 async function submit() { await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); }

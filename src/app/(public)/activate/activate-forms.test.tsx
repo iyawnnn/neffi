@@ -69,8 +69,8 @@ test("CodeForm starts disabled and enables at exactly 8 characters", async () =>
   expect(label.textContent).toBe("Activation code");
   expect(button).not.toBeNull();
   expect(button.disabled).toBe(true);
-  expect(button.textContent).toBe("Continue");
-  expect(button.className).not.toContain("bg-action");
+  expect(button.textContent).toContain("Continue");
+  expect(button.className).toContain("bg-action");
 
   // Incomplete code (7 chars): button stays disabled and remains in document
   await act(async () => {
@@ -209,7 +209,7 @@ test("ClaimForm renders Add to my account button with submit type and touch size
   });
   const button = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   expect(button).not.toBeNull();
-  expect(button.textContent).toBe("Add to my account");
+  expect(button.textContent).toContain("Add to my account");
   expect(button.className).toContain("bg-action");
 });
 
@@ -219,7 +219,7 @@ test("SwitchAccountButton renders Use a different account button", async () => {
   });
   const button = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   expect(button).not.toBeNull();
-  expect(button.textContent).toBe("Use a different account");
+  expect(button.textContent).toContain("Use a different account");
 });
 
 test("StartOverButton renders Enter a different code button", async () => {
@@ -228,7 +228,7 @@ test("StartOverButton renders Enter a different code button", async () => {
   });
   const button = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   expect(button).not.toBeNull();
-  expect(button.textContent).toBe("Enter a different code");
+  expect(button.textContent).toContain("Enter a different code");
 });
 
 test("activation disables input and Continue while the existing action is pending", async () => {
@@ -240,6 +240,11 @@ test("activation disables input and Continue while the existing action is pendin
   await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(input.disabled).toBe(true);
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+  const pendingButton = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  expect(pendingButton.getAttribute("aria-busy")).toBe("true");
+  expect(pendingButton.className).toContain("bg-action");
+  expect(pendingButton.className).toContain("w-full");
+  expect(pendingButton.querySelector('[aria-hidden="true"] + span')?.textContent).toBe("Checking…");
   await act(async () => finish({ error: "Try again." }));
   expect(input.disabled).toBe(false);
   expect(input.getAttribute("aria-invalid")).toBe("true");

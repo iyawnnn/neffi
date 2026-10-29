@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Trash2, Upload } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,11 +56,11 @@ export function ImageUpload({ profileId, hasImage, image, logo, fullName, disabl
     <div className="flex w-full min-w-0 flex-col items-center gap-3">
       <div><p className="break-words text-body font-medium">{hasImage ? fullName?.trim() || "Your profile image" : "Add a profile image"}</p>{!hasImage ? <p className="mt-1 text-meta text-fg-secondary">Upload a photo or business logo.</p> : null}<p id={id + "-help"} className="mt-1 text-label text-fg-secondary">JPG, PNG, WebP or HEIC · Max 5 MB</p></div>
       <div className={hasImage ? "grid w-full max-w-xs grid-cols-1 gap-2 min-[360px]:grid-cols-2" : "flex justify-center"}>
-        <Button type="button" size="touch" variant="outline" disabled={unavailable} aria-describedby={id + "-help"} onClick={() => input.current?.click()} className={"gap-2 " + motion}>
-          {busy === "upload" ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Upload aria-hidden className="size-4" />}
-          {busy === "upload" ? "Uploading…" : hasImage ? "Change image" : "Choose image"}
+        <Button type="button" size="touch" variant="outline" disabled={unavailable} loading={busy === "upload"} loadingText="Uploading…" aria-describedby={id + "-help"} onClick={() => input.current?.click()} className={"gap-2 " + motion}>
+          <Upload aria-hidden className="size-4" />
+          {hasImage ? "Change image" : "Choose image"}
         </Button>
-        {hasImage ? <Button type="button" size="touch" variant="outline" disabled={unavailable} onClick={() => void remove()} className={"gap-2 border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/5 hover:text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20 " + motion}>{busy === "remove" ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Trash2 aria-hidden className="size-4" />}{busy === "remove" ? "Removing…" : "Remove"}</Button> : null}
+        {hasImage ? <Button type="button" size="touch" variant="outline" disabled={unavailable} loading={busy === "remove"} loadingText="Removing…" onClick={() => void remove()} className={"gap-2 border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/5 hover:text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20 " + motion}><Trash2 aria-hidden className="size-4" />Remove</Button> : null}
       </div>
       <input ref={input} type="file" aria-label="Choose profile image" aria-describedby={id + "-help" + (message ? " " + id + "-error" : "")} aria-invalid={!!message} accept="image/jpeg,image/png,image/webp,image/heic,.heic" className="sr-only" tabIndex={-1} disabled={unavailable} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
       {message ? <p id={id + "-error"} role="alert" className="text-meta text-destructive">{message}</p> : null}

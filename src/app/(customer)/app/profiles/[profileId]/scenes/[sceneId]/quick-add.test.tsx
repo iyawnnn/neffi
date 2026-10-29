@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')!;
-const button = (label: string, container: ParentNode = document) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(node => node.getAttribute("aria-label") === label || node.textContent === label)!;
+const button = (label: string, container: ParentNode = document) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(node => node.getAttribute("aria-label") === label || (node.querySelector(':scope > .inline-grid > span:not([aria-hidden="true"])')?.textContent ?? node.textContent) === label)!;
 async function click(label: string, container?: ParentNode) { await act(async () => button(label, container).click()); }
 async function render(items = blocks) { await act(async () => root.render(<ModeEditor profileId="p1" sceneId="s1" blocks={items} />)); }
 async function input(name: string, value: string) {

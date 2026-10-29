@@ -61,6 +61,23 @@ test("Continue invokes action once and failed validation preserves values and fo
   } finally { await close(); }
 });
 
+test("Continue keeps its primary treatment and exposes one pending label while saving", async () => {
+  let finish!: (state: { error: string }) => void;
+  const action = vi.fn().mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const { host, close } = await mount("you", action);
+  try {
+    const button = host.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    await act(async () => host.querySelector("form")!.requestSubmit(button));
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.className).toContain("bg-action");
+    expect(button.querySelector('.inline-grid > span:not([aria-hidden="true"])')?.textContent).toBe("Saving…");
+    await act(async () => finish({ error: "Try again." }));
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute("aria-busy")).toBeNull();
+  } finally { await close(); }
+});
+
 test("Contact revisit preserves cleared public email and saved Save Contact preference", async () => {
   const { host, close } = await mount("contact", undefined, true, { saveContact: false });
   try {

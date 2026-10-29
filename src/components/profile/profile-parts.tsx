@@ -23,8 +23,7 @@ export function Identity({ identity, intro }: { identity: ViewIdentity; intro: s
   );
 }
 
-// Filled actions use the profile accent with the shared Neffi CTA sheen; text is --pf-on-accent, white on every light-mode accent.
-const actionClass = (action: PrimaryAction) => `pf-action min-h-12${action.filled ? " neffi-cta" : ""}`;
+const actionClass = (action: PrimaryAction) => `pf-action min-h-12${action.filled ? " neffi-cta" : ""}${action.type === "contact" ? " pf-save-contact" : ""}`;
 const actionLabel = (action: PrimaryAction) => action.type === "contact" ? <><UserRoundPlus aria-hidden className="pf-action-icon" size={18} />{action.label}</> : action.label;
 
 export function PrimaryActions({ actions, visitorActions }: { actions: PrimaryAction[]; visitorActions?: VisitorActions }) {
