@@ -25,7 +25,7 @@ const navigationGroups: { title: string; id: string; items: FooterItem[] }[] = [
   },
 ];
 
-const socials = [
+export const socials = [
   { label: "Facebook", href: FACEBOOK_ORDER_URL, path: PLATFORMS.facebook.brand!.path },
   { label: "Instagram", href: "https://www.instagram.com/neffi.ph", path: PLATFORMS.instagram.brand!.path },
   { label: "TikTok", href: "https://www.tiktok.com/@neffi.ph", path: PLATFORMS.tiktok.brand!.path },

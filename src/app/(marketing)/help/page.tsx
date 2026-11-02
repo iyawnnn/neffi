@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/page-metadata";
 import { MarketingPageHeader } from "../marketing-page";
 import { FinalCtaSection } from "../final-cta-section";
 import { HelpBrowser } from "./help-browser";
 import "./help.css";
 
-export const metadata: Metadata = {
-  title: "Neffi — Help Center",
-  description: "Help with ordering, delivery, activation, sharing, and your Neffi account.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Help",
+  description: "Answers about ordering, payment, J&T delivery, activating your card, sharing with NFC or QR, and account issues.",
+  path: "/help",
+});
 
 export default function HelpPage() {
   return (

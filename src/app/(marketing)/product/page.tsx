@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/page-metadata";
 import { FinalCtaSection } from "../final-cta-section";
 import { SectionDivider } from "../section-divider";
 import { ProductAnatomy } from "./product-anatomy";
@@ -11,10 +12,11 @@ import { ProductProfileEvolution } from "./product-profile-evolution";
 import "../profile-experience.css";
 import "./product.css";
 
-export const metadata: Metadata = {
-  title: "Neffi — The card",
-  description: "One physical NFC card connected to a digital profile you can update whenever you need to.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Product",
+  description: "One physical NFC card connected to a digital profile you can update anytime. Tap or scan to share your details, with nothing to install.",
+  path: "/product",
+});
 
 // One shared divider at each major transition. As on Home, the shared closing CTA follows the last section without a divider, and
 // the footer brings its own. The physical card is shown in "What's in your hand" and in that shared CTA only.

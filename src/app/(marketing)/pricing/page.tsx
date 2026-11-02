@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/page-metadata";
 import { Check, CreditCard, QrCode, RefreshCw, UserRound } from "lucide-react";
 import { MarketingPageHeader } from "../marketing-page";
 import { SectionDivider } from "../section-divider";
@@ -10,10 +11,11 @@ import { BuyingJourneySection } from "../buying-journey-section";
 import { ProductGallery } from "./product-gallery";
 import "./pricing.css";
 
-export const metadata: Metadata = {
-  title: "Neffi Pricing — Digital Business Card for ₱799",
+export const metadata: Metadata = pageMetadata({
+  title: "Pricing",
   description: "Get a physical Neffi NFC card and an editable digital profile for ₱799. Order on Facebook, confirm payment, and track your J&T delivery.",
-};
+  path: "/pricing",
+});
 
 const inclusions = [
   { icon: CreditCard, title: "Physical Neffi NFC card", copy: "Tap the card on a compatible phone to open your digital profile." },

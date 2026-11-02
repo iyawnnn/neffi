@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { NeffiLogo } from "@/components/neffi-logo";
+import { SITE_NAME, SITE_URL } from "@/config/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { HeroCard } from "./hero-card";
 import { IdentitySection } from "./identity-section";
@@ -7,6 +10,20 @@ import { ProfileExperienceSection } from "./profile-experience-section";
 import { UseCasesSection } from "./use-cases-section";
 import { SetupJourneySection } from "./setup-journey-section";
 import { FinalCtaSection } from "./final-cta-section";
+import { socials } from "./marketing-footer";
+
+export const metadata: Metadata = pageMetadata({
+  description: "Neffi is an NFC digital business card in the Philippines. Tap to share your contact details, links and profile instantly, with no app required.",
+  path: "/",
+});
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: SITE_NAME, url: SITE_URL, logo: `${SITE_URL}/apple-icon.png`, sameAs: socials.map(({ href }) => href) },
+    { "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL, publisher: { "@id": `${SITE_URL}/#organization` } },
+  ],
+};
 
 // The hero is one composed opening screen on a continuous Snow canvas. It spans the whole small viewport (svh, so mobile browser
 // chrome never makes it jump) and keeps the dock's clearance inside itself as bottom padding, so its content stops above the dock
@@ -17,6 +34,7 @@ import { FinalCtaSection } from "./final-cta-section";
 export default function Home() {
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <section className="relative isolate flex h-[clamp(calc(43.5rem+env(safe-area-inset-bottom)),100svh,70rem)] flex-col items-center overflow-x-clip bg-canvas px-6 pt-[clamp(1rem,3svh,2rem)] pb-[calc(7.5rem+env(safe-area-inset-bottom))] min-[769px]:h-[clamp(41rem,100svh,68.75rem)] min-[769px]:pb-28">
         <Link
           href="/"
