@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Geist_Mono } from "next/font/google";
+import { SITE_URL } from "@/config/site";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -9,8 +10,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Neffi",
-  description: "NFC digital business cards and Google Review cards.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "Neffi", template: "%s | Neffi" },
+  description: "Neffi is an NFC digital business card in the Philippines. Tap to share your contact details, links and profile instantly, with no app required.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -9,14 +9,16 @@ import { PackageContents } from "./package-contents";
 import { SectionDivider } from "../section-divider";
 import { FinalCtaSection } from "../final-cta-section";
 import { OrderLink } from "../order-link";
+import { pageMetadata } from "@/lib/page-metadata";
 import { HERO_PRIMARY_CLASS, HERO_SECONDARY_CLASS, PRIMARY_CTA_REFLECTIONS } from "../hero-cta-styles";
 import { BuyingJourneySection } from "../buying-journey-section";
 import "./guide.css";
 
-export const metadata: Metadata = {
-  title: "Neffi Guide — Order, Activate & Set Up",
+export const metadata: Metadata = pageMetadata({
+  title: "Guide",
   description: "How to order Neffi for ₱799, pay, track your J&T delivery, activate your card, build your profile and start sharing.",
-};
+  path: "/guide",
+});
 
 const activationSteps = [
   { title: "Scan your package", copy: "Scan the QR on the back of your Neffi package to open activation." },
