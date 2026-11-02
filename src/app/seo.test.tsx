@@ -33,6 +33,9 @@ test.each(indexable)("%s declares its own canonical, title and Open Graph", (pat
   expect(metadata.alternates?.canonical).toBe(path);
   expect(metadata.openGraph).toMatchObject({ title: renderedTitle, description: metadata.description, url: path, siteName: "Neffi" });
   expect(metadata.twitter).toMatchObject({ title: renderedTitle, description: metadata.description });
+  const images = [{ url: "/opengraph-image.png", width: 1200, height: 630 }];
+  expect(metadata.openGraph).toMatchObject({ images });
+  expect(metadata.twitter).toMatchObject({ card: "summary_large_image", images });
   const pageTitle = typeof metadata.title === "string" ? metadata.title : undefined;
   expect(pageTitle ? `${pageTitle} | Neffi` : "Neffi").toBe(renderedTitle);
   expect(metadata.robots).toBeUndefined();
